@@ -33,7 +33,7 @@
                     Productos
                 </a>
                 <ul class="submenu {{ 'open init-open' if productos_active else '' }}">
-                    <li><a href="{{ url_for('vista_crear_producto_unico') }}" class="{{ 'active' if request.endpoint == 'vista_crear_producto_unico' else '' }}">Crear Producto (Formulario)</a></li>
+                    <li><a href="{{ url_for('vista_crear_producto_unico') }}" class="{{ 'active' if request.endpoint == 'vista_crear_producto_unico' else '' }}">Crear Producto</a></li>
                     <li><a href="{{ url_for('vista_cargar_productos') }}" class="{{ 'active' if request.endpoint == 'vista_cargar_productos' or request.endpoint == 'vista_confirmar_carga' else '' }}">Carga Masiva Productos</a></li>
                     <li><a href="{{ url_for('vista_listar_productos') }}" class="{{ 'active' if request.endpoint == 'vista_listar_productos' else '' }}">Listado de Productos</a></li>
                 </ul>
