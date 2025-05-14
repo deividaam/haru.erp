@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+
+{% block content %}
+    {# El título h2 ya no es necesario aquí, se toma del content-header de base.html #}
+    {# El título de la página se establece en app.py como "Confirmar Carga de Productos" #}
+
+    {% if errores %}
+        {# Ya no usamos .card-section aquí, los estilos se aplicarán directamente o se heredarán #}
+        <div class="error-summary" style="margin-bottom: 25px;"> 
+            <h4>Errores Encontrados Durante el Parseo del CSV:</h4>
+            <p class="subtle-text">Las siguientes filas tuvieron problemas y no serán cargadas. Por favor, corrige el archivo CSV original y vuelve a subirlo si es necesario.</p>
+            <ul class="error-list">
+                {% for error in errores %}
+                    <li>
+                        <strong>Fila {{ error.fila }}:</strong> {{ error.error }} 
+                        <details class="error-details">
+                            <summary>Ver datos de la fila</summary>
+                            <pre>{{ error.datos | tojson(indent=2) }}</pre>
+                        </details>
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+    {% endif %}
+
+    {% if productos %}
+        {# Ya no usamos .card-section aquí #}
+        <div class="preview-section" style="margin-bottom: 25px;"> 
+            <h4>Previsualización de Productos a Cargar ({{ productos|length }} productos):</h4>
+            <p class="subtle-text">Estos productos parecen estar correctos y se crearán en la base de datos si confirmas. El SKU se generará automáticamente.</p>
+            
+            <div class="table-responsive" style="margin-top: 15px; margin-bottom:25px;">
+                <table class="preview-table-enhanced"> {# Nueva clase para la tabla mejorada #}
+                    <thead>
+                        <tr>
+                            <th>Nombre Producto</th>
+                            <th>Categoría (del CSV)</th>
+                            <th>Subcategoría (del CSV)</th>
+                            <th>Presentación</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for prod in productos %}
+                            <tr>
+                                <td>{{ prod.nombre_producto }}</td>
+                                <td>{{ prod.nombre_categoria_csv }}</td>
+                                <td>{{ prod.nombre_subcategoria or '-' }}</td>
+                                <td>{{ prod.presentacion or '-'}}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <form method="POST" class="confirmation-actions">
+                <button type="submit" name="confirmar" class="button button-confirm-pastel">
+                    Confirmar y Guardar Productos
+                </button>
+                <button type="submit" name="cancelar" class="button button-cancel-pastel">
+                    Cancelar Carga
+                </button>
+            </form>
+        </div>
+    {% elif not errores %}
+        {# Ya no usamos .card-section aquí #}
+        <div>
+             <p>No se encontraron productos válidos para cargar en el archivo CSV.</p>
+             <a href="{{ url_for('vista_cargar_productos') }}" class="button-secondary" style="margin-top:15px;">Intentar con otro archivo</a>
+        </div>
+    {% endif %}
+
+    {% if not productos and errores %}
+        {# Ya no usamos .card-section aquí, pero mantenemos un div para el botón si es necesario #}
+        <div style="text-align:center; padding-top:0; margin-bottom: 25px;">
+             <a href="{{ url_for('vista_cargar_productos') }}" class="button-secondary" style="text-decoration:none; display:inline-block;">Volver a Cargar Archivo</a>
+        </div>
+    {% endif %}
+
+    {# Estilos específicos para esta página. Podrían moverse a static/css/style.css #}
+    <style>
+        /* Eliminamos .card-section ya que el contenido ahora está directamente en la tarjeta principal de base.html */
+        
+        .subtle-text {
+            font-size: 0.9em; /* Aumentado ligeramente */
+            color: var(--color-texto-secundario);
+            margin-bottom: 20px; /* Más espacio */
+            line-height: 1.6;
+        }
+
+        .error-summary { 
+            border: 1px solid #ffdade; /* Borde más sutil para la sección de errores */
+            background-color: #fff3f3;
+            padding: 15px 20px;
+            border-radius: var(--radio-borde-general);
+        }
+        .error-summary h4 { 
+            color: var(--color-peligro); 
+            font-size: 1.05em; /* Ligeramente más grande */
+            font-weight: 600;
+            margin-top: 0;
+            margin-bottom: 10px;
+        }
+        .error-list { 
+            list-style-type: none; 
+            padding-left: 0; 
+            font-size: 0.9em;
+        }
+        .error-list li { 
+            margin-bottom: 8px; 
+            background-color: #ffebee; /* Un poco más oscuro que el fondo del sumario */
+            padding: 10px 12px; 
+            border-radius: 4px; /* Bordes menos redondeados para los items */
+            /* border: 1px solid #ffcdd2; */ /* Quitar borde individual si el fondo ya lo distingue */
+        }
+        .error-details summary { 
+            cursor: pointer; 
+            font-weight: 500; 
+            color: var(--color-acento-primario);
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+        .error-details pre { 
+            background-color: #fef0f2; 
+            padding: 8px; 
+            border-radius: 4px; 
+            font-size: 0.85em; 
+            white-space: pre-wrap; 
+            word-break: break-all; 
+            margin-top: 5px;
+            border: 1px dashed #ffc6ce;
+        }
+
+        .preview-section h4 { 
+            color: var(--color-acento-secundario); 
+            font-size: 1.05em; /* Ligeramente más grande */
+            font-weight: 600;
+            margin-top: 0;
+            margin-bottom: 10px;
+        }
+        
+        .preview-table-enhanced { 
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.95em; /* Tamaño de fuente de datos de tabla más grande */
+        }
+        .preview-table-enhanced th, .preview-table-enhanced td {
+            border: none;
+            border-bottom: 1px solid var(--color-borde-sutil); 
+            padding: 12px 10px; /* Más padding para celdas */
+            text-align: left;
+        }
+        .preview-table-enhanced th {
+            font-weight: 600; /* Encabezados más notorios (Lexend SemiBold) */
+            font-size: 0.9em; /* Tamaño de fuente de encabezados más grande */
+            color: var(--color-texto-principal); /* Encabezados más oscuros */
+            background-color: #f8f9fa; /* Fondo muy sutil para encabezados */
+            text-transform: none; /* Sin mayúsculas, como en la imagen */
+        }
+         .preview-table-enhanced tr:last-child td {
+            border-bottom: none;
+        }
+
+
+        .confirmation-actions {
+            margin-top: 30px; /* Más espacio sobre los botones */
+            text-align: right; 
+        }
+        .confirmation-actions .button { 
+            margin-left: 12px; /* Más espacio entre botones */
+            font-weight: 500; 
+            padding: 10px 20px; /* Botones un poco más grandes */
+        }
+
+        .button-confirm-pastel {
+            background-color: #e0f2f1; 
+            color: #00695c; 
+            border: 1px solid #00897b; 
+        }
+        .button-confirm-pastel:hover {
+            background-color: #b2dfdb; 
+            border-color: #00695c;
+            color: #004d40; 
+        }
+
+        .button-cancel-pastel {
+            background-color: #ffebed; 
+            color: #c62828; 
+            border: 1px solid #e57373; 
+        }
+        .button-cancel-pastel:hover {
+            background-color: #ffcdd2; 
+            border-color: #c62828;
+            color: #b71c1c; 
+        }
+    </style>
+{% endblock %}

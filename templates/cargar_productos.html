@@ -1,0 +1,274 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <fieldset class="form-section">
+        <legend><h4>Instrucciones para el Archivo CSV de Productos:</h4></legend>
+        {# El contenido del div .instrucciones-csv-mejoradas original va aquí, sin el h4 inicial #}
+        <p>Asegúrate de que tu archivo CSV tenga las siguientes columnas en el orden especificado. Los nombres de las columnas deben coincidir exactamente. El SKU se generará automáticamente.</p>
+        
+        <h5>Columnas Generales (Aplicables a la mayoría de los productos):</h5>
+        <div class="lista-columnas-csv-contenedor">
+            <ul class="lista-columnas-csv">
+                <li><strong>NombreProducto</strong> (Texto, <strong>Obligatorio</strong>) - Nombre principal del producto/servicio.</li>
+                <li><strong>Categoria</strong> (Texto, <strong>Obligatorio</strong>) - Categoría principal (ej. Dulces/Golosinas, Globos).</li>
+                <li>Subcategoria (Texto, <strong>Obligatorio para todas las categorías</strong>) - Subcategoría específica.</li>
+                <li>DescripcionAdicional (Texto, 
+                    <strong>Obligatorio para Servicios</strong>;
+                    Opcional para Dulces/Golosinas, Globos, Decoración, Display) - Más detalles sobre el producto.
+                </li>
+                <li>Presentacion (Texto, 
+                    <strong>Obligatorio para Dulces/Golosinas, Globos, Decoración, Display</strong>;
+                    Opcional para Servicios) - Cómo se compra/ofrece (ej. Pieza, Paquete, Caja, Rollo, Metro, A Granel, Por evento).
+                </li>
+                <li>CantidadPorPresentacion (Texto/Número, 
+                    <strong>Obligatorio para Dulces/Golosinas, Globos, Decoración, Display</strong>;
+                    Opcional para Servicios) - Si Presentacion es "Paquete" o "Caja", el número de ítems internos (ej. 27). Si es "Rollo", la longitud total (ej. 50 para 50 metros).
+                </li>
+                <li>UnidadMedidaVenta (Texto, 
+                    <strong>Obligatorio para Dulces/Golosinas, Globos</strong>;
+                    Opcional para Decoración, Display, Servicios) - Unidad en la que se vende al cliente (ej. Pieza, Paquete, Metro, Evento).
+                </li>
+                <li>DiasAnticipacionCompra (Número, <strong>Obligatorio para todas las categorías</strong>) - Días necesarios para comprar/preparar antes de un evento.</li>
+            </ul>
+        </div>
+
+        <h5>Campos Específicos por Categoría (dejar en blanco si no aplican):</h5>
+        <div class="lista-columnas-csv-contenedor">
+            <ul class="lista-columnas-csv">
+                <li><strong>Para Dulces/Golosinas:</strong></li>
+                <li>&nbsp;&nbsp;&nbsp;&nbsp;Sabor (Texto, <strong>Obligatorio</strong>)</li>
+                <li>&nbsp;&nbsp;&nbsp;&nbsp;Color (Texto, Opcional)</li>
+            </ul>
+            <ul class="lista-columnas-csv">
+                <li><strong>Para Globos:</strong></li>
+                <li>&nbsp;&nbsp;&nbsp;&nbsp;Color (Texto, <strong>Obligatorio</strong>)</li>
+                <li>&nbsp;&nbsp;&nbsp;&nbsp;TamanoPulgadas (Texto, <strong>Obligatorio</strong>) - ej. "9", "12", "18+"</li>
+                <li>&nbsp;&nbsp;&nbsp;&nbsp;Material (Texto, Opcional) - ej. Látex, Mylar/Foil, Burbuja</li>
+            </ul>
+        </div>
+        <div class="lista-columnas-csv-contenedor">
+            <ul class="lista-columnas-csv">
+                <li><strong>Para Decoración:</strong></li>
+                <li>&nbsp;&nbsp;&nbsp;&nbsp;Color (Texto, <strong>Obligatorio</strong>)</li>
+                <li>&nbsp;&nbsp;&nbsp;&nbsp;DimensionesCapacidad (Texto, Opcional) - ej. "2m x 1.5m", "30cm diámetro"</li>
+                <li>&nbsp;&nbsp;&nbsp;&nbsp;Material (Texto, Opcional) - ej. Papel, Tela, Plástico</li>
+                <li>&nbsp;&nbsp;&nbsp;&nbsp;TemaEstilo (Texto, Opcional) - ej. Fiesta Mexicana, Vintage</li>
+                <li>&nbsp;&nbsp;&nbsp;&nbsp;FormaTipo (Texto, Opcional)</li>
+            </ul>
+            <ul class="lista-columnas-csv">
+                <li><strong>Para Display/Contenedores:</strong></li>
+                <li>&nbsp;&nbsp;&nbsp;&nbsp;Color (Texto, <strong>Obligatorio</strong>)</li>
+                <li>&nbsp;&nbsp;&nbsp;&nbsp;DimensionesCapacidad (Texto, Opcional) - ej. "1 Litro", "3 niveles"</li>
+                <li>&nbsp;&nbsp;&nbsp;&nbsp;Material (Texto, <strong>Obligatorio</strong>) - ej. Vidrio, Plástico, Metal</li>
+                <li>&nbsp;&nbsp;&nbsp;&nbsp;FormaTipo (Texto, Opcional) - ej. Redondo, Cuchara, Base Giratoria</li>
+            </ul>
+        </div>
+         <div class="lista-columnas-csv-contenedor">
+            <ul class="lista-columnas-csv">
+                <li><strong>Para Servicios:</strong></li>
+                <li>&nbsp;&nbsp;&nbsp;&nbsp;ModalidadServicio (Texto, <strong>Obligatorio</strong>) - ej. Por evento, Por hora, Por paquete</li>
+                <li>&nbsp;&nbsp;&nbsp;&nbsp;<em>(DescripcionAdicional es <strong>Obligatorio</strong>, ver Columnas Generales)</em></li>
+                <li>&nbsp;&nbsp;&nbsp;&nbsp;<em>(No hay campos opcionales específicos para Servicios)</em></li>
+            </ul>
+        </div>
+        <p style="margin-top: 15px;"><em><strong>Importante:</strong> Las columnas deben estar presentes en tu archivo CSV incluso si dejas las celdas vacías para los campos opcionales que no aplican a un producto en particular.</em></p>
+    </fieldset>
+    
+    <form method="POST" enctype="multipart/form-data" class="form-cargar-csv" style="margin-top: 35px;"> {# Añadido margen superior al formulario #}
+        <div class="form-group">
+            <label for="archivo_csv" id="drop-area" class="file-upload-drop-area">
+                <div class="drop-area-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather feather-upload-cloud"><path d="M16 16l-4-4-4 4M12 12v9"></path><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"></path><path d="M16 16l-4-4-4 4"></path></svg>
+                </div>
+                <div class="drop-area-text">
+                    <p>Arrastra y suelta tu archivo CSV aquí</p>
+                    <p class="text-o">- o -</p>
+                </div>
+                <span class="file-upload-button">Seleccionar archivo CSV</span>
+                <span id="file-name-display" class="file-name-display">Ningún archivo seleccionado</span>
+            </label>
+            <input type="file" name="archivo_csv" id="archivo_csv" accept=".csv" required class="file-upload-input">
+        </div>
+        <div class="form-actions">
+            <input type="submit" value="Cargar y Previsualizar Productos" class="button">
+        </div>
+    </form>
+
+    <script>
+        // ... (Script existente sin cambios) ...
+        const dropArea = document.getElementById('drop-area');
+        const fileInput = document.getElementById('archivo_csv');
+        const fileNameDisplay = document.getElementById('file-name-display');
+
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropArea.addEventListener(eventName, preventDefaults, false);
+            document.body.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropArea.addEventListener(eventName, highlight, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropArea.addEventListener(eventName, unhighlight, false);
+        });
+
+        function highlight(e) {
+            dropArea.classList.add('highlight');
+        }
+
+        function unhighlight(e) {
+            dropArea.classList.remove('highlight');
+        }
+
+        dropArea.addEventListener('drop', handleDrop, false);
+
+        function handleDrop(e) {
+            let dt = e.dataTransfer;
+            let files = dt.files;
+            if (files.length > 0) {
+                fileInput.files = files; 
+                const event = new Event('change', { bubbles: true });
+                fileInput.dispatchEvent(event);
+            }
+        }
+
+        fileInput.addEventListener('change', function(e){
+            var fileName = e.target.files[0] ? e.target.files[0].name : 'Ningún archivo seleccionado';
+            fileNameDisplay.textContent = fileName;
+            if (e.target.files[0]) {
+                dropArea.classList.add('file-selected');
+            } else {
+                dropArea.classList.remove('file-selected');
+            }
+        });
+    </script>
+    <style>
+        /* Estilos para .form-section y legend h4 (idealmente en style.css global) */
+        .form-section {
+            border: 1px solid var(--color-borde-sutil);
+            padding: 20px 25px;
+            margin-bottom: 25px;
+            border-radius: var(--radio-borde-general);
+            background-color: #fdfdff; 
+        }
+        .form-section legend {
+            font-weight: 600;
+            font-size: 1em; 
+            padding: 0 10px; 
+            color: var(--color-texto-principal);
+            margin-left: 10px; 
+        }
+        .form-section legend h4 {
+            font-size: 1.1em; /* Este es el tamaño que se veía en la imagen de cargar_precios_manual */
+            font-weight: 600;
+            color: var(--color-texto-principal);
+            margin: 0; 
+            padding: 0; 
+            line-height: 1; 
+        }
+
+        /* Estilos existentes de instrucciones-csv-mejoradas que ahora se aplican al contenido DENTRO del fieldset */
+        .form-section h5 { /* Antes .instrucciones-csv-mejoradas h5 */
+            font-size: 1.05em;
+            font-weight: 600;
+            color: var(--color-texto-principal);
+            margin-top: 20px;
+            margin-bottom: 8px;
+            border-bottom: 1px solid var(--color-borde-sutil);
+            padding-bottom: 5px;
+        }
+        .form-section p { /* Antes .instrucciones-csv-mejoradas p */
+            margin-bottom: 12px; 
+            line-height: 1.65;
+            color: var(--color-texto-secundario);
+            font-size: 0.98em; /* Manteniendo el tamaño de fuente base de las instrucciones */
+        }
+        .form-section p em { /* Antes .instrucciones-csv-mejoradas p em */
+            font-size: 0.95em;
+            color: var(--color-texto-principal);
+            font-weight: 500; 
+        }
+        
+        .lista-columnas-csv-contenedor { 
+            display: flex;
+            flex-wrap: wrap; 
+            gap: 0px 30px; 
+            margin-top: 5px;
+            margin-bottom: 5px;
+        }
+        .lista-columnas-csv {
+            list-style-type: none; 
+            padding-left: 0; 
+            font-size: 0.9em; 
+            line-height: 1.8; 
+            color: #333;
+            min-width: 220px; 
+        }
+        .lista-columnas-csv li {
+            margin-bottom: 2px; 
+        }
+        .lista-columnas-csv li strong {
+            font-weight: 500; 
+            color: var(--color-texto-principal);
+        }
+        .lista-columnas-csv li em {
+            font-size: 0.9em;
+            color: var(--color-texto-secundario);
+        }
+        
+        /* Estilos del formulario de carga (drop area) - sin cambios, ya deberían ser consistentes */
+        .file-upload-drop-area { 
+            padding: 45px 30px; 
+        }
+        .drop-area-icon {
+            margin-bottom: 15px; 
+        }
+        .drop-area-icon svg {
+            width: 56px; 
+            height: 56px;
+            stroke: var(--color-texto-secundario); 
+            opacity: 0.5; 
+        }
+        .drop-area-text {
+            color: var(--color-texto-secundario);
+            font-size: 1.15em; 
+            margin-bottom: 22px; 
+        }
+        .drop-area-text p {
+            margin: 8px 0; 
+            font-weight: 500; 
+        }
+        .drop-area-text p.text-o {
+            font-size: 1em; 
+            font-weight: 400; 
+            color: #777; 
+            margin: 18px 0;
+        }
+        .file-upload-button { 
+            padding: 12px 30px; 
+            font-size: 1em; 
+            font-weight: 500; 
+        }
+        .file-name-display { 
+            display: block; 
+            margin-top: 20px; 
+            font-size: 1em; 
+            color: var(--color-texto-principal); 
+            font-weight: 500; 
+            min-height: 1.3em; 
+        }
+        .form-cargar-csv .form-group {
+            margin-bottom: 25px; 
+        }
+        .form-cargar-csv .form-actions {
+            margin-top: 30px; 
+            text-align: left; 
+        }
+    </style>
+{% endblock %}

@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <div class="content-actions-bar">
+        <a href="{{ url_for('vista_registrar_compra') }}" class="button button-primary">Registrar Nueva Compra/Factura</a>
+    </div>
+
+    {% if encabezados %}
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>ID Factura</th>
+                        <th>Fecha Documento</th>
+                        <th>Proveedor</th>
+                        <th>No. Documento</th>
+                        <th style="text-align: right;">Monto Total</th>
+                        <th>Notas Generales</th>
+                        <th>Acciones</th> {# Para ver detalles de la factura #}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for enc in encabezados %}
+                        <tr>
+                            <td>{{ enc.id_encabezado_compra }}</td>
+                            <td>{{ enc.fecha_documento.strftime('%d/%m/%Y') if enc.fecha_documento else '-' }}</td>
+                            <td>{{ enc.proveedor.nombre_proveedor if enc.proveedor else 'N/A' }}</td>
+                            <td>{{ enc.numero_documento or '-' }}</td>
+                            <td style="text-align: right;">{{ "$%.2f"|format(enc.monto_total_documento|float) if enc.monto_total_documento is not none else '-' }}</td>
+                            <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ enc.notas_generales or ''}}">
+                                {{ enc.notas_generales or '-' }}
+                            </td>
+                            <td class="actions">
+                                {# Aquí podrías enlazar a una vista de detalle de la factura si la creas #}
+                                {# <a href="{{ url_for('vista_detalle_factura_compra', id_encabezado=enc.id_encabezado_compra) }}" class="button-edit-black">Ver Detalles</a> #}
+                                <span style="font-size:0.9em; color: #777;">(Detalles Próximamente)</span>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <p>No hay facturas o notas de compra registradas todavía.</p>
+    {% endif %}
+     <style>
+        .content-actions-bar {
+            display: flex;
+            justify-content: flex-end; 
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .data-table th, .data-table td { 
+            padding: 10px 12px; 
+            white-space: nowrap;
+        }
+        .data-table td { 
+            font-size: 0.95em; 
+        }
+    </style>
+{% endblock %}

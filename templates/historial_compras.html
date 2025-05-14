@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <div class="content-actions-bar">
+        {# El botón de "Registrar Nueva Compra" sigue siendo relevante aquí si esta vista es útil #}
+        <a href="{{ url_for('vista_registrar_compra') }}" class="button button-primary">Registrar Nueva Compra</a>
+    </div>
+
+    {% if compras %} {# 'compras' ahora es una lista de objetos DetalleCompra #}
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>ID Detalle</th>
+                        <th>Fecha Doc.</th> {# De EncabezadoCompra #}
+                        <th>Producto (SKU)</th>
+                        <th>Proveedor</th> {# De EncabezadoCompra #}
+                        <th style="text-align: right;">Cant.</th>
+                        <th>Unidad</th>
+                        <th style="text-align: right;">P. Orig.</th>
+                        <th style="text-align: right;">Desc.</th>
+                        <th style="text-align: right;">C. Neto</th>
+                        <th style="text-align: right;">Subtotal</th>
+                        <th>Dispon.</th>
+                        <th>Factura/Ref.</th> {# De EncabezadoCompra #}
+                        <th>Notas Ítem</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for detalle in compras %} {# Iterar sobre detalles_de_compras pasados como 'compras' #}
+                        <tr>
+                            <td>{{ detalle.id_detalle_compra }}</td>
+                            <td>{{ detalle.encabezado.fecha_documento.strftime('%d/%m/%Y') if detalle.encabezado and detalle.encabezado.fecha_documento else '-' }}</td>
+                            <td>
+                                {{ detalle.producto.nombre_producto if detalle.producto else 'N/A' }}
+                                <small style="display:block; color:#777;">(SKU: {{ detalle.producto.sku if detalle.producto else 'N/A' }})</small>
+                            </td>
+                            <td>{{ detalle.encabezado.proveedor.nombre_proveedor if detalle.encabezado and detalle.encabezado.proveedor else 'N/A' }}</td>
+                            <td style="text-align: right;">{{ "%.2f"|format(detalle.cantidad_comprada|float) if detalle.cantidad_comprada is not none else '-' }}</td>
+                            <td>{{ detalle.unidad_compra or '-' }}</td>
+                            <td style="text-align: right;">{{ "$%.2f"|format(detalle.precio_original_unitario|float) if detalle.precio_original_unitario is not none else '-' }}</td>
+                            <td style="text-align: right;">{{ "$%.2f"|format(detalle.monto_descuento_unitario|float) if detalle.monto_descuento_unitario is not none else '-' }}</td>
+                            <td style="text-align: right;">{{ "$%.2f"|format(detalle.costo_unitario_compra|float) if detalle.costo_unitario_compra is not none else '-' }}</td>
+                            <td style="text-align: right;">{{ "$%.2f"|format(detalle.costo_total_item|float) if detalle.costo_total_item is not none else '-' }}</td>
+                            <td>{{ detalle.disponibilidad_proveedor or '-' }}</td>
+                            <td>{{ detalle.encabezado.numero_documento or '-' }}</td>
+                            <td style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ detalle.notas_item or ''}}">
+                                {{ detalle.notas_item or '-' }}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <p>No hay detalles de compras registrados todavía.</p>
+    {% endif %}
+     <style>
+        .content-actions-bar {
+            display: flex;
+            justify-content: flex-end; 
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .data-table th, .data-table td { 
+            padding: 8px 10px; /* Reducido un poco para más columnas */
+            white-space: nowrap; 
+            font-size: 0.85em; /* Reducido para que quepa más info */
+        }
+         .data-table th {
+            font-weight: 600;
+         }
+    </style>
+{% endblock %}

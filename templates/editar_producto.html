@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+
+{% block content %}
+    {# El título h2 se elimina. El título principal se muestra en el content-header de base.html 
+       a través de la variable titulo_pagina pasada desde app.py #}
+    
+    <p class="sku-display">SKU: <strong>{{ producto.sku }}</strong> 
+        <span class="sku-note">(El SKU se genera automáticamente y no se puede editar directamente aquí. Cambiar la categoría principal podría afectarlo en una futura implementación.)</span>
+    </p>
+
+    <form method="POST" class="edit-form">
+        <div class="form-grid">
+            <div class="form-group full-width"> {# Ocupa todo el ancho si es necesario #}
+                <label for="nombre_producto">Nombre del Producto:</label>
+                <input type="text" name="nombre_producto" id="nombre_producto" value="{{ producto.nombre_producto or '' }}" required>
+            </div>
+
+            <div class="form-group">
+                <label>Categoría:</label>
+                <input type="text" value="{{ (producto.subcategoria.categoria.nombre_categoria if producto.subcategoria and producto.subcategoria.categoria else producto.categoria_directa.nombre_categoria) or 'N/A' }}" class="form-control-disabled" disabled>
+            </div>
+            <div class="form-group">
+                <label>Subcategoría:</label>
+                <input type="text" value="{{ producto.subcategoria.nombre_subcategoria if producto.subcategoria else '-' }}" class="form-control-disabled" disabled>
+            </div>
+            
+            <div class="form-group full-width">
+                <label for="descripcion_adicional">Descripción Adicional:</label>
+                <textarea name="descripcion_adicional" id="descripcion_adicional" rows="3">{{ producto.descripcion_adicional or '' }}</textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="presentacion">Presentación:</label>
+                <input type="text" name="presentacion" id="presentacion" value="{{ producto.presentacion or '' }}">
+            </div>
+            <div class="form-group">
+                <label for="cantidad_por_presentacion">Cantidad por Presentación:</label>
+                <input type="text" name="cantidad_por_presentacion" id="cantidad_por_presentacion" value="{{ producto.cantidad_por_presentacion or '' }}">
+            </div>
+            <div class="form-group">
+                <label for="unidad_medida_venta">Unidad de Medida Venta:</label>
+                <input type="text" name="unidad_medida_venta" id="unidad_medida_venta" value="{{ producto.unidad_medida_venta or '' }}">
+            </div>
+
+            <hr class="separator full-width">
+
+            <div class="form-group">
+                <label for="sabor">Sabor:</label>
+                <input type="text" name="sabor" id="sabor" value="{{ producto.sabor or '' }}">
+            </div>
+            <div class="form-group">
+                <label for="color">Color:</label>
+                <input type="text" name="color" id="color" value="{{ producto.color or '' }}">
+            </div>
+            <div class="form-group">
+                <label for="tamano_pulgadas">Tamaño (Pulgadas):</label>
+                <input type="text" name="tamano_pulgadas" id="tamano_pulgadas" value="{{ producto.tamano_pulgadas or '' }}">
+            </div>
+            <div class="form-group">
+                <label for="material">Material:</label>
+                <input type="text" name="material" id="material" value="{{ producto.material or '' }}">
+            </div>
+            <div class="form-group">
+                <label for="dimensiones_capacidad">Dimensiones/Capacidad:</label>
+                <input type="text" name="dimensiones_capacidad" id="dimensiones_capacidad" value="{{ producto.dimensiones_capacidad or '' }}">
+            </div>
+            <div class="form-group">
+                <label for="tema_estilo">Tema/Estilo:</label>
+                <input type="text" name="tema_estilo" id="tema_estilo" value="{{ producto.tema_estilo or '' }}">
+            </div>
+
+            <hr class="separator full-width">
+            
+            <div class="form-group">
+                <label for="modalidad_servicio">Modalidad Servicio (si aplica):</label>
+                <input type="text" name="modalidad_servicio" id="modalidad_servicio" value="{{ producto.modalidad_servicio or '' }}">
+            </div>
+            
+            <div class="form-group checkbox-group full-width"> {# Checkbox ocupa todo el ancho para alineación #}
+                <input type="checkbox" name="activo" id="activo" {% if producto.activo %}checked{% endif %} class="form-checkbox">
+                <label for="activo" class="checkbox-label">Producto Activo</label>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <a href="{{ url_for('vista_listar_productos') }}" class="button button-secondary">Cancelar</a>
+            <input type="submit" value="Guardar Cambios" class="button button-primary"> {# Botón primario para guardar #}
+        </div>
+    </form>
+
+    {# Estilos específicos para esta página de edición #}
+    <style>
+        .sku-display {
+            font-size: 0.95em;
+            color: var(--color-texto-secundario);
+            margin-bottom: 25px; /* Más espacio debajo del SKU */
+            background-color: #f8f9fa; /* Fondo sutil */
+            padding: 10px 15px;
+            border-radius: var(--radio-borde-general);
+            border: 1px solid var(--color-borde-sutil);
+        }
+        .sku-display strong {
+            color: var(--color-texto-principal);
+            font-weight: 600; /* Lexend SemiBold */
+        }
+        .sku-note {
+            font-size: 0.85em;
+            display: block;
+            margin-top: 4px;
+        }
+
+        .edit-form { margin-top: 10px; } /* Reducido, ya que el h2 se fue */
+        
+        .form-grid {
+            display: grid;
+            /* Ajustar para tener 2 o 3 columnas según el ancho */
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); 
+            gap: 20px 25px; /* Espacio vertical y horizontal */
+            margin-bottom: 25px;
+        }
+        .form-group { 
+            margin-bottom: 0; /* El gap del grid maneja el espaciado inferior */
+        } 
+        .form-group.full-width {
+            grid-column: 1 / -1; /* Hace que el elemento ocupe todas las columnas */
+        }
+
+        .form-group label { 
+            display: block; 
+            margin-bottom: 8px; /* Más espacio entre label e input */
+            font-weight: 500; /* Lexend Medium */
+            font-size: 0.9em; /* Tamaño de label un poco más grande */
+            color: var(--color-texto-secundario);
+        }
+        .form-group input[type="text"], 
+        .form-group textarea {
+            width: 100%;
+            padding: 12px 15px; /* Padding más generoso */
+            border: 1px solid var(--color-borde-input);
+            border-radius: var(--radio-borde-general);
+            box-sizing: border-box;
+            font-size: 0.95em; /* Texto de input más grande */
+            font-family: var(--font-principal);
+        }
+        .form-group input[disabled], .form-control-disabled { /* Clase para inputs deshabilitados */
+            background-color: #e9ecef; /* Gris claro */
+            color: #6c757d;
+            cursor: not-allowed;
+            border: 1px solid #ced4da;
+        }
+        
+        .checkbox-group { 
+            display: flex; 
+            align-items: center; 
+            margin-top: 10px;
+            padding: 10px 0; /* Padding para el grupo de checkbox */
+        }
+        .form-checkbox { /* Estilo para el checkbox en sí */
+            width: auto;
+            margin-right: 10px; 
+            height: 18px; /* Hacer el checkbox un poco más grande */
+            width: 18px;
+            accent-color: var(--color-acento-primario); /* Color del check (navegadores modernos) */
+        }
+        .checkbox-label { 
+            font-weight: normal !important; /* Sobreescribir el bold de .form-group label */
+            margin-bottom: 0 !important; 
+            font-size: 0.95em !important;
+            color: var(--color-texto-principal) !important;
+        }
+        
+        .separator {
+            grid-column: 1 / -1; 
+            border: 0;
+            height: 1px;
+            background-color: var(--color-borde-sutil);
+            margin: 15px 0;
+        }
+
+        .form-actions { 
+            margin-top: 30px; 
+            text-align: right; 
+            padding-top: 20px;
+            border-top: 1px solid var(--color-borde-sutil);
+        }
+        .form-actions .button { /* Estilo general para botones en esta sección */
+             margin-left: 10px;
+        }
+        /* Las clases .button-primary y .button-secondary vienen de style.css */
+
+    </style>
+{% endblock %}

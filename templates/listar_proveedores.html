@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <div class="content-actions-bar"> {# Una barra para acciones específicas de la vista si es necesario #}
+        <a href="{{ url_for('vista_crear_proveedor') }}" class="button button-primary">Nuevo Proveedor</a>
+    </div>
+
+    {% if proveedores %}
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Nombre Comercial</th>
+                        <th>Razón Social</th>
+                        <th>RFC</th>
+                        <th>Contacto</th>
+                        <th>Teléfono</th>
+                        <th>Email Principal</th>
+                        <th>Email Fact.</th>
+                        <th>Activo</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for prov in proveedores %}
+                        <tr>
+                            <td>{{ prov.id_proveedor }}</td>
+                            <td>{{ prov.nombre_proveedor }}</td>
+                            <td>{{ prov.razon_social or '-' }}</td>
+                            <td>{{ prov.rfc or '-' }}</td>
+                            <td>{{ prov.contacto_nombre or '-' }}</td>
+                            <td>{{ prov.telefono or '-' }}</td>
+                            <td>{{ prov.email or '-' }}</td>
+                            <td>{{ prov.email_facturacion or '-' }}</td>
+                            <td>{{ 'Sí' if prov.activo else 'No' }}</td>
+                            <td class="actions">
+                                <a href="{{ url_for('vista_editar_proveedor', id_proveedor=prov.id_proveedor) }}" class="button-edit-black">Editar</a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <p>No hay proveedores registrados todavía.</p>
+    {% endif %}
+    <style>
+        /* El .content-header-actions se reemplaza o ajusta.
+           Si el título principal ya está en base.html, esta barra es solo para botones.
+        */
+        .content-actions-bar {
+            display: flex;
+            justify-content: flex-end; /* Alinea el botón a la derecha */
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .data-table th, .data-table td { padding: 10px 12px; white-space: nowrap; }
+        .data-table td { font-size: 0.95em; }
+    </style>
+{% endblock %}

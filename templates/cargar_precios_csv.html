@@ -1,0 +1,235 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <fieldset class="form-section"> {# Aplicando el estilo de bloque con título #}
+        <legend><h4>Instrucciones para el Archivo CSV de Lista de Precios de Proveedor:</h4></legend>
+        {# El contenido del div .instrucciones-csv-mejoradas original va aquí, sin el h4 inicial #}
+        <p>
+            Asegúrate de que tu archivo CSV tenga las siguientes columnas. Los nombres de las columnas deben coincidir exactamente.
+            Todos los productos (identificados por SKU) y proveedores (identificados por NombreProveedor) <strong>deben existir previamente en el sistema.</strong>
+        </p>
+        <p>
+            Si un precio para una combinación de SKU y Proveedor ya existe, se actualizará; de lo contrario, se creará un nuevo registro de precio.
+        </p>
+        
+        <h5>Columnas Requeridas en el CSV:</h5>
+        <div class="lista-columnas-csv-contenedor">
+            <ul class="lista-columnas-csv">
+                <li><strong>SKUProducto</strong> (Texto, Obligatorio) - El SKU único del producto (debe existir en tu sistema).</li>
+                <li><strong>NombreProveedor</strong> (Texto, Obligatorio) - El nombre exacto del proveedor (debe existir en tu sistema).</li>
+                <li><strong>PrecioCompra</strong> (Numérico, Obligatorio) - El precio de compra unitario que te da el proveedor (este precio corresponde a la "Presentación" del producto).</li>
+            </ul>
+        </div>
+        <h5>Columnas Opcionales en el CSV:</h5>
+        <div class="lista-columnas-csv-contenedor">
+            <ul class="lista-columnas-csv">
+                <li><strong>FechaVigencia</strong> (Fecha, formato AAAA-MM-DD) - Desde cuándo es válido este precio. Si se omite, se usará la fecha de carga.</li>
+                <li><strong>NotasPrecio</strong> (Texto) - Cualquier nota adicional sobre este precio específico.</li>
+            </ul>
+        </div>
+        <p style="margin-top: 15px;">
+            <em>
+                <strong>Importante:</strong> Las columnas mencionadas deben estar presentes en tu archivo CSV.
+                Para los campos opcionales, puedes dejar las celdas vacías.
+            </em>
+        </p>
+    </fieldset>
+    
+    <form method="POST" enctype="multipart/form-data" class="form-cargar-csv" style="margin-top: 35px;"> {# Añadido margen superior al formulario #}
+        <div class="form-group">
+            <label for="archivo_csv_precios" id="drop-area-precios" class="file-upload-drop-area">
+                <div class="drop-area-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather feather-upload-cloud"><path d="M16 16l-4-4-4 4M12 12v9"></path><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"></path><path d="M16 16l-4-4-4 4"></path></svg>
+                </div>
+                <div class="drop-area-text">
+                    <p>Arrastra y suelta tu archivo CSV de precios aquí</p>
+                    <p class="text-o">- o -</p>
+                </div>
+                <span class="file-upload-button">Seleccionar archivo CSV</span>
+                <span id="file-name-display-precios" class="file-name-display">Ningún archivo seleccionado</span>
+            </label>
+            <input type="file" name="archivo_csv_precios" id="archivo_csv_precios" accept=".csv" required class="file-upload-input">
+        </div>
+        <div class="form-actions">
+            <input type="submit" value="Cargar y Previsualizar Precios" class="button">
+        </div>
+    </form>
+
+    <script>
+        // ... (Script existente sin cambios) ...
+        const dropAreaPrecios = document.getElementById('drop-area-precios');
+        const fileInputPrecios = document.getElementById('archivo_csv_precios');
+        const fileNameDisplayPrecios = document.getElementById('file-name-display-precios');
+
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropAreaPrecios.addEventListener(eventName, preventDefaultsPrecios, false);
+            document.body.addEventListener(eventName, preventDefaultsPrecios, false);
+        });
+
+        function preventDefaultsPrecios(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropAreaPrecios.addEventListener(eventName, highlightPrecios, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropAreaPrecios.addEventListener(eventName, unhighlightPrecios, false);
+        });
+
+        function highlightPrecios() {
+            dropAreaPrecios.classList.add('highlight');
+        }
+
+        function unhighlightPrecios() {
+            dropAreaPrecios.classList.remove('highlight');
+        }
+
+        dropAreaPrecios.addEventListener('drop', handleDropPrecios, false);
+
+        function handleDropPrecios(e) {
+            let dt = e.dataTransfer;
+            let files = dt.files;
+            if (files.length > 0) {
+                fileInputPrecios.files = files; 
+                const event = new Event('change', { bubbles: true });
+                fileInputPrecios.dispatchEvent(event);
+            }
+        }
+
+        fileInputPrecios.addEventListener('change', function(e){
+            var fileName = e.target.files[0] ? e.target.files[0].name : 'Ningún archivo seleccionado';
+            fileNameDisplayPrecios.textContent = fileName;
+            if (e.target.files[0]) {
+                dropAreaPrecios.classList.add('file-selected');
+            } else {
+                dropAreaPrecios.classList.remove('file-selected');
+            }
+        });
+    </script>
+    <style>
+        /* Estilos para .form-section y legend h4 (idealmente en style.css global) */
+        .form-section {
+            border: 1px solid var(--color-borde-sutil);
+            padding: 20px 25px;
+            margin-bottom: 25px;
+            border-radius: var(--radio-borde-grande);
+            background-color: #fdfdff; 
+        }
+        .form-section legend {
+            font-weight: 600;
+            font-size: 1em; 
+            padding: 0 10px; 
+            color: var(--color-texto-principal);
+            margin-left: 10px; 
+        }
+        .form-section legend h4 {
+            font-size: 1.1em; 
+            font-weight: 600;
+            color: var(--color-texto-principal);
+            margin: 0; 
+            padding: 0; 
+            line-height: 1; 
+        }
+
+        /* Estilos para el contenido de las instrucciones (antes .instrucciones-csv-mejoradas) */
+        .form-section h5 { 
+            font-size: 1.05em;
+            font-weight: 600;
+            color: var(--color-texto-principal);
+            margin-top: 20px;
+            margin-bottom: 8px;
+            border-bottom: 1px solid var(--color-borde-sutil);
+            padding-bottom: 5px;
+        }
+        .form-section p { 
+            margin-bottom: 12px; 
+            line-height: 1.65;
+            color: var(--color-texto-secundario);
+            font-size: 0.98em; 
+        }
+        .form-section p em { 
+            font-size: 0.95em;
+            color: var(--color-texto-principal);
+            font-weight: 500; 
+        }
+        
+        .lista-columnas-csv-contenedor { 
+            display: flex;
+            flex-wrap: wrap; 
+            gap: 0px 30px; 
+            margin-top: 5px;
+            margin-bottom: 5px;
+        }
+        .lista-columnas-csv {
+            list-style-type: none; 
+            padding-left: 0; 
+            font-size: 0.9em; 
+            line-height: 1.8; 
+            color: #333;
+            min-width: 220px; 
+        }
+        .lista-columnas-csv li {
+            margin-bottom: 2px; 
+        }
+        .lista-columnas-csv li strong {
+            font-weight: 500; 
+            color: var(--color-texto-principal);
+        }
+        .lista-columnas-csv li em {
+            font-size: 0.9em;
+            color: var(--color-texto-secundario);
+        }
+        
+        /* Estilos del formulario de carga (drop area) */
+        .file-upload-drop-area { 
+            padding: 45px 30px; 
+        }
+        .drop-area-icon {
+            margin-bottom: 15px; 
+        }
+        .drop-area-icon svg {
+            width: 56px; 
+            height: 56px;
+            stroke: var(--color-texto-secundario); 
+            opacity: 0.5; 
+        }
+        .drop-area-text {
+            color: var(--color-texto-secundario);
+            font-size: 1.15em; 
+            margin-bottom: 22px; 
+        }
+        .drop-area-text p {
+            margin: 8px 0; 
+            font-weight: 500; 
+        }
+        .drop-area-text p.text-o {
+            font-size: 1em; 
+            font-weight: 400; 
+            color: #777; 
+            margin: 18px 0;
+        }
+        .file-upload-button { 
+            padding: 12px 30px; 
+            font-size: 1em; 
+            font-weight: 500; 
+        }
+        .file-name-display { 
+            display: block; 
+            margin-top: 20px; 
+            font-size: 1em; 
+            color: var(--color-texto-principal); 
+            font-weight: 500; 
+            min-height: 1.3em; 
+        }
+        .form-cargar-csv .form-group {
+            margin-bottom: 25px; 
+        }
+        .form-cargar-csv .form-actions {
+            margin-top: 30px; 
+            text-align: left; 
+        }
+    </style>
+{% endblock %}

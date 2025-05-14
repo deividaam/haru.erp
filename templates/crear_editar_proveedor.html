@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+
+{% block content %}
+    {# El título principal de la página ya se muestra en base.html #}
+
+    <form method="POST" class="styled-form">
+        <fieldset class="form-section">
+            <legend><h4>Información General y de Contacto</h4></legend>
+            <div class="form-grid-2col">
+                <div class="form-group">
+                    <label for="nombre_proveedor">Nombre Comercial del Proveedor: <span class="required">*</span></label>
+                    <input type="text" name="nombre_proveedor" id="nombre_proveedor" value="{{ proveedor.nombre_proveedor if proveedor else '' }}" required>
+                </div>
+                <div class="form-group">
+                    <label for="contacto_nombre">Nombre de Contacto Principal:</label>
+                    <input type="text" name="contacto_nombre" id="contacto_nombre" value="{{ proveedor.contacto_nombre if proveedor else '' }}">
+                </div>
+                <div class="form-group">
+                    <label for="telefono">Teléfono Principal:</label>
+                    <input type="text" name="telefono" id="telefono" value="{{ proveedor.telefono if proveedor else '' }}">
+                </div>
+                <div class="form-group">
+                    <label for="email">Email Principal:</label>
+                    <input type="email" name="email" id="email" value="{{ proveedor.email if proveedor else '' }}">
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="direccion">Dirección Comercial:</label>
+                <textarea name="direccion" id="direccion" rows="3">{{ proveedor.direccion if proveedor else '' }}</textarea>
+            </div>
+        </fieldset>
+        
+        <fieldset class="form-section">
+            <legend><h4>Información Fiscal</h4></legend> {# Título actualizado #}
+            <div class="form-grid-2col">
+                <div class="form-group">
+                    <label for="razon_social">Razón Social (Nombre Fiscal):</label>
+                    <input type="text" name="razon_social" id="razon_social" value="{{ proveedor.razon_social if proveedor else '' }}">
+                </div>
+                <div class="form-group">
+                    <label for="rfc">RFC:</label>
+                    <input type="text" name="rfc" id="rfc" value="{{ proveedor.rfc if proveedor else '' }}" pattern="[A-Z&Ñ]{3,4}[0-9]{2}(0[1-9]|1[012])(0[1-9]|[12][0-9]|3[01])[A-Z0-9]{2}[0-9A]" title="Introduce un RFC válido (ej. XAXX010101000 o XEXX010101000)">
+                </div>
+                <div class="form-group">
+                    <label for="regimen_fiscal">Régimen Fiscal (Clave y Descripción):</label>
+                    <input type="text" name="regimen_fiscal" id="regimen_fiscal" value="{{ proveedor.regimen_fiscal if proveedor else '' }}" placeholder="Ej: 601 - General de Ley Personas Morales">
+                </div>
+                <div class="form-group">
+                    <label for="codigo_postal_fiscal">Código Postal (Domicilio Fiscal):</label>
+                    <input type="text" name="codigo_postal_fiscal" id="codigo_postal_fiscal" value="{{ proveedor.codigo_postal_fiscal if proveedor else '' }}" pattern="[0-9]{5}" title="Introduce un código postal de 5 dígitos">
+                </div>
+                <div class="form-group">
+                    <label for="email_facturacion">Email para Facturación:</label>
+                    <input type="email" name="email_facturacion" id="email_facturacion" value="{{ proveedor.email_facturacion if proveedor else '' }}">
+                </div>
+            </div>
+        </fieldset>
+        
+        <fieldset class="form-section">
+            <legend><h4>Otros Detalles</h4></legend>
+            <div class="form-group">
+                <label for="notas">Notas Adicionales Generales:</label>
+                <textarea name="notas" id="notas" rows="3">{{ proveedor.notas if proveedor else '' }}</textarea>
+            </div>
+            {# Checkbox "Proveedor Activo" eliminado de aquí #}
+        </fieldset>
+
+        <div class="form-actions">
+            <a href="{{ url_for('vista_listar_proveedores') }}" class="button button-secondary">Cancelar</a>
+            <input type="submit" value="{{ 'Guardar Cambios' if proveedor else 'Crear Proveedor' }}" class="button button-primary">
+        </div>
+    </form>
+    <style>
+        /* Estilos CSS (sin cambios respecto a la versión anterior de este archivo) */
+        .styled-form { 
+            margin-top: 0;
+        }
+        .form-section {
+            border: 1px solid var(--color-borde-sutil);
+            padding: 20px 25px;
+            margin-bottom: 25px;
+            border-radius: var(--radio-borde-general);
+            background-color: #fdfdff;
+        }
+        .form-section legend {
+            font-weight: 600;
+            font-size: 1em;
+            padding: 0 10px;
+            color: var(--color-texto-principal);
+            margin-left: 10px;
+        }
+        .form-section legend h4 {
+            font-size: 1.1em;
+            font-weight: 600;
+            color: var(--color-texto-principal);
+            margin: 0;
+            padding: 0;
+            line-height: 1;
+        }
+        .form-grid-2col { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); 
+            gap: 20px 25px; 
+        }
+        .form-group { 
+            margin-bottom: 15px; 
+        }
+        .form-grid-2col .form-group {
+            margin-bottom: 0; 
+        }
+        .form-group:last-child {
+             margin-bottom: 0; 
+        }
+        .form-group label .required { color: var(--color-peligro); margin-left: 4px;}
+        .form-actions { margin-top: 30px; text-align: right; padding-top: 20px; border-top: 1px solid var(--color-borde-sutil); }
+        .form-actions .button { margin-left: 10px; }
+    </style>
+{% endblock %}

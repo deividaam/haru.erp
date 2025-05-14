@@ -1,0 +1,436 @@
+{% extends "base.html" %}
+
+{% block content %}
+<form method="POST" class="styled-form" id="formCrearProductoUnico">
+    <fieldset class="form-section">
+        <legend><h4>Información General del Producto</h4></legend>
+        
+        {# Fila 1: Nombre y Categoría #}
+        <div class="form-grid-2col">
+            <div class="form-group">
+                <label for="nombre_producto">Nombre del Producto: <span class="required-indicator">*</span></label>
+                <input type="text" name="nombre_producto" id="nombre_producto" value="{{ request_form_data.nombre_producto or '' }}" required>
+            </div>
+            <div class="form-group">
+                <label for="categoria_seleccionada">Categoría: <span class="required-indicator">*</span></label>
+                <select name="categoria_seleccionada" id="id_categoria" required>
+                    <option value="">Selecciona una categoría...</option>
+                    {% for cat_nombre in categorias_para_select %}
+                        <option value="{{ cat_nombre }}"
+                                data-nombre-categoria="{{ cat_nombre }}"
+                                {% if request_form_data.categoria_seleccionada == cat_nombre %}selected{% endif %}>
+                            {{ cat_nombre }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        {# Fila 2: Subcategoría, Presentación, Cantidad por Presentación (3 columnas) #}
+        <div class="form-grid-3col">
+            <div class="form-group">
+                <label for="nombre_subcategoria">Subcategoría: <span class="required-indicator"></span></label>
+                <select name="nombre_subcategoria" id="nombre_subcategoria">
+                    <option value="">Selecciona una categoría primero...</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="presentacion">Presentación: <span class="required-indicator"></span></label>
+                <select name="presentacion" id="presentacion">
+                    <option value="">Selecciona una categoría primero...</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="cantidad_por_presentacion">Cant. x Presentación: <span class="required-indicator"></span></label>
+                <input type="text" name="cantidad_por_presentacion" id="cantidad_por_presentacion" value="{{ request_form_data.cantidad_por_presentacion or '' }}">
+            </div>
+        </div>
+
+        {# Fila 3: Unidad de Venta, Días Anticipación, Descripción Adicional (3 columnas) #}
+        <div class="form-grid-3col">
+            <div class="form-group">
+                <label for="unidad_medida_venta">Unidad de Venta: <span class="required-indicator"></span></label>
+                <select name="unidad_medida_venta" id="unidad_medida_venta">
+                     <option value="">Selecciona una categoría primero...</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="dias_anticipacion_compra">Días Anticipación: <span class="required-indicator"></span></label>
+                <input type="number" name="dias_anticipacion_compra" id="dias_anticipacion_compra" value="{{ request_form_data.dias_anticipacion_compra or '' }}" min="0">
+            </div>
+            <div class="form-group"> {# Descripción Adicional ahora aquí #}
+                <label for="descripcion_adicional">Desc. Adicional: <span class="required-indicator"></span></label>
+                <input type="text" name="descripcion_adicional" id="descripcion_adicional" value="{{ request_form_data.descripcion_adicional or '' }}">
+            </div>
+        </div>
+        {# El textarea de Descripción Adicional se eliminó de aquí #}
+    </fieldset>
+
+    {# --- CAMPOS ESPECÍFICOS POR CATEGORÍA (sin cambios en su estructura interna) --- #}
+
+    <fieldset class="form-section campos-especificos" id="campos_Dulces_Golosinas" style="display:none;">
+        <legend><h4>Detalles para Dulces/Golosinas</h4></legend>
+        <div class="form-grid-2col">
+            <div class="form-group">
+                <label for="sabor_dulces">Sabor: <span class="required-indicator"></span></label>
+                <input type="text" name="sabor" id="sabor_dulces" value="{{ request_form_data.sabor or '' }}">
+            </div>
+            <div class="form-group">
+                <label for="color_dulces">Color: <span class="required-indicator"></span></label>
+                <input type="text" name="color" id="color_dulces" value="{{ request_form_data.color or '' }}">
+            </div>
+        </div>
+    </fieldset>
+
+    <fieldset class="form-section campos-especificos" id="campos_Globos" style="display:none;">
+        <legend><h4>Detalles para Globos</h4></legend>
+        <div class="form-grid-2col">
+            <div class="form-group">
+                <label for="color_globos">Color: <span class="required-indicator"></span></label>
+                <input type="text" name="color" id="color_globos" value="{{ request_form_data.color or '' }}">
+            </div>
+            <div class="form-group">
+                <label for="tamano_pulgadas_globos">Tamaño (Pulgadas, ej. "9", "18+"): <span class="required-indicator"></span></label>
+                <input type="text" name="tamano_pulgadas" id="tamano_pulgadas_globos" value="{{ request_form_data.tamano_pulgadas or '' }}">
+            </div>
+        </div>
+        <div class="form-group">
+            <label for="material_globos">Material: <span class="required-indicator"></span></label>
+            <select name="material" id="material_globos">
+                <option value="">Selecciona material...</option>
+            </select>
+        </div>
+    </fieldset>
+
+    <fieldset class="form-section campos-especificos" id="campos_Decoracion" style="display:none;">
+        <legend><h4>Detalles para Decoración</h4></legend>
+        <div class="form-grid-2col">
+            <div class="form-group">
+                <label for="color_decoracion">Color: <span class="required-indicator"></span></label>
+                <input type="text" name="color" id="color_decoracion" value="{{ request_form_data.color or '' }}">
+            </div>
+            <div class="form-group">
+                <label for="dimensiones_capacidad_decoracion">Dimensiones/Capacidad: <span class="required-indicator"></span></label>
+                <input type="text" name="dimensiones_capacidad" id="dimensiones_capacidad_decoracion" value="{{ request_form_data.dimensiones_capacidad or '' }}">
+            </div>
+        </div>
+        <div class="form-grid-2col">
+            <div class="form-group">
+                <label for="material_decoracion">Material: <span class="required-indicator"></span></label>
+                 <select name="material" id="material_decoracion">
+                    <option value="">Selecciona material...</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="tema_estilo_decoracion">Tema/Estilo: <span class="required-indicator"></span></label>
+                <input type="text" name="tema_estilo" id="tema_estilo_decoracion" value="{{ request_form_data.tema_estilo or '' }}">
+            </div>
+        </div>
+         <div class="form-group">
+            <label for="forma_tipo_decoracion">Forma/Tipo: <span class="required-indicator"></span></label>
+            <input type="text" name="forma_tipo" id="forma_tipo_decoracion" value="{{ request_form_data.forma_tipo or '' }}">
+        </div>
+    </fieldset>
+
+    <fieldset class="form-section campos-especificos" id="campos_Display" style="display:none;">
+        <legend><h4>Detalles para Display/Contenedores</h4></legend>
+        <div class="form-grid-2col">
+            <div class="form-group">
+                <label for="color_display">Color: <span class="required-indicator"></span></label>
+                <input type="text" name="color" id="color_display" value="{{ request_form_data.color or '' }}">
+            </div>
+            <div class="form-group">
+                <label for="material_display">Material: <span class="required-indicator"></span></label>
+                 <select name="material" id="material_display">
+                     <option value="">Selecciona material...</option>
+                </select>
+            </div>
+        </div>
+        <div class="form-grid-2col">
+            <div class="form-group">
+                <label for="dimensiones_capacidad_display">Dimensiones/Capacidad: <span class="required-indicator"></span></label>
+                <input type="text" name="dimensiones_capacidad" id="dimensiones_capacidad_display" value="{{ request_form_data.dimensiones_capacidad or '' }}">
+            </div>
+            <div class="form-group">
+                <label for="forma_tipo_display">Forma/Tipo: <span class="required-indicator"></span></label>
+                <input type="text" name="forma_tipo" id="forma_tipo_display" value="{{ request_form_data.forma_tipo or '' }}">
+            </div>
+        </div>
+    </fieldset>
+
+    <fieldset class="form-section campos-especificos" id="campos_Servicios" style="display:none;">
+        <legend><h4>Detalles para Servicios</h4></legend>
+        <div class="form-group">
+            <label for="modalidad_servicio_servicios">Modalidad Servicio: <span class="required-indicator"></span></label>
+            <select name="modalidad_servicio" id="modalidad_servicio_servicios">
+                 <option value="">Selecciona modalidad...</option>
+            </select>
+        </div>
+    </fieldset>
+
+    <div class="form-actions">
+        <a href="{{ url_for('vista_listar_productos') }}" class="button button-secondary">Cancelar</a>
+        <input type="submit" value="Crear Producto" class="button button-primary">
+    </div>
+</form>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('formCrearProductoUnico');
+    const categoriaSelect = document.getElementById('id_categoria'); 
+    const subcategoriaSelect = document.getElementById('nombre_subcategoria');
+    const presentacionSelect = document.getElementById('presentacion');
+    const unidadMedidaVentaSelect = document.getElementById('unidad_medida_venta');
+
+    const materialInputs = {
+        "Globos": { select: document.getElementById('material_globos') },
+        "Decoración": { select: document.getElementById('material_decoracion') },
+        "Display": { select: document.getElementById('material_display') }
+    };
+    const modalidadServicioSelect = document.getElementById('modalidad_servicio_servicios');
+
+    const todosLosCamposEspecificosFS = document.querySelectorAll('.campos-especificos');
+
+    const categoryConfigurations = [
+      {
+        categoriaNombre: "Dulces/Golosinas",
+        subcategoriasPermitidas: ["Tradicionales Mexicanos", "Modernos/Internacionales", "Bebidas", "Botanas Dulces", "De Temporada"],
+        camposRequeridos: ["nombre_subcategoria", "presentacion", "cantidad_por_presentacion", "unidad_medida_venta", "sabor", "dias_anticipacion_compra"],
+        camposOpcionales: ["color", "descripcion_adicional"],
+        opcionesPresentacion: ["Bolsa", "Caja", "Bote", "Pieza", "Paquete", "A Granel"],
+        opcionesUnidadMedidaVenta: ["Bolsa", "Caja", "Bote", "Pieza", "Paquete", "kg", "g", "Litro", "ml", "Porción"],
+        opcionesMaterial: []
+      },
+      {
+        categoriaNombre: "Globos",
+        subcategoriasPermitidas: ["Látex", "Metálico", "Mate", "Perlado", "Burbuja", "Temático", "De Cumpleaños", "De Baby Shower", "De Boda", "De XV años"],
+        camposRequeridos: ["nombre_subcategoria", "presentacion", "cantidad_por_presentacion", "unidad_medida_venta", "color", "tamano_pulgadas", "dias_anticipacion_compra"],
+        camposOpcionales: ["material", "descripcion_adicional"],
+        opcionesPresentacion: ["Pieza", "Paquete", "Arreglo"],
+        opcionesUnidadMedidaVenta: ["Pieza", "Paquete"],
+        opcionesMaterial: ["Látex", "Mylar/Foil", "Burbuja", "Plástico"]
+      },
+      {
+        categoriaNombre: "Decoración",
+        subcategoriasPermitidas: ["Fondos/Backdrops", "Vajilla/Artículos para la Mesa", "Centros de Mesa", "Señalización"],
+        camposRequeridos: ["nombre_subcategoria", "presentacion", "cantidad_por_presentacion", "color", "dias_anticipacion_compra"],
+        camposOpcionales: ["dimensiones_capacidad", "material", "tema_estilo", "descripcion_adicional", "forma_tipo"],
+        opcionesPresentacion: ["Pieza", "Juego/Set", "Rollo", "Metro", "Paquete"],
+        opcionesUnidadMedidaVenta: ["Pieza", "Juego/Set", "Rollo", "Metro", "Paquete"],
+        opcionesMaterial: ["Papel", "Tela", "Plástico", "Madera", "Metal"]
+      },
+      {
+        categoriaNombre: "Display",
+        subcategoriasPermitidas: ["Contenedores para Dulces", "Soportes/Exhibidores", "Utensilios para Servir"],
+        camposRequeridos: ["nombre_subcategoria", "presentacion", "cantidad_por_presentacion", "color", "material", "dias_anticipacion_compra"],
+        camposOpcionales: ["dimensiones_capacidad", "forma_tipo", "descripcion_adicional"],
+        opcionesPresentacion: ["Pieza", "Juego/Set"],
+        opcionesUnidadMedidaVenta: ["Pieza", "Juego/Set"],
+        opcionesMaterial: ["Vidrio", "Plástico", "Metal", "Madera", "Cartón"]
+      },
+      {
+        categoriaNombre: "Servicios",
+        subcategoriasPermitidas: ["Montaje/Entrega", "Diseño Personalizado", "Entretenimiento"],
+        camposRequeridos: ["nombre_subcategoria", "modalidad_servicio", "descripcion_adicional", "dias_anticipacion_compra"],
+        camposOpcionales: [],
+        opcionesPresentacion: [],
+        opcionesUnidadMedidaVenta: [],
+        opcionesMaterial: [],
+        opcionesModalidadServicio: ["Por evento", "Por hora", "Por persona", "Por paquete"]
+      }
+    ];
+
+    function populateDropdown(selectElement, optionsArray, selectedValue = '') {
+        if (!selectElement) return;
+        selectElement.innerHTML = ''; 
+
+        const placeholder = document.createElement('option');
+        placeholder.value = "";
+        let placeholderText = `Selecciona una opción...`;
+        if (selectElement.id === 'nombre_subcategoria') placeholderText = 'Selecciona subcategoría...';
+        else if (selectElement.id === 'presentacion') placeholderText = 'Selecciona presentación...';
+        else if (selectElement.id === 'unidad_medida_venta') placeholderText = 'Selecciona unidad de venta...';
+        else if (selectElement.id.startsWith('material_')) placeholderText = 'Selecciona material...';
+        else if (selectElement.id === 'modalidad_servicio_servicios') placeholderText = 'Selecciona modalidad...';
+
+        placeholder.textContent = placeholderText;
+        placeholder.disabled = true;
+        if (!selectedValue) placeholder.selected = true;
+        selectElement.appendChild(placeholder);
+
+        optionsArray.forEach(optionText => {
+            const option = document.createElement('option');
+            option.value = optionText;
+            option.textContent = optionText;
+            if (optionText === selectedValue) {
+                option.selected = true;
+            }
+            selectElement.appendChild(option);
+        });
+    }
+
+    function updateFormBasedOnCategory() {
+        const selectedCategoriaOption = categoriaSelect.options[categoriaSelect.selectedIndex];
+        const categoriaNombre = selectedCategoriaOption ? selectedCategoriaOption.dataset.nombreCategoria : null;
+        const config = categoryConfigurations.find(c => c.categoriaNombre === categoriaNombre);
+
+        const allPotentialFields = ["nombre_subcategoria", "presentacion", "cantidad_por_presentacion", "unidad_medida_venta", "sabor", "color", "tamano_pulgadas", "material", "dimensiones_capacidad", "tema_estilo", "forma_tipo", "modalidad_servicio", "descripcion_adicional", "dias_anticipacion_compra"];
+        allPotentialFields.forEach(fieldName => {
+            const elements = form.elements[fieldName];
+            const processElement = (el) => {
+                if (!el) return;
+                el.removeAttribute('required');
+                const label = document.querySelector(`label[for="${el.id}"]`);
+                if (label) {
+                    const indicator = label.querySelector('.required-indicator');
+                    if (indicator) indicator.textContent = '';
+                }
+            };
+            if (elements && elements.length && typeof elements !== 'string' && elements.nodeName !== 'SELECT') {
+                Array.from(elements).forEach(processElement);
+            } else {
+                processElement(elements);
+            }
+        });
+
+        todosLosCamposEspecificosFS.forEach(fs => {
+            fs.style.display = 'none';
+            fs.querySelectorAll('input, select, textarea').forEach(input => input.disabled = true);
+        });
+
+        if (config) {
+            populateDropdown(subcategoriaSelect, config.subcategoriasPermitidas, request_form_data.nombre_subcategoria);
+            populateDropdown(presentacionSelect, config.opcionesPresentacion || [], request_form_data.presentacion);
+            populateDropdown(unidadMedidaVentaSelect, config.opcionesUnidadMedidaVenta || [], request_form_data.unidad_medida_venta);
+
+            const fieldsetId = "campos_" + categoriaNombre.replace(/[\s\/]+/g, '_');
+            const fieldsetToShow = document.getElementById(fieldsetId);
+
+            if (fieldsetToShow) {
+                fieldsetToShow.style.display = 'block';
+                fieldsetToShow.querySelectorAll('input, select, textarea').forEach(input => {
+                    input.disabled = false;
+                    if (request_form_data[input.name] && input.tagName !== 'SELECT') {
+                         input.value = request_form_data[input.name];
+                    }
+                });
+
+                if (config.opcionesMaterial && materialInputs[categoriaNombre] && materialInputs[categoriaNombre].select) {
+                    populateDropdown(materialInputs[categoriaNombre].select, config.opcionesMaterial, request_form_data.material);
+                }
+                if (config.opcionesModalidadServicio && modalidadServicioSelect && categoriaNombre === "Servicios") {
+                    populateDropdown(modalidadServicioSelect, config.opcionesModalidadServicio, request_form_data.modalidad_servicio);
+                }
+            }
+
+            config.camposRequeridos.forEach(fieldName => {
+                const elements = form.elements[fieldName];
+                const processElement = (el) => {
+                    if (!el) return;
+                    let isVisible = true;
+                    const closestFieldset = el.closest('.campos-especificos');
+                    if (closestFieldset && closestFieldset.style.display === 'none') {
+                        isVisible = false;
+                    }
+                    if (isVisible) {
+                        el.setAttribute('required', 'required');
+                        const label = document.querySelector(`label[for="${el.id}"]`);
+                        if (label) {
+                            const indicator = label.querySelector('.required-indicator');
+                            if (indicator) indicator.textContent = '*';
+                        }
+                    }
+                };
+                 if (elements && elements.length && typeof elements !== 'string' && elements.nodeName !== 'SELECT') {
+                    Array.from(elements).forEach(processElement);
+                } else {
+                    processElement(elements);
+                }
+            });
+        } else { 
+            populateDropdown(subcategoriaSelect, [], request_form_data.nombre_subcategoria);
+            populateDropdown(presentacionSelect, [], request_form_data.presentacion);
+            populateDropdown(unidadMedidaVentaSelect, [], request_form_data.unidad_medida_venta);
+            if(materialInputs["Globos"]?.select) populateDropdown(materialInputs["Globos"].select, [], request_form_data.material);
+            if(materialInputs["Decoración"]?.select) populateDropdown(materialInputs["Decoración"].select, [], request_form_data.material);
+            if(materialInputs["Display"]?.select) populateDropdown(materialInputs["Display"].select, [], request_form_data.material);
+            if(modalidadServicioSelect) populateDropdown(modalidadServicioSelect, [], request_form_data.modalidad_servicio);
+        }
+    }
+    
+    const request_form_data = JSON.parse('{{ request_form_data | tojson | safe }}' || '{}');
+
+    if (request_form_data.categoria_seleccionada) {
+        Array.from(categoriaSelect.options).forEach(option => {
+            if (option.value === request_form_data.categoria_seleccionada) {
+                option.selected = true;
+            }
+        });
+    }
+    
+    categoriaSelect.addEventListener('change', updateFormBasedOnCategory);
+    updateFormBasedOnCategory(); 
+
+});
+</script>
+
+<style>
+    .form-section {
+        border: 1px solid var(--color-borde-sutil);
+        padding: 20px 25px;
+        margin-bottom: 25px;
+        border-radius: var(--radio-borde-general);
+        background-color: #fdfdff;
+    }
+    .form-section legend {
+        font-weight: 600;
+        font-size: 1em;
+        padding: 0 10px;
+        color: var(--color-texto-principal);
+        margin-left: 10px;
+    }
+    .form-section legend h4 {
+        font-size: 1.1em;
+        font-weight: 600;
+        color: var(--color-texto-principal);
+        margin: 0;
+        padding: 0;
+        line-height: 1;
+    }
+    .form-grid-2col {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 15px 25px;
+        margin-bottom: 15px; /* Añadido para separar filas de la cuadrícula */
+    }
+    .form-grid-3col { 
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
+        gap: 15px 20px; 
+        margin-bottom: 15px; 
+    }
+    .form-group {
+        /* El margen inferior ahora es manejado por el gap de las clases de grid o explícitamente */
+        /* margin-bottom: 15px; */ 
+    }
+    .form-grid-2col .form-group,
+    .form-grid-3col .form-group {
+        margin-bottom: 0; 
+    }
+    /* Para el último form-group que no está en un grid y necesita margen */
+     fieldset.form-section > .form-group:not(.form-grid-2col):not(.form-grid-3col) {
+        margin-bottom: 15px;
+    }
+     fieldset.form-section > .form-group:last-of-type {
+        margin-bottom: 0;
+    }
+
+    .form-group label .required-indicator {
+        color: var(--color-peligro);
+        margin-left: 4px;
+        font-weight: bold;
+    }
+    .form-actions { margin-top: 30px; text-align: right; padding-top: 20px; border-top: 1px solid var(--color-borde-sutil); }
+    .form-actions .button { margin-left: 10px; }
+</style>
+{% endblock %}

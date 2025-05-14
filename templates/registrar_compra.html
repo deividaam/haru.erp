@@ -1,0 +1,466 @@
+{% extends "base.html" %}
+
+{% block content %}
+<form method="POST" class="styled-form" id="formRegistrarCompraCompleta">
+    {# SECCIÓN 1: Encabezado de la Compra #}
+    <fieldset class="form-section">
+        <legend><h4>Datos Generales de la Compra/Nota</h4></legend>
+        {# Usar form-grid-3col para mejor distribución en desktop y apilamiento en móvil #}
+        <div class="form-grid-3col" style="margin-bottom: 20px;">
+            <div class="form-group">
+                <label for="fecha_documento">Fecha del Documento: <span class="required">*</span></label>
+                <input type="date" name="fecha_documento" id="fecha_documento" class="input-fecha-estilizado" value="{{ form_data.fecha_documento or fecha_hoy }}" required>
+            </div>
+            <div class="form-group" style="grid-column: span 2 / span 2;"> {# Proveedor ocupa 2 columnas en desktop si es posible #}
+                <label for="id_proveedor">Proveedor: <span class="required">*</span></label>
+                <select name="id_proveedor" id="id_proveedor" required>
+                    <option value="">Selecciona un proveedor...</option>
+                    {% for prov in proveedores %}
+                        <option value="{{ prov.id_proveedor }}" {% if form_data.id_proveedor == prov.id_proveedor|string %}selected{% endif %}>{{ prov.nombre_proveedor }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group"> {# Se moverá a la siguiente fila en móvil si es necesario por el span anterior #}
+                <label for="numero_documento">No. Factura/Nota (Opcional):</label>
+                <input type="text" name="numero_documento" id="numero_documento" value="{{ form_data.numero_documento or '' }}">
+            </div>
+        </div>
+        <div class="form-group">
+            <label for="notas_generales">Notas Generales de la Compra (Opcional):</label>
+            <textarea name="notas_generales" id="notas_generales" rows="2">{{ form_data.notas_generales or '' }}</textarea>
+        </div>
+    </fieldset>
+
+    {# SECCIÓN 2: Añadir Productos a la Compra #}
+    <fieldset class="form-section">
+        <legend><h4>Añadir Productos a la Compra</h4></legend>
+        <div id="form-agregar-producto-item">
+            <div class="form-group" style="margin-bottom: 10px;">
+                <label for="producto_descripcion_busqueda_item">Buscar Producto por Descripción: <span class="required">*</span></label>
+                <input type="text" id="producto_descripcion_busqueda_item" class="input-busqueda-producto-grande" placeholder="Escribe para buscar..." autocomplete="off">
+                <input type="hidden" id="id_producto_item_hidden">
+                <input type="hidden" id="nombre_producto_item_hidden">
+                <input type="hidden" id="sku_producto_item_hidden">
+                <input type="hidden" id="unidad_compra_item_hidden">
+                <div id="producto_resultados_busqueda_item" class="autocomplete-results"></div>
+            </div>
+
+            <div id="info_producto_seleccionado_item" class="selected-product-info-box-compact" style="display:none; margin-bottom:15px;">
+                Producto: <strong id="nombre_prod_sel_item"></strong> (SKU: <span id="sku_prod_sel_item"></span>) <br>
+                Presentación/Unidad: <strong id="unidad_compra_prod_sel_item"></strong>
+            </div>
+            
+            {# Usar form-grid-2col para los campos de cantidad, precio, etc. para que se apilen en dos columnas en pantallas más grandes y una en móvil #}
+            <div class="form-grid-2col" style="gap: 10px 15px; margin-bottom: 15px;">
+                <div class="form-group">
+                    <label for="cantidad_item">Cantidad: <span class="required">*</span></label>
+                    <input type="number" id="cantidad_item" step="any" min="0.01">
+                </div>
+                <div class="form-group">
+                    <label for="precio_original_item">Precio Original Unit.:</label>
+                    <input type="number" id="precio_original_item" step="0.01" min="0">
+                </div>
+                <div class="form-group">
+                    <label for="monto_descuento_item">Descuento Unit.:</label>
+                    <input type="number" id="monto_descuento_item" step="0.01" min="0" value="0">
+                </div>
+                <div class="form-group">
+                    <label for="costo_neto_item">Costo Neto Unit.: <span class="required">*</span></label>
+                    <input type="number" id="costo_neto_item" step="0.01" min="0.01" readonly class="form-control-disabled-visual">
+                </div>
+                <div class="form-group">
+                    <label for="disponibilidad_item">Disponibilidad:</label>
+                    <select id="disponibilidad_item">
+                        <option value="Media" selected>Media</option>
+                        <option value="Alta">Alta</option>
+                        <option value="Baja">Baja</option>
+                        <option value="Agotado">Agotado</option>
+                        <option value="">No registrar</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group" style="text-align: right;"> {# Botón en su propia línea o al final #}
+                <button type="button" id="btnAnadirProductoItem" class="button button-primary">Añadir Producto</button>
+            </div>
+        </div>
+    </fieldset>
+
+    {# SECCIÓN 3: Lista de Productos Añadidos #}
+    <fieldset class="form-section">
+        <legend><h4>Productos en esta Compra/Nota</h4></legend>
+        <div class="table-responsive" style="margin-top:0;">
+            <table class="data-table" id="tablaDetallesCompra">
+                <thead>
+                    <tr>
+                        <th>Producto</th>
+                        <th>Unidad</th>
+                        <th style="text-align: right;">Cant.</th>
+                        <th style="text-align: right;">P. Orig.</th>
+                        <th style="text-align: right;">Desc.</th>
+                        <th style="text-align: right;">C. Neto</th>
+                        <th style="text-align: right;">Subtotal</th>
+                        <th>Dispon.</th>
+                        <th>Acción</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {# Las filas de productos se añadirán aquí con JavaScript #}
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="6" style="text-align: right; font-weight: bold;">TOTAL DOCUMENTO:</td>
+                        <td id="montoTotalDocumentoDisplay" style="text-align: right; font-weight: bold;">$0.00</td>
+                        <td colspan="2"></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+        <p id="noItemsMessage" style="text-align:center; padding:10px; {% if form_data.detalles %}display:none;{% endif %}">
+            Aún no has añadido productos a esta compra.
+        </p>
+    </fieldset>
+
+    <div id="hiddenInputsDetallesContainer"></div>
+
+    <div class="form-actions">
+        <a href="{{ url_for('vista_historial_compras') }}" class="button button-secondary">Cancelar Compra</a>
+        <button type="submit" id="btnGuardarCompraCompleta" class="button button-primary">Guardar Compra Completa</button>
+    </div>
+</form>
+
+<script>
+// El JavaScript existente para esta página no necesita cambios para este ajuste de layout.
+// ... (copiar el script de la versión anterior de registrar_compra.html) ...
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInputItem = document.getElementById('producto_descripcion_busqueda_item');
+    const resultsContainerItem = document.getElementById('producto_resultados_busqueda_item');
+    const hiddenProductIdItem = document.getElementById('id_producto_item_hidden');
+    const hiddenNombreProductoItem = document.getElementById('nombre_producto_item_hidden');
+    const hiddenSkuProductoItem = document.getElementById('sku_producto_item_hidden');
+    const hiddenUnidadCompraItem = document.getElementById('unidad_compra_item_hidden');
+
+    const infoDivItem = document.getElementById('info_producto_seleccionado_item');
+    const nombreProdSelItemSpan = document.getElementById('nombre_prod_sel_item');
+    const skuProdSelItemSpan = document.getElementById('sku_prod_sel_item');
+    const unidadCompraProdSelItemSpan = document.getElementById('unidad_compra_prod_sel_item');
+
+    const cantidadItemInput = document.getElementById('cantidad_item');
+    const precioOriginalItemInput = document.getElementById('precio_original_item');
+    const montoDescuentoItemInput = document.getElementById('monto_descuento_item');
+    const costoNetoItemInput = document.getElementById('costo_neto_item'); 
+    const disponibilidadItemSelect = document.getElementById('disponibilidad_item');
+    const btnAnadirProductoItem = document.getElementById('btnAnadirProductoItem');
+    
+    const tablaDetallesCompraBody = document.querySelector('#tablaDetallesCompra tbody');
+    const noItemsMessage = document.getElementById('noItemsMessage');
+    const montoTotalDocumentoDisplay = document.getElementById('montoTotalDocumentoDisplay');
+    const hiddenInputsDetallesContainer = document.getElementById('hiddenInputsDetallesContainer');
+    const formRegistrarCompraCompleta = document.getElementById('formRegistrarCompraCompleta');
+
+    let detallesCompraArray = []; 
+    let searchDebounceTimerItem;
+
+    function calcularCostoNeto() {
+        const precioOriginal = parseFloat(precioOriginalItemInput.value) || 0;
+        const montoDescuento = parseFloat(montoDescuentoItemInput.value) || 0;
+        let costoNeto = precioOriginal - montoDescuento;
+        if (costoNeto < 0) costoNeto = 0; 
+        costoNetoItemInput.value = costoNeto.toFixed(2);
+    }
+
+    if(precioOriginalItemInput) precioOriginalItemInput.addEventListener('input', calcularCostoNeto);
+    if(montoDescuentoItemInput) montoDescuentoItemInput.addEventListener('input', calcularCostoNeto);
+
+    if(searchInputItem) {
+        searchInputItem.addEventListener('input', function() {
+            const searchTerm = this.value;
+            clearTimeout(searchDebounceTimerItem);
+            hiddenProductIdItem.value = '';
+            hiddenNombreProductoItem.value = '';
+            hiddenSkuProductoItem.value = '';
+            hiddenUnidadCompraItem.value = '';
+            if(infoDivItem) infoDivItem.style.display = 'none';
+
+            if (searchTerm.length < 2) {
+                if(resultsContainerItem) {
+                    resultsContainerItem.innerHTML = '';
+                    resultsContainerItem.style.display = 'none';
+                }
+                return;
+            }
+            searchDebounceTimerItem = setTimeout(() => {
+                fetch(`{{ url_for('api_buscar_productos_por_descripcion') }}?term=${encodeURIComponent(searchTerm)}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if(!resultsContainerItem) return;
+                        resultsContainerItem.innerHTML = '';
+                        if (data.length > 0) {
+                            data.forEach(producto => {
+                                const item = document.createElement('div');
+                                item.classList.add('autocomplete-item');
+                                item.textContent = producto.descripcion + (producto.sku ? ` (SKU: ${producto.sku})` : '');
+                                item.dataset.id = producto.id;
+                                item.dataset.nombre = producto.nombre;
+                                item.dataset.sku = producto.sku || '';
+                                item.dataset.presentacion = producto.presentacion || 'Unidad';
+                                item.dataset.descripcionCompleta = producto.descripcion;
+
+                                item.addEventListener('click', function() {
+                                    searchInputItem.value = this.dataset.descripcionCompleta;
+                                    hiddenProductIdItem.value = this.dataset.id;
+                                    hiddenNombreProductoItem.value = this.dataset.nombre;
+                                    hiddenSkuProductoItem.value = this.dataset.sku;
+                                    hiddenUnidadCompraItem.value = this.dataset.presentacion;
+                                    
+                                    resultsContainerItem.innerHTML = '';
+                                    resultsContainerItem.style.display = 'none';
+
+                                    if(nombreProdSelItemSpan) nombreProdSelItemSpan.textContent = this.dataset.nombre;
+                                    if(skuProdSelItemSpan) skuProdSelItemSpan.textContent = this.dataset.sku || 'N/A';
+                                    if(unidadCompraProdSelItemSpan) unidadCompraProdSelItemSpan.textContent = this.dataset.presentacion;
+                                    if(infoDivItem) infoDivItem.style.display = 'block';
+                                    if(cantidadItemInput) cantidadItemInput.focus(); 
+                                });
+                                resultsContainerItem.appendChild(item);
+                            });
+                            resultsContainerItem.style.display = 'block';
+                        } else {
+                            resultsContainerItem.innerHTML = '<div class="autocomplete-item-none">No se encontraron productos.</div>';
+                            resultsContainerItem.style.display = 'block';
+                        }
+                    })
+                    .catch(error => console.error('Error al buscar productos:', error));
+            }, 300);
+        });
+    }
+
+
+    document.addEventListener('click', function(event) { 
+        if (resultsContainerItem && !resultsContainerItem.contains(event.target) && event.target !== searchInputItem) {
+            resultsContainerItem.style.display = 'none';
+        }
+    });
+
+    if(btnAnadirProductoItem) {
+        btnAnadirProductoItem.addEventListener('click', function() {
+            const idProducto = hiddenProductIdItem.value;
+            const nombreProducto = hiddenNombreProductoItem.value;
+            const skuProducto = hiddenSkuProductoItem.value;
+            const unidadCompra = hiddenUnidadCompraItem.value || "Unidad";
+            const cantidad = parseFloat(cantidadItemInput.value);
+            const precioOriginal = parseFloat(precioOriginalItemInput.value); 
+            const montoDescuento = parseFloat(montoDescuentoItemInput.value) || 0;
+            const costoNeto = parseFloat(costoNetoItemInput.value); 
+            const disponibilidad = disponibilidadItemSelect.value;
+
+            if (!idProducto) {
+                alert("Por favor, busca y selecciona un producto.");
+                searchInputItem.focus();
+                return;
+            }
+            if (isNaN(cantidad) || cantidad <= 0) {
+                alert("Por favor, ingresa una cantidad válida.");
+                cantidadItemInput.focus();
+                return;
+            }
+            if (!isNaN(precioOriginal) && precioOriginal < 0) {
+                 alert("El precio original no puede ser negativo.");
+                 precioOriginalItemInput.focus();
+                 return;
+            }
+            if (isNaN(costoNeto) || costoNeto <= 0) {
+                if (isNaN(precioOriginal) || precioOriginal <= 0) { 
+                     alert("Por favor, ingresa un Precio Original o asegúrate que el Costo Neto sea válido y mayor a cero.");
+                     precioOriginalItemInput.focus();
+                     return;
+                }
+                calcularCostoNeto(); 
+                if (parseFloat(costoNetoItemInput.value) <=0 && precioOriginal > 0) {
+                     alert("El descuento no puede ser mayor o igual al precio original si este es positivo.");
+                     montoDescuentoItemInput.focus();
+                     return;
+                }
+            }
+             if (montoDescuento < 0) {
+                alert("El monto de descuento no puede ser negativo.");
+                montoDescuentoItemInput.focus();
+                return;
+            }
+
+            const subtotalItem = cantidad * parseFloat(costoNetoItemInput.value); 
+
+            const detalle = {
+                id_producto: idProducto,
+                nombre_producto: nombreProducto,
+                sku_producto: skuProducto,
+                unidad_compra: unidadCompra,
+                cantidad_comprada: cantidad,
+                precio_original_unitario: isNaN(precioOriginal) ? parseFloat(costoNetoItemInput.value) + montoDescuento : precioOriginal, 
+                monto_descuento_unitario: montoDescuento,
+                costo_unitario_compra: parseFloat(costoNetoItemInput.value), 
+                disponibilidad_proveedor: disponibilidad,
+                costo_total_item: subtotalItem,
+                notas_item: '' // Añadir campo para notas de ítem si se implementa en el futuro
+            };
+            detallesCompraArray.push(detalle);
+            renderizarTablaDetalles();
+            limpiarFormularioItem();
+        });
+    }
+
+
+    function limpiarFormularioItem() {
+        if(searchInputItem) searchInputItem.value = '';
+        if(hiddenProductIdItem) hiddenProductIdItem.value = '';
+        if(hiddenNombreProductoItem) hiddenNombreProductoItem.value = '';
+        if(hiddenSkuProductoItem) hiddenSkuProductoItem.value = '';
+        if(hiddenUnidadCompraItem) hiddenUnidadCompraItem.value = '';
+        if(infoDivItem) infoDivItem.style.display = 'none';
+        if(cantidadItemInput) cantidadItemInput.value = '';
+        if(precioOriginalItemInput) precioOriginalItemInput.value = ''; 
+        if(montoDescuentoItemInput) montoDescuentoItemInput.value = '0'; 
+        if(costoNetoItemInput) costoNetoItemInput.value = '';    
+        if(disponibilidadItemSelect) disponibilidadItemSelect.value = 'Media'; 
+        if(searchInputItem) searchInputItem.focus();
+    }
+
+    function renderizarTablaDetalles() {
+        if(!tablaDetallesCompraBody) return;
+        tablaDetallesCompraBody.innerHTML = ''; 
+        let montoTotalGeneral = 0;
+
+        if (detallesCompraArray.length === 0) {
+            if(noItemsMessage) noItemsMessage.style.display = 'block';
+        } else {
+            if(noItemsMessage) noItemsMessage.style.display = 'none';
+            detallesCompraArray.forEach((detalle, index) => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${detalle.nombre_producto} ${detalle.sku_producto ? '(SKU: ' + detalle.sku_producto + ')' : ''}</td>
+                    <td>${detalle.unidad_compra}</td>
+                    <td style="text-align: right;">${detalle.cantidad_comprada.toFixed(2)}</td>
+                    <td style="text-align: right;">$${(detalle.precio_original_unitario || detalle.costo_unitario_compra).toFixed(2)}</td>
+                    <td style="text-align: right;">$${(detalle.monto_descuento_unitario || 0).toFixed(2)}</td>
+                    <td style="text-align: right;">$${detalle.costo_unitario_compra.toFixed(2)}</td>
+                    <td style="text-align: right;">$${detalle.costo_total_item.toFixed(2)}</td>
+                    <td>${detalle.disponibilidad_proveedor || '-'}</td>
+                    <td><button type="button" class="button-danger-small btn-eliminar-item" data-index="${index}">Eliminar</button></td>
+                `;
+                tablaDetallesCompraBody.appendChild(tr);
+                montoTotalGeneral += detalle.costo_total_item;
+            });
+        }
+        if(montoTotalDocumentoDisplay) montoTotalDocumentoDisplay.textContent = `$${montoTotalGeneral.toFixed(2)}`;
+        actualizarInputsOcultosParaEnvio();
+    }
+    
+    if(tablaDetallesCompraBody) {
+        tablaDetallesCompraBody.addEventListener('click', function(event) {
+            if (event.target.classList.contains('btn-eliminar-item')) {
+                const indexAEliminar = parseInt(event.target.dataset.index);
+                detallesCompraArray.splice(indexAEliminar, 1);
+                renderizarTablaDetalles();
+            }
+        });
+    }
+    
+
+    function actualizarInputsOcultosParaEnvio() {
+        if(!hiddenInputsDetallesContainer) return;
+        hiddenInputsDetallesContainer.innerHTML = ''; 
+        detallesCompraArray.forEach((detalle, index) => {
+            for (const key in detalle) {
+                if (Object.hasOwnProperty.call(detalle, key)) {
+                    if (key === 'nombre_producto' || key === 'sku_producto') continue; 
+                    
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = `detalles[${index}][${key}]`; 
+                    input.value = detalle[key] === null || detalle[key] === undefined ? '' : detalle[key]; 
+                    hiddenInputsDetallesContainer.appendChild(input);
+                }
+            }
+        });
+    }
+
+    if(formRegistrarCompraCompleta) {
+        formRegistrarCompraCompleta.addEventListener('submit', function(event) {
+            if (detallesCompraArray.length === 0) {
+                alert("Debes añadir al menos un producto a la compra.");
+                event.preventDefault(); 
+                return;
+            }
+            // Asegurarse de que los inputs ocultos estén actualizados antes del envío
+            actualizarInputsOcultosParaEnvio();
+        });
+    }
+    
+    // Para repopular la tabla si hay datos en form_data (ej. después de un error de validación del backend)
+    const form_data = JSON.parse('{{ form_data | tojson | safe }}' || '{}');
+    if (form_data.detalles && Array.isArray(form_data.detalles)) {
+        // Asumiendo que form_data.detalles contiene los objetos de detalle como se esperan
+        // Necesitarías lógica para obtener nombre_producto y sku_producto si no vienen directamente
+        detallesCompraArray = form_data.detalles.map(d => ({
+            ...d,
+            cantidad_comprada: parseFloat(d.cantidad_comprada),
+            precio_original_unitario: d.precio_original_unitario ? parseFloat(d.precio_original_unitario) : null,
+            monto_descuento_unitario: d.monto_descuento_unitario ? parseFloat(d.monto_descuento_unitario) : 0,
+            costo_unitario_compra: parseFloat(d.costo_unitario_compra),
+            costo_total_item: parseFloat(d.costo_total_item) || (parseFloat(d.cantidad_comprada) * parseFloat(d.costo_unitario_compra)),
+            // Para mostrar en la tabla, necesitarías obtener nombre y sku si no están en 'd'
+            nombre_producto: d.nombre_producto_display || `Producto ID ${d.id_producto}`, 
+            sku_producto: d.sku_producto_display || '' 
+        }));
+        renderizarTablaDetalles();
+    }
+
+
+});
+</script>
+<style>
+    /* Los estilos CSS específicos de esta página se pueden mantener aquí o mover a style.css global */
+    /* .form-section, .form-group, etc., ya deberían tener estilos base de style.css */
+    
+    /* Estilos para el autocompletado y la caja de info del producto */
+    .autocomplete-results {
+        position: absolute; top: 100%; left: 0; right: 0; background-color: white;
+        border: 1px solid var(--color-borde-input); border-top: none;
+        max-height: 180px; overflow-y: auto; z-index: 1000;
+        border-radius: 0 0 var(--radio-borde-general) var(--radio-borde-general);
+        box-shadow: 0 3px 5px rgba(0,0,0,0.08);
+    }
+    .autocomplete-item, .autocomplete-item-none, .autocomplete-item-error {
+        padding: 8px 12px; cursor: pointer; font-size: 0.88em;
+    }
+    .autocomplete-item:hover { background-color: #f0f0f0; }
+    .autocomplete-item-none, .autocomplete-item-error { cursor: default; color: var(--color-texto-secundario); }
+    
+    .selected-product-info-box-compact { 
+        margin-top: 5px; padding: 8px 12px; background-color: #f0f8ff;
+        border: 1px solid #d6eaff; border-radius: var(--radio-borde-general); 
+        font-size: 0.85em; color: var(--color-texto-secundario);
+    }
+    .selected-product-info-box-compact strong { color: var(--color-texto-principal); font-weight: 500;}
+
+    /* Estilos para la tabla de detalles de compra */
+    #tablaDetallesCompra th, #tablaDetallesCompra td {
+        font-size: 0.85em; 
+        padding: 8px;
+    }
+     #tablaDetallesCompra th {
+        font-weight: 600;
+     }
+    .button-danger-small {
+        background-color: var(--color-peligro); color: white;
+        border: none; padding: 5px 10px; font-size: 0.8em;
+        border-radius: var(--radio-borde-general); cursor: pointer;
+        height: auto; 
+        line-height: 1.4; 
+    }
+    .form-control-disabled-visual { /* Para inputs readonly que parezcan deshabilitados */
+        background-color: #e9ecef;
+        color: #6c757d;
+        /* cursor: not-allowed; */ /* Puede ser confuso si es readonly pero no disabled */
+    }
+</style>
+{% endblock %}

@@ -1,0 +1,56 @@
+{# _tabla_productos_parcial.html #}
+{% for producto in productos %}
+    <tr>
+        <td class="id-column">{{ producto.id_producto }}</td>
+        <td>{{ producto.sku or '-' }}</td>
+        <td>{{ producto.nombre_producto }}</td>
+        <td>
+            {% if producto.subcategoria and producto.subcategoria.categoria %}
+                {{ producto.subcategoria.categoria.nombre_categoria }}
+            {% elif producto.categoria_directa %}
+                {{ producto.categoria_directa.nombre_categoria }}
+            {% else %}
+                -
+            {% endif %}
+        </td>
+        <td>{{ producto.subcategoria.nombre_subcategoria if producto.subcategoria else '-' }}</td>
+        <td class="description-cell" title="{{ producto.descripcion_completa_generada or '' }}">
+            <div>{{ producto.descripcion_completa_generada or '-' }}</div>
+        </td>
+        <td>{{ producto.presentacion or '-' }}</td>
+        
+        {# Nuevas Columnas de Precios #}
+        <td class="price-info-cell">
+            {% if producto.info_precios and producto.info_precios.precio_min is not none %}
+                <span class="price-value">${{ "%.2f"|format(producto.info_precios.precio_min|float) }}</span><br>
+                <span class="provider-name">{{ producto.info_precios.proveedor_min or 'N/A' }}</span><br>
+                <span class="availability-status status-{{ (producto.info_precios.disponibilidad_min or 'na') | lower }}">
+                    Disp: {{ producto.info_precios.disponibilidad_min or 'N/A' }}
+                </span>
+            {% else %}
+                -
+            {% endif %}
+        </td>
+        <td class="price-info-cell">
+            {% if producto.info_precios and producto.info_precios.precio_max is not none %}
+                 <span class="price-value">${{ "%.2f"|format(producto.info_precios.precio_max|float) }}</span><br>
+                <span class="provider-name">{{ producto.info_precios.proveedor_max or 'N/A' }}</span><br>
+                <span class="availability-status status-{{ (producto.info_precios.disponibilidad_max or 'na') | lower }}">
+                    Disp: {{ producto.info_precios.disponibilidad_max or 'N/A' }}
+                </span>
+            {% else %}
+                -
+            {% endif %}
+        </td>
+        <td style="text-align: center;">{{ (aumento_mensual_est * 100) | round(2) }}%</td>
+
+        <td>{{ 'Sí' if producto.activo else 'No' }}</td>
+        <td class="actions">
+            <a href="{{ url_for('vista_editar_producto', id_producto=producto.id_producto) }}" class="button-edit-black">Editar</a>
+        </td>
+    </tr>
+{% else %}
+    <tr>
+        <td colspan="12" style="text-align:center; padding: 20px;">No se encontraron productos que coincidan con los filtros.</td>
+    </tr>
+{% endfor %}
