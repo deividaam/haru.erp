@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+ENV/
+# Archivo de variables de entorno
+.env 
+# Carpeta de uploads (si no quieres versionarla y la manejas con disco persistente o almacenamiento en la nube)
+uploads/ 
+# Archivos de IDE
+.vscode/
+.idea/
