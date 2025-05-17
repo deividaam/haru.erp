@@ -1,0 +1,523 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <div class="content-actions-bar-public">
+        <div class="action-group-left">
+            <a href="{{ url_for('proyectos_bp.vista_detalle_proyecto', id_proyecto=cotizacion.proyecto.id_proyecto) }}" class="button button-secondary">
+                <i class="fas fa-arrow-left" style="margin-right: 5px;"></i> Volver al Proyecto
+            </a>
+             <a href="{{ url_for('cotizaciones_bp.vista_crear_cotizacion_paso2_configurar', id_cotizacion=cotizacion.id_cotizacion) }}" class="button button-primary" style="margin-left:10px;">
+                <i class="fas fa-edit" style="margin-right: 5px;"></i> Editar esta Cotización
+            </a>
+            {# NUEVO BOTÓN PARA ORDEN DE COMPRA #}
+            {% if cotizacion.estado == 'Aceptada' %}
+            <a href="{{ url_for('ordenes_compra_bp.generar_orden_compra_desde_cotizacion', id_cotizacion=cotizacion.id_cotizacion) }}" class="button" style="margin-left:10px; background-color: var(--color-acento-secundario); border-color: var(--color-acento-secundario);">
+                <i class="fas fa-shopping-cart" style="margin-right: 5px;"></i> Generar Orden de Compra
+            </a>
+            {% endif %}
+        </div>
+        <div class="action-group-right">
+            <button onclick="window.print();" class="button">
+                <i class="fas fa-print" style="margin-right: 5px;"></i> Imprimir / Guardar PDF
+            </button>
+        </div>
+    </div>
+
+    <div class="document-container-print">
+        {# Nuevo wrapper para el contenido principal para el sticky footer #}
+        <div class="main-content-wrapper-print">
+            <header class="main-header-print">
+                <div class="company-branding-print">
+                    <div class="logo-text-placeholder-print">haru.</div>
+                    <div class="document-title-print">COTIZACIÓN</div>
+                </div>
+                <div class="quote-meta-details-print">
+                    <p><strong>Nº COTIZACIÓN:</strong> {{ cotizacion.numero_cotizacion_formateado or ("COT-%04d-V%d"|format(cotizacion.id_cotizacion, cotizacion.version)) }}</p>
+                    <p><strong>FECHA:</strong> {{ cotizacion.fecha_emision.strftime('%d de %B de %Y') if cotizacion.fecha_emision else '-' }}</p>
+                    {% if cotizacion.fecha_validez %}
+                    <p><strong>VÁLIDA HASTA:</strong> {{ cotizacion.fecha_validez.strftime('%d de %B de %Y') }}</p>
+                    {% endif %}
+                </div>
+            </header>
+
+            <section class="client-info-print">
+                <h3>PREPARADO PARA:</h3>
+                <p class="client-name-print">{{ cotizacion.proyecto.cliente_nombre or 'No especificado' }}</p>
+                {% if cotizacion.proyecto.empresa_cliente %}
+                <p>{{ cotizacion.proyecto.empresa_cliente }}</p>
+                {% endif %}
+                 <p class="client-event-print"><strong>Dirección:</strong> {{ cotizacion.proyecto.direccion_evento }}</p>
+            </section>
+
+            <section class="items-section-print">
+                <table class="items-table-print">
+                    <thead>
+                        <tr>
+                            <th>Descripción</th>
+                            <th class="col-cant-print">Cant.</th>
+                            <th class="col-punit-print">P. Unitario</th>
+                            <th class="col-importe-print">Importe</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if cotizacion.items_cotizacion %}
+                            {% for item in cotizacion.items_cotizacion|sort(attribute='orden_display_cot') %}
+                                <tr class="main-service-row-print">
+                                    <td class="item-description-cell {{ 'no-bottom-border-print' if item.componentes_seleccionados or item.descripcion_servicio_cotizado else '' }}">
+                                        {{ item.nombre_display_servicio }}
+                                    </td>
+                                    <td class="item-quantity-cell {{ 'no-bottom-border-print' if item.componentes_seleccionados or item.descripcion_servicio_cotizado else '' }}">
+                                        {{ item.cantidad_servicio|float }}
+                                    </td>
+                                    {% set precio_unit_item = (item.precio_total_item_calculado / item.cantidad_servicio) if item.cantidad_servicio and item.cantidad_servicio != 0 and item.precio_total_item_calculado is not none else (item.precio_total_item_calculado if item.precio_total_item_calculado is not none else 0) %}
+                                    <td class="item-unit-price-cell {{ 'no-bottom-border-print' if item.componentes_seleccionados or item.descripcion_servicio_cotizado else '' }}">
+                                        ${{ "{:,.2f}".format(precio_unit_item|float) }}
+                                    </td>
+                                    <td class="item-amount-cell {{ 'no-bottom-border-print' if item.componentes_seleccionados or item.descripcion_servicio_cotizado else '' }}">
+                                        ${{ "{:,.2f}".format(item.precio_total_item_calculado|float if item.precio_total_item_calculado is not none else 0) }}
+                                    </td>
+                                </tr>
+                                {% if item.descripcion_servicio_cotizado or item.componentes_seleccionados %}
+                                <tr class="sub-items-description-row-print">
+                                    <td colspan="4">
+                                        {% if item.descripcion_servicio_cotizado %}
+                                            <p class="descripcion-item-print">{{ item.descripcion_servicio_cotizado }}</p>
+                                        {% endif %}
+                                        {% if item.componentes_seleccionados %}
+                                            <p class="incluye-texto-print">
+                                                <strong>Incluye:</strong>
+                                                {{ item.componentes_seleccionados|map(attribute='opcion_componente_elegida.nombre_display_cliente')|join(', ') }}
+                                            </p>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endif %}
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="4" style="text-align: center; padding: 20px;">No hay servicios cotizados.</td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </section>
+
+            <section class="summary-and-notes-section-print">
+                <div class="notes-area-print">
+                    <h4>NOTAS:</h4>
+                    <p>{% if cotizacion.notas_cotizacion is not none and cotizacion.notas_cotizacion|string|trim|lower != 'none' and cotizacion.notas_cotizacion|string|trim != '' %}{{ cotizacion.notas_cotizacion }}{% else %}Los precios presentados son en Moneda Nacional (MXN). Pago del 50% como anticipo para iniciar el proyecto y 50% restante contra entrega final de los elementos acordados. Este documento no es un comprobante fiscal.{% endif %}</p>
+                </div>
+                <div class="totals-area-print">
+                    <table>
+                        <tr>
+                            <td class="total-label-cell">Subtotal:</td>
+                            <td class="total-value-cell">${{ "{:,.2f}".format(cotizacion.monto_servicios_productos|float) if cotizacion.monto_servicios_productos is not none else '0.00' }}</td>
+                        </tr>
+                        {% if cotizacion.monto_costos_logisticos and cotizacion.monto_costos_logisticos > 0 %}
+                        <tr>
+                            <td class="total-label-cell">Costos Logísticos:</td>
+                            <td class="total-value-cell">${{ "{:,.2f}".format(cotizacion.monto_costos_logisticos|float) }}</td>
+                        </tr>
+                        <tr>
+                            <td class="total-label-cell">Subtotal General:</td>
+                            <td class="total-value-cell">${{ "{:,.2f}".format(cotizacion.monto_subtotal_general|float) if cotizacion.monto_subtotal_general is not none else '0.00' }}</td>
+                        </tr>
+                        {% endif %}
+                        {% if cotizacion.monto_descuento_global and cotizacion.monto_descuento_global > 0 %}
+                        <tr>
+                            <td class="total-label-cell text-danger-print">Descuento Global:</td>
+                            <td class="total-value-cell text-danger-print">- ${{ "{:,.2f}".format(cotizacion.monto_descuento_global|float) }}</td>
+                        </tr>
+                        {% endif %}
+                        {% if cotizacion.monto_impuestos and cotizacion.monto_impuestos > 0 %}
+                        <tr>
+                            <td class="total-label-cell">IVA (16%):</td>
+                            <td class="total-value-cell">${{ "{:,.2f}".format(cotizacion.monto_impuestos|float) }}</td>
+                        </tr>
+                        {% endif %}
+                        <tr class="grand-total-print">
+                            <td class="total-label-cell">TOTAL:</td>
+                            <td class="total-value-cell">${{ "{:,.2f}".format(cotizacion.monto_total_cotizado|float) if cotizacion.monto_total_cotizado is not none else '0.00' }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </section>
+
+            {% if cotizacion.terminos_condiciones or not cotizacion.terminos_condiciones %} {# Mostrar siempre la sección #}
+            <section class="terms-conditions-area-print">
+                <h4>CONDICIONES:</h4>
+                <p>{% if cotizacion.terminos_condiciones is not none and cotizacion.terminos_condiciones|string|trim|lower != 'none' and cotizacion.terminos_condiciones|string|trim != '' %}{{ cotizacion.terminos_condiciones }}{% else %}La presente cotización tiene una validez de 30 días naturales a partir de su fecha de emisión. Los servicios no especificados explícitamente en este documento se cotizarán por separado. Modificaciones al alcance original del proyecto podrían generar ajustes en el costo y tiempo de entrega.{% endif %}</p>
+            </section>
+            {% endif %}
+        </div> {# Fin de .main-content-wrapper-print #}
+
+        <footer class="main-footer-print">
+            <div class="main-footer-container">
+            <p>haru | planning@haru.inc | (55) 1234-5678 | www.haru.inc</p>
+            </div>
+        </footer>
+    </div>
+
+<style>
+    /* Estilos para la vista normal (no impresión) */
+    .content-actions-bar-public {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 25px;
+        padding-bottom: 15px;
+        border-bottom: 1px solid var(--color-borde-sutil);
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    .content-actions-bar-public .action-group-left {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+     .content-actions-bar-public .action-group-right {
+        margin-left: auto; /* Empuja el botón de imprimir a la derecha si hay espacio */
+    }
+    .content-actions-bar-public .button {
+        font-size: 0.85em;
+        padding: 8px 15px;
+        flex-shrink: 0; /* Evitar que los botones se encojan demasiado */
+    }
+
+    /* Estilos generales para la vista de impresión/pública */
+    .document-container-print {
+        font-family: Lexend; /* Asegúrate de que esta fuente esté disponible o define un fallback */
+        color: #3b3b3b;
+        background-color: #ffffff;
+        max-width: 210mm; /* Ancho A4 para vista en pantalla */
+        min-height: 297mm; /* Alto A4 para vista en pantalla, para simular página */
+        margin: 20px auto; /* Centrado en pantalla */
+        padding: 0; /* El padding interno lo manejará el wrapper y el footer */
+        border: 1px solid #ccc; /* Borde para ver límites en pantalla */
+        box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+    }
+    .main-content-wrapper-print {
+        flex-grow: 1; /* Ocupa el espacio disponible */
+        /* Padding general: Arriba 15mm, Derecha 20mm, Abajo 10mm, Izquierda 15mm */
+        padding: 15mm 15mm 10mm 15mm; 
+        box-sizing: border-box;
+    }
+
+
+    .main-header-print {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        padding-bottom: 15px;
+        margin-bottom: 20px;
+        border-bottom: 1px solid #e0e0e0;
+    }
+    .company-branding-print .logo-text-placeholder-print {
+        font-size: 5em;
+        font-weight: bold;
+        color: #222;
+        margin: 0;
+        line-height: 1;
+    }
+    .company-branding-print .document-title-print {
+        font-weight: normal;
+        font-size: 1.3em;
+        color: #444;
+        margin: 4px 0 0 2px;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+    }
+    .quote-meta-details-print {
+        text-align: right;
+        font-size: 0.9em;
+        line-height: 1.5;
+        color: #333;
+    }
+    .quote-meta-details-print p { margin: 0 0 1px 0; }
+    .quote-meta-details-print strong { font-weight: bold; color: #000; }
+
+    .client-info-print { margin-bottom: 20px; padding-bottom: 15px;}
+    .client-info-print h3 {
+        font-size: 0.9em;
+        font-weight: bold;
+        color: #666;
+        margin: 0 0 5px 0;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border-bottom: 1px solid #eeeeee;
+    }
+    .client-info-print p { margin: 1px 0; font-size: 1.1em; line-height: 1.4; }
+    .client-info-print .client-name-print { font-weight: normal; font-size: 1.1em; color: #3b3b3b;} /* Cambiado 'regular' a 'normal' */
+    .client-info-print .client-event-print { margin-top: 4px;}
+
+
+    .items-section-print { margin-bottom: 15px; }
+    .items-table-print { width: 100%; border-collapse: collapse; }
+    .items-table-print th, .items-table-print td {
+        padding: 6px 4px;
+        text-align: left; /* Alineación general por defecto para celdas */
+        font-size: 0.95em; /* Ajustado según tu nuevo archivo */
+        border-bottom: 1px solid #e0e0e0;
+        vertical-align: top;
+    }
+    .items-table-print td.no-bottom-border-print { border-bottom: none; padding-bottom: 2px; }
+    .items-table-print th {
+        font-weight: bold;
+        background-color: #f0f0f0 !important; 
+        color: #333;
+        text-transform: uppercase;
+        font-size: 1em; /* Ajustado según tu nuevo archivo */
+        letter-spacing: 0.5px;
+        border-bottom-width: 1px;
+        border-color: #d0d0d0;
+    }
+    .items-table-print th:first-child { width: auto; text-align: left; } 
+    .items-table-print .col-cant-print { width: 8%; text-align: right; } 
+    .items-table-print .col-punit-print { width: 18%; text-align: right; } 
+    .items-table-print .col-importe-print { width: 18%; text-align: right; } 
+
+    .items-table-print .item-description-cell {
+        /* text-align: left; (heredado) */
+    }
+    .items-table-print .item-quantity-cell {
+        text-align: right; 
+    }
+    .items-table-print .item-unit-price-cell {
+        text-align: right; 
+    }
+    .items-table-print .item-amount-cell {
+        text-align: right; 
+    }
+
+
+    .items-table-print .main-service-row-print td {
+        font-weight: bold;
+        color: #2c3e50;
+        font-size: 1.1em; /* Ajustado según tu nuevo archivo */
+    }
+    .items-table-print .main-service-row-print td:first-child { padding-top: 8px; }
+
+    .items-table-print .sub-items-description-row-print td {
+        font-weight: normal;
+        font-size: 0.8em; /* Ajustado según tu nuevo archivo */
+        color: #4a4a4a;
+        padding-top: 2px;
+        padding-bottom: 6px;
+        padding-left: 10px;
+        line-height: 1.3;
+        border-bottom: 1px solid #eeeeee;
+    }
+    .items-table-print .sub-items-description-row-print p.descripcion-item-print {
+        margin: 0 0 3px 0;
+        white-space: pre-line;
+    }
+    .items-table-print .sub-items-description-row-print p.incluye-texto-print {
+        margin: 0;
+        font-style: italic;
+    }
+    .items-table-print .sub-items-description-row-print p.incluye-texto-print strong { font-weight: bold; font-style: normal; }
+
+
+    .summary-and-notes-section-print {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 20px;
+        padding-top: 10px;
+        border-top: 1px solid #e0e0e0;
+        flex-wrap: wrap;
+        gap: 20px;
+    }
+    .notes-area-print {
+        flex: 1 1 55%;
+        min-width: 250px;
+        font-size: 1em; /* Ajustado según tu nuevo archivo */
+        line-height: 1.4;
+        color: #444;
+        box-sizing: border-box;
+        white-space: normal; 
+    }
+    .notes-area-print h4 {
+        font-size: 1em; /* Ajustado según tu nuevo archivo */
+        font-weight: bold;
+        color: #333;
+        margin: 0 0 5px 0;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .totals-area-print {
+        flex: 1 1 35%;
+        min-width: 200px;
+        box-sizing: border-box;
+    }
+    .totals-area-print table { width: 100%; border-collapse: collapse; }
+    .totals-area-print td { padding: 4px 2px; font-size: 1.1em; /* Ajustado según tu nuevo archivo */ }
+    .totals-area-print .total-label-cell {
+        text-align: right;
+        font-weight: normal;
+        color: #444;
+        padding-right: 8px;
+    }
+    .totals-area-print .total-value-cell {
+        text-align: right;
+        font-weight: bold;
+        color: #000;
+    }
+    .totals-area-print tr.grand-total-print .total-label-cell,
+    .totals-area-print tr.grand-total-print .total-value-cell {
+        font-size: 1.4em; /* Ajustado según tu nuevo archivo */
+        font-weight: bold;
+        color: #000;
+        border-top: 1.5px solid #333;
+        padding-top: 6px;
+        padding-bottom: 6px;
+    }
+    .text-danger-print { color: #D32F2F !important; } 
+
+    .terms-conditions-area-print {
+        margin-top: 15px;
+        padding-top: 10px;
+        border-top: 1px solid #eeeeee;
+        font-size: 1em; /* Ajustado según tu nuevo archivo */
+        line-height: 1.4; /* Ajustado según tu nuevo archivo */
+        color: #444;
+        white-space: pre-line;
+        padding-bottom: 10px;
+        border-bottom: 1px solid #e0e0e0;
+    }
+    .terms-conditions-area-print h4 {
+        font-size: 1em; /* Ajustado según tu nuevo archivo */
+        font-weight: bold;
+        color: #333;
+        margin: 0 0 5px 0;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .main-footer-print {
+        /* Padding general del footer: Arriba 0mm, Derecha 15mm, Abajo 5mm, Izquierda 15mm */
+        padding: 0mm 15mm 5mm 15mm; 
+        text-align: center;
+        font-size: 0.8em;
+        color: #777;
+        box-sizing: border-box;
+        width: 100%;
+        flex-shrink: 0; 
+    }
+    .main-footer-print p { margin: 1px 0; padding-top: 5mm;
+    }
+
+    /* Estilos para impresión */
+    @media print {
+        html, body {
+            margin: 0 !important;
+            padding: 0 !important;
+            font-size: 9pt !important; /* Ajustado según tu nuevo archivo, puedes cambiarlo si es necesario */
+            background-color: #fff !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            width: 100% !important;
+            height: 100% !important; 
+            overflow: visible !important;
+        }
+        .content-actions-bar-public,
+        .sidebar,
+        .main-content > header.content-header,
+        nav, 
+        .sidebar-toggle-btn 
+         {
+            display: none !important;
+            visibility: hidden !important;
+        }
+        .main-content { 
+            margin: 0 !important;
+            padding: 0 !important;
+            width: 100% !important;
+            height: 100% !important;
+            overflow: visible !important;
+            border: none !important;
+            box-shadow: none !important;
+            background-color: #fff !important;
+            display: flex;
+            flex-direction: column;
+        }
+        .card { 
+             box-shadow: none !important;
+             border: none !important;
+             padding: 0 !important;
+             margin: 0 !important;
+             background-color: #fff !important;
+             flex-grow: 1;
+             display: flex;
+             flex-direction: column;
+        }
+        .document-container-print {
+            width: 100% !important;
+            max-width: 100% !important;
+            min-height: 100%; 
+            margin: 0 !important;
+            padding: 0 !important; 
+            border: none !important;
+            box-shadow: none !important;
+            box-sizing: border-box !important;
+            background-color: #fff !important;
+            display: flex;
+            flex-direction: column;
+        }
+        .main-content-wrapper-print {
+            flex-grow: 1;
+            /* MODIFICADO: Padding para impresión para que coincida con los márgenes laterales generales.
+               Arriba: 15mm (de la regla de impresión original), 
+               Derecha: 20mm (de la regla general), 
+               Abajo: 5mm (de la regla de impresión original), 
+               Izquierda: 15mm (de la regla general/impresión) 
+            */
+            padding: 15mm 15mm 5mm 15mm; 
+            box-sizing: border-box;
+        }
+        .main-footer-print {
+            /* MODIFICADO: Padding para el footer en impresión para consistencia con el wrapper.
+               Arriba: 5mm (de la regla de impresión original del footer),
+               Derecha: 20mm (para coincidir con el wrapper),
+               Abajo: 5mm (de la regla de impresión original del footer),
+               Izquierda: 15mm (para coincidir con el wrapper)
+            */
+            padding: 5mm 15mm 5mm 15mm; 
+            flex-shrink: 0;
+        }
+
+        @page {
+            margin: 0; 
+            /* size: letter; */ 
+            
+            @top-left { content: normal; }
+            @top-center { content: normal; }
+            @top-right { content: normal; }
+            @bottom-left { content: normal; }
+            @bottom-center { content: normal; }
+            @bottom-right { content: normal; }
+        }
+        @page :left { @top-left { content: "" } @bottom-left { content: "" } }
+        @page :right { @top-right { content: "" } @bottom-right { content: "" } }
+        @page :first { @top-center { content: "" } @bottom-center { content: "" } }
+
+
+        .main-header-print, .client-info-print, .items-section-print,
+        .summary-and-notes-section-print, .terms-conditions-area-print {
+            page-break-inside: avoid !important;
+        }
+        .items-table-print tr, .items-table-print td, .items-table-print th {
+            page-break-inside: avoid !important;
+        }
+        a { text-decoration: none !important; color: inherit !important; }
+        .items-table-print th { background-color: #f0f0f0 !important; } 
+    }
+
+    .main-footer-container{
+        border-top: 1px solid #eeeeee;
+    }
+</style>
+{% endblock %}

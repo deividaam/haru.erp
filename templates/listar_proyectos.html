@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <div class="content-actions-bar">
+        <a href="{{ url_for('proyectos_bp.vista_crear_proyecto') }}" class="button button-primary">Nuevo Proyecto</a>
+    </div>
+
+    {% if proyectos %}
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th style="width: 80px;">ID Proyecto</th>
+                        <th>Identificador Evento</th>
+                        <th>Nombre del Evento</th>
+                        <th>Fecha del Evento</th>
+                        <th>Cliente</th>
+                        <th>No. Invitados</th>
+                        <th>Tipo Ubicación</th>
+                        <th>Estado Última Cot.</th>
+                        <th style="width: 180px;">Acciones</th> {# Ancho ajustado para botones #}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for proyecto in proyectos %}
+                        <tr>
+                            <td>{{ proyecto.id_proyecto }}</td>
+                            <td>{{ proyecto.identificador_evento }}</td>
+                            <td>
+                                <a href="{{ url_for('proyectos_bp.vista_detalle_proyecto', id_proyecto=proyecto.id_proyecto) }}" title="Ver detalles del proyecto">
+                                    {{ proyecto.nombre_evento }}
+                                </a>
+                            </td>
+                            <td>{{ proyecto.fecha_evento.strftime('%d/%m/%Y') if proyecto.fecha_evento else '-' }}</td>
+                            <td>{{ proyecto.cliente_nombre or '-' }}</td>
+                            <td style="text-align: center;">{{ proyecto.numero_invitados or '-' }}</td>
+                            <td>{{ proyecto.tipo_ubicacion or 'Local' }}</td>
+                            <td>
+                                {# Corrección para acceder al estado de la última cotización #}
+                                {% if proyecto.cotizaciones %}
+                                    {# Ordenar las cotizaciones por versión en orden descendente #}
+                                    {% set cotizaciones_ordenadas = proyecto.cotizaciones|sort(attribute='version', reverse=True) %}
+                                    {# Verificar si la lista ordenada no está vacía #}
+                                    {% if cotizaciones_ordenadas %}
+                                        {# Acceder al primer elemento (la última versión) de la lista ordenada #}
+                                        {% set ultima_cotizacion = cotizaciones_ordenadas[0] %}
+                                        <span class="status-badge status-{{ ultima_cotizacion.estado|lower|replace(' ', '-') }}">{{ ultima_cotizacion.estado }}</span>
+                                        (v{{ ultima_cotizacion.version }})
+                                    {% else %}
+                                        <span style="color: #777; font-style: italic;">Sin cotizaciones válidas</span>
+                                    {% endif %}
+                                {% else %}
+                                    <span style="color: #777; font-style: italic;">Sin cotizaciones</span>
+                                {% endif %}
+                            </td>
+                            <td class="actions">
+                                <a href="{{ url_for('proyectos_bp.vista_editar_proyecto', id_proyecto=proyecto.id_proyecto) }}" class="button button-edit-black">Editar</a>
+                                <a href="{{ url_for('cotizaciones_bp.vista_crear_cotizacion_paso2_configurar', id_proyecto=proyecto.id_proyecto) }}" class="button button-secondary button-small-padding">
+                                    + Cotización
+                                </a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div style="text-align: center; padding: 20px; background-color: #f9f9f9; border-radius: var(--radio-borde-general);">
+            <p style="font-size: 1.1em; color: var(--color-texto-secundario);">No hay proyectos registrados todavía.</p>
+            <p style="margin-top: 15px;">
+                <a href="{{ url_for('proyectos_bp.vista_crear_proyecto') }}" class="button button-primary">Crea tu Primer Proyecto</a>
+            </p>
+        </div>
+    {% endif %}
+
+    <style>
+        .content-actions-bar {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .data-table th, .data-table td {
+            padding: 10px 12px;
+            white-space: nowrap;
+            vertical-align: middle; /* Alinear verticalmente al medio */
+        }
+        .data-table td {
+            font-size: 0.92em;
+        }
+        .data-table td a {
+            color: var(--color-acento-primario);
+            text-decoration: none;
+        }
+        .data-table td a:hover {
+            text-decoration: underline;
+        }
+        .actions {
+            text-align: center; /* Centrar botones en la celda de acciones */
+        }
+        .actions .button { /* Estilo general para botones en acciones si es necesario */
+            margin: 2px; /* Pequeño margen entre botones */
+            display: inline-block; /* Para que el margen funcione bien */
+        }
+        .button-edit-black { /* Tu clase existente */
+            background-color: var(--color-texto-principal);
+            color: white;
+            padding: 6px 12px;
+            text-decoration: none;
+            border-radius: var(--radio-borde-general);
+            font-size: 0.85em;
+            border: 1px solid var(--color-texto-principal);
+            transition: background-color 0.2s ease, opacity 0.2s ease;
+            font-weight: 500;
+        }
+        .button-edit-black:hover {
+            background-color: #333; /* Un poco más oscuro al hacer hover */
+            opacity: 0.9;
+        }
+        .button-secondary.button-small-padding { /* Clase para el botón "+ Cotización" */
+            font-size: 0.8em !important; /* Un poco más pequeño */
+            padding: 5px 10px !important; /* Más compacto */
+            height: auto !important;
+            line-height: 1.4 !important;
+        }
+        /* Estilos para badges de estado (copiados de ver_cotizacion_publica.html para consistencia) */
+        .status-badge {
+            padding: 3px 8px;
+            border-radius: var(--radio-borde-general);
+            font-size: 0.8em;
+            font-weight: 500;
+            color: white;
+            text-transform: capitalize;
+            display: inline-block; /* Para que el padding funcione bien */
+            white-space: nowrap;
+        }
+        .status-borrador { background-color: #6c757d; } /* Gris */
+        .status-presentada { background-color: var(--color-info); } /* Azul */
+        .status-aceptada { background-color: var(--color-acento-secundario); } /* Verde */
+        .status-rechazada { background-color: var(--color-peligro); } /* Rojo */
+        .status-cancelada { background-color: var(--color-advertencia); color: #333; } /* Amarillo */
+    </style>
+{% endblock %}

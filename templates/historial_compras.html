@@ -2,8 +2,8 @@
 
 {% block content %}
     <div class="content-actions-bar">
-        {# El botón de "Registrar Nueva Compra" sigue siendo relevante aquí si esta vista es útil #}
-        <a href="{{ url_for('vista_registrar_compra') }}" class="button button-primary">Registrar Nueva Compra</a>
+        {# CORREGIDO el url_for aquí #}
+        <a href="{{ url_for('compras_bp.vista_registrar_compra') }}" class="button button-primary">Registrar Nueva Compra</a>
     </div>
 
     {% if compras %} {# 'compras' ahora es una lista de objetos DetalleCompra #}
@@ -58,13 +58,13 @@
      <style>
         .content-actions-bar {
             display: flex;
-            justify-content: flex-end; 
+            justify-content: flex-end;
             align-items: center;
             margin-bottom: 20px;
         }
-        .data-table th, .data-table td { 
+        .data-table th, .data-table td {
             padding: 8px 10px; /* Reducido un poco para más columnas */
-            white-space: nowrap; 
+            white-space: nowrap;
             font-size: 0.85em; /* Reducido para que quepa más info */
         }
          .data-table th {

@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block content %}
+    {# El título de la página se establece en app.py. Ej: "Nueva Cotización: Seleccionar Proyecto" #}
+
+    {# CORREGIDO el url_for en el action del formulario #}
+    <form method="POST" action="{{ url_for('cotizaciones_bp.vista_crear_cotizacion_paso1_proyecto') }}" class="styled-form" id="formSeleccionarProyecto">
+
+        <fieldset class="form-section">
+            <legend><h4>Paso 1: Seleccionar Proyecto para la Cotización</h4></legend>
+
+            <div class="form-group">
+                <label for="id_proyecto_seleccionado">Selecciona un Proyecto Existente: <span class="required-indicator">*</span></label>
+                <select name="id_proyecto_seleccionado" id="id_proyecto_seleccionado" class="select-proyecto-grande" required>
+                    <option value="">-- Elige un proyecto --</option>
+                    {% for proyecto in proyectos_existentes %} {# 'proyectos_existentes' se pasa desde app.py #}
+                        <option value="{{ proyecto.id_proyecto }}"
+                                {% if request.form.get('id_proyecto_seleccionado') == proyecto.id_proyecto|string %}selected{% endif %}>
+                            {{ proyecto.nombre_evento }} (ID: {{ proyecto.identificador_evento }}) - Cliente: {{ proyecto.cliente_nombre or 'N/A' }}
+                        </option>
+                    {% endfor %}
+                </select>
+                <small class="form-text text-muted">Selecciona el proyecto al que pertenecerá esta nueva cotización.</small>
+            </div>
+
+            <div style="margin-top: 15px; margin-bottom: 25px; text-align: center; font-size: 0.9em; color: var(--color-texto-secundario);">
+                <span>--- o ---</span>
+            </div>
+
+            <div class="form-group" style="text-align: center;">
+                 {# El 'next' URL aquí apunta a una ruta del mismo blueprint, así que también necesita el prefijo #}
+                <a href="{{ url_for('proyectos_bp.vista_crear_proyecto', next=url_for('cotizaciones_bp.vista_crear_cotizacion_paso1_proyecto')) }}" class="button button-secondary">
+                    <i class="fas fa-plus-circle" style="margin-right: 8px;"></i> Crear un Nuevo Proyecto
+                </a>
+                <small class="form-text text-muted" style="display:block; margin-top: 8px;">Si el proyecto aún no existe, créalo primero.</small>
+            </div>
+        </fieldset>
+
+        <div class="form-actions">
+            {# CORREGIDO el url_for aquí #}
+            <a href="{{ url_for('cotizaciones_bp.vista_listar_cotizaciones') }}" class="button button-secondary">Cancelar</a>
+            <button type="submit" class="button button-primary" id="btnContinuarCotizacion">
+                Continuar a Configurar Cotización <i class="fas fa-arrow-right" style="margin-left: 8px;"></i>
+            </button>
+        </div>
+    </form>
+
+<style>
+    /* Estilos generales del formulario ya definidos en style.css */
+    .form-text.text-muted {
+        font-size: 0.8em;
+        color: #6c757d;
+        display: block;
+        margin-top: 4px;
+    }
+    .required-indicator {
+        color: var(--color-peligro);
+        font-weight: bold;
+        margin-left: 2px;
+    }
+    .select-proyecto-grande { /* Para hacer el select de proyectos más prominente */
+        padding: 12px 15px !important; /* Sobrescribir padding si es necesario */
+        font-size: 1em !important;   /* Sobrescribir tamaño de fuente si es necesario */
+        height: auto !important; /* Permitir que la altura se ajuste */
+    }
+    .form-actions button i, .form-actions a i { /* Para iconos en botones */
+        font-size: 0.9em;
+    }
+</style>
+{% endblock %}

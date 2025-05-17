@@ -2,7 +2,8 @@
 
 {% block content %}
     <div class="content-actions-bar"> {# Una barra para acciones específicas de la vista si es necesario #}
-        <a href="{{ url_for('vista_crear_proveedor') }}" class="button button-primary">Nuevo Proveedor</a>
+        {# CORREGIDO el url_for aquí #}
+        <a href="{{ url_for('proveedores_bp.vista_crear_proveedor') }}" class="button button-primary">Nuevo Proveedor</a>
     </div>
 
     {% if proveedores %}
@@ -35,7 +36,8 @@
                             <td>{{ prov.email_facturacion or '-' }}</td>
                             <td>{{ 'Sí' if prov.activo else 'No' }}</td>
                             <td class="actions">
-                                <a href="{{ url_for('vista_editar_proveedor', id_proveedor=prov.id_proveedor) }}" class="button-edit-black">Editar</a>
+                                {# CORREGIDO el url_for aquí también #}
+                                <a href="{{ url_for('proveedores_bp.vista_editar_proveedor', id_proveedor=prov.id_proveedor) }}" class="button-edit-black">Editar</a>
                             </td>
                         </tr>
                     {% endfor %}

@@ -5,7 +5,6 @@
     {# SECCIÓN 1: Información General de la Lista de Precios #}
     <fieldset class="form-section">
         <legend><h4>Información General de la Lista de Precios</h4></legend>
-        {# Usar form-grid-2col para que se apile en móvil #}
         <div class="form-grid-2col" style="margin-bottom: 20px;">
             <div class="form-group">
                 <label for="id_proveedor_lp">Proveedor: <span class="required">*</span></label>
@@ -33,7 +32,6 @@
     <fieldset class="form-section">
         <legend><h4>Añadir Precios de Productos</h4></legend>
         <div id="form-agregar-precio-item">
-            {# Fila 1: Búsqueda de Producto #}
             <div class="form-group" style="margin-bottom: 10px;">
                 <label for="producto_busqueda_precio_item">Buscar Producto por Descripción: <span class="required">*</span></label>
                 <input type="text" id="producto_busqueda_precio_item" class="input-busqueda-producto-grande" placeholder="Escribe para buscar..." autocomplete="off">
@@ -44,13 +42,11 @@
                 <div id="producto_resultados_precio_item" class="autocomplete-results"></div>
             </div>
 
-            {# Info del producto seleccionado (compacta) #}
             <div id="info_producto_seleccionado_precio_item" class="selected-product-info-box-compact" style="display:none; margin-bottom:15px;">
                 Producto: <strong id="nombre_prod_sel_precio_item"></strong> (SKU: <span id="sku_prod_sel_precio_item"></span>)<br>
                 Unidad (Presentación): <strong id="presentacion_prod_sel_precio_item"></strong>
             </div>
-            
-            {# Fila 2: Campos de Precio y Botón Añadir - Usaremos form-grid-3col para responsividad #}
+
             <div class="form-grid-3col" style="align-items: end; margin-bottom: 20px;">
                 <div class="form-group">
                     <label for="precio_compra_item">Precio Compra Unit. (por Presentación): <span class="required">*</span></label>
@@ -61,7 +57,6 @@
                     <input type="text" id="notas_precio_item">
                 </div>
                 <div class="form-group">
-                    {# <label>&nbsp;</label> No es necesario si el botón se alinea bien con el form-group #}
                     <button type="button" id="btnAnadirPrecioItem" class="button button-primary" style="width: 100%;">Añadir Precio</button>
                 </div>
             </div>
@@ -95,14 +90,13 @@
     <div id="hiddenInputsPreciosContainer"></div>
 
     <div class="form-actions">
-        <a href="{{ url_for('index') }}" class="button button-secondary">Cancelar</a>
+        {# CORREGIDO el url_for para el botón Cancelar #}
+        <a href="{{ url_for('proveedores_bp.vista_listar_proveedores') }}" class="button button-secondary">Cancelar</a>
         <button type="submit" id="btnGuardarListaPrecios" class="button button-primary">Guardar Lista de Precios</button>
     </div>
 </form>
 
 <script>
-// El JavaScript existente para esta página no necesita cambios para este ajuste de layout.
-// ... (copiar el script de la versión anterior de cargar_precios_manual.html) ...
 document.addEventListener('DOMContentLoaded', function() {
     const searchInputPrecioItem = document.getElementById('producto_busqueda_precio_item');
     const resultsContainerPrecioItem = document.getElementById('producto_resultados_precio_item');
@@ -119,7 +113,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const precioCompraItemInput = document.getElementById('precio_compra_item');
     const notasPrecioItemInput = document.getElementById('notas_precio_item');
     const btnAnadirPrecioItem = document.getElementById('btnAnadirPrecioItem');
-    
+
     const tablaPreciosACargarBody = document.querySelector('#tablaPreciosACargar tbody');
     const noPreciosItemsMessage = document.getElementById('noPreciosItemsMessage');
     const hiddenInputsPreciosContainer = document.getElementById('hiddenInputsPreciosContainer');
@@ -128,119 +122,130 @@ document.addEventListener('DOMContentLoaded', function() {
     let preciosACargarArray = [];
     let searchDebounceTimerPrecioItem;
 
-    searchInputPrecioItem.addEventListener('input', function() {
-        const searchTerm = this.value;
-        clearTimeout(searchDebounceTimerPrecioItem);
-        hiddenIdProductoPrecioItem.value = '';
-        hiddenNombreProductoPrecioItem.value = '';
-        hiddenSkuProductoPrecioItem.value = '';
-        hiddenPresentacionProductoPrecioItem.value = '';
-        infoDivPrecioItem.style.display = 'none';
+    if (searchInputPrecioItem) {
+        searchInputPrecioItem.addEventListener('input', function() {
+            const searchTerm = this.value;
+            clearTimeout(searchDebounceTimerPrecioItem);
+            hiddenIdProductoPrecioItem.value = '';
+            hiddenNombreProductoPrecioItem.value = '';
+            hiddenSkuProductoPrecioItem.value = '';
+            hiddenPresentacionProductoPrecioItem.value = '';
+            if(infoDivPrecioItem) infoDivPrecioItem.style.display = 'none';
 
-        if (searchTerm.length < 2) {
-            resultsContainerPrecioItem.innerHTML = '';
-            resultsContainerPrecioItem.style.display = 'none';
-            return;
-        }
-        searchDebounceTimerPrecioItem = setTimeout(() => {
-            fetch(`{{ url_for('api_buscar_productos_por_descripcion') }}?term=${encodeURIComponent(searchTerm)}`)
-                .then(response => response.json())
-                .then(data => {
+            if (searchTerm.length < 2) {
+                if(resultsContainerPrecioItem) {
                     resultsContainerPrecioItem.innerHTML = '';
-                    if (data.length > 0) {
-                        data.forEach(producto => {
-                            const item = document.createElement('div');
-                            item.classList.add('autocomplete-item');
-                            item.textContent = producto.descripcion + (producto.sku ? ` (SKU: ${producto.sku})` : '');
-                            item.dataset.id = producto.id;
-                            item.dataset.nombre = producto.nombre;
-                            item.dataset.sku = producto.sku || '';
-                            item.dataset.presentacion = producto.presentacion || 'Unidad'; 
+                    resultsContainerPrecioItem.style.display = 'none';
+                }
+                return;
+            }
+            searchDebounceTimerPrecioItem = setTimeout(() => {
+                // CORREGIDO el url_for aquí dentro del fetch
+                fetch(`{{ url_for('productos_bp.api_buscar_productos_por_descripcion') }}?term=${encodeURIComponent(searchTerm)}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if(!resultsContainerPrecioItem) return;
+                        resultsContainerPrecioItem.innerHTML = '';
+                        if (data.length > 0) {
+                            data.forEach(producto => {
+                                const item = document.createElement('div');
+                                item.classList.add('autocomplete-item');
+                                item.textContent = producto.descripcion + (producto.sku ? ` (SKU: ${producto.sku})` : '');
+                                item.dataset.id = producto.id;
+                                item.dataset.nombre = producto.nombre;
+                                item.dataset.sku = producto.sku || '';
+                                item.dataset.presentacion = producto.presentacion || 'Unidad';
 
-                            item.addEventListener('click', function() {
-                                searchInputPrecioItem.value = this.dataset.nombre; 
-                                hiddenIdProductoPrecioItem.value = this.dataset.id;
-                                hiddenNombreProductoPrecioItem.value = this.dataset.nombre;
-                                hiddenSkuProductoPrecioItem.value = this.dataset.sku;
-                                hiddenPresentacionProductoPrecioItem.value = this.dataset.presentacion; 
-                                
-                                resultsContainerPrecioItem.innerHTML = '';
-                                resultsContainerPrecioItem.style.display = 'none';
+                                item.addEventListener('click', function() {
+                                    searchInputPrecioItem.value = this.dataset.nombre;
+                                    hiddenIdProductoPrecioItem.value = this.dataset.id;
+                                    hiddenNombreProductoPrecioItem.value = this.dataset.nombre;
+                                    hiddenSkuProductoPrecioItem.value = this.dataset.sku;
+                                    hiddenPresentacionProductoPrecioItem.value = this.dataset.presentacion;
 
-                                nombreProdSelPrecioItemSpan.textContent = this.dataset.nombre;
-                                skuProdSelPrecioItemSpan.textContent = this.dataset.sku || 'N/A';
-                                presentacionProdSelPrecioItemSpan.textContent = this.dataset.presentacion; 
-                                infoDivPrecioItem.style.display = 'block';
-                                precioCompraItemInput.focus();
+                                    resultsContainerPrecioItem.innerHTML = '';
+                                    resultsContainerPrecioItem.style.display = 'none';
+
+                                    if(nombreProdSelPrecioItemSpan) nombreProdSelPrecioItemSpan.textContent = this.dataset.nombre;
+                                    if(skuProdSelPrecioItemSpan) skuProdSelPrecioItemSpan.textContent = this.dataset.sku || 'N/A';
+                                    if(presentacionProdSelPrecioItemSpan) presentacionProdSelPrecioItemSpan.textContent = this.dataset.presentacion;
+                                    if(infoDivPrecioItem) infoDivPrecioItem.style.display = 'block';
+                                    if(precioCompraItemInput) precioCompraItemInput.focus();
+                                });
+                                resultsContainerPrecioItem.appendChild(item);
                             });
-                            resultsContainerPrecioItem.appendChild(item);
-                        });
-                        resultsContainerPrecioItem.style.display = 'block';
-                    } else {
-                        resultsContainerPrecioItem.innerHTML = '<div class="autocomplete-item-none">No se encontraron productos.</div>';
-                        resultsContainerPrecioItem.style.display = 'block';
-                    }
-                })
-                .catch(error => console.error('Error al buscar productos:', error));
-        }, 300);
-    });
-    
-    document.addEventListener('click', function(event) {
-        if (resultsContainerPrecioItem && !resultsContainerPrecioItem.contains(event.target) && event.target !== searchInputPrecioItem) {
-            resultsContainerPrecioItem.style.display = 'none';
-        }
-    });
+                            resultsContainerPrecioItem.style.display = 'block';
+                        } else {
+                            resultsContainerPrecioItem.innerHTML = '<div class="autocomplete-item-none">No se encontraron productos.</div>';
+                            resultsContainerPrecioItem.style.display = 'block';
+                        }
+                    })
+                    .catch(error => console.error('Error al buscar productos:', error));
+            }, 300);
+        });
+    }
 
-    btnAnadirPrecioItem.addEventListener('click', function() {
-        const idProducto = hiddenIdProductoPrecioItem.value;
-        const nombreProducto = hiddenNombreProductoPrecioItem.value; 
-        const skuProducto = hiddenSkuProductoPrecioItem.value; 
-        const unidadCompraProveedor = hiddenPresentacionProductoPrecioItem.value || "Unidad"; 
-        const precioCompra = parseFloat(precioCompraItemInput.value);
-        const notas = notasPrecioItemInput.value.trim();
+    if (resultsContainerPrecioItem) {
+        document.addEventListener('click', function(event) {
+            if (!resultsContainerPrecioItem.contains(event.target) && event.target !== searchInputPrecioItem) {
+                resultsContainerPrecioItem.style.display = 'none';
+            }
+        });
+    }
 
-        if (!idProducto) {
-            alert("Por favor, busca y selecciona un producto.");
-            searchInputPrecioItem.focus();
-            return;
-        }
-        if (isNaN(precioCompra) || precioCompra <= 0) {
-            alert("Por favor, ingresa un precio de compra válido.");
-            precioCompraItemInput.focus();
-            return;
-        }
+    if (btnAnadirPrecioItem) {
+        btnAnadirPrecioItem.addEventListener('click', function() {
+            const idProducto = hiddenIdProductoPrecioItem.value;
+            const nombreProducto = hiddenNombreProductoPrecioItem.value;
+            const skuProducto = hiddenSkuProductoPrecioItem.value;
+            const unidadCompraProveedor = hiddenPresentacionProductoPrecioItem.value || "Unidad";
+            const precioCompra = parseFloat(precioCompraItemInput.value);
+            const notas = notasPrecioItemInput.value.trim();
 
-        const precioItem = {
-            id_producto: idProducto,
-            nombre_producto: nombreProducto,
-            sku_producto: skuProducto,
-            unidad_compra_proveedor: unidadCompraProveedor, 
-            precio_compra: precioCompra,
-            notas: notas
-        };
-        preciosACargarArray.push(precioItem);
-        renderizarTablaPrecios();
-        limpiarFormularioPrecioItem();
-    });
+            if (!idProducto) {
+                alert("Por favor, busca y selecciona un producto.");
+                if(searchInputPrecioItem) searchInputPrecioItem.focus();
+                return;
+            }
+            if (isNaN(precioCompra) || precioCompra <= 0) {
+                alert("Por favor, ingresa un precio de compra válido.");
+                if(precioCompraItemInput) precioCompraItemInput.focus();
+                return;
+            }
+
+            const precioItem = {
+                id_producto: idProducto,
+                nombre_producto: nombreProducto,
+                sku_producto: skuProducto,
+                unidad_compra_proveedor: unidadCompraProveedor,
+                precio_compra: precioCompra,
+                notas: notas
+            };
+            preciosACargarArray.push(precioItem);
+            renderizarTablaPrecios();
+            limpiarFormularioPrecioItem();
+        });
+    }
 
     function limpiarFormularioPrecioItem() {
-        searchInputPrecioItem.value = '';
-        hiddenIdProductoPrecioItem.value = '';
-        hiddenNombreProductoPrecioItem.value = '';
-        hiddenSkuProductoPrecioItem.value = '';
-        hiddenPresentacionProductoPrecioItem.value = '';
-        infoDivPrecioItem.style.display = 'none';
-        precioCompraItemInput.value = '';
-        notasPrecioItemInput.value = '';
-        searchInputPrecioItem.focus();
+        if(searchInputPrecioItem) searchInputPrecioItem.value = '';
+        if(hiddenIdProductoPrecioItem) hiddenIdProductoPrecioItem.value = '';
+        if(hiddenNombreProductoPrecioItem) hiddenNombreProductoPrecioItem.value = '';
+        if(hiddenSkuProductoPrecioItem) hiddenSkuProductoPrecioItem.value = '';
+        if(hiddenPresentacionProductoPrecioItem) hiddenPresentacionProductoPrecioItem.value = '';
+        if(infoDivPrecioItem) infoDivPrecioItem.style.display = 'none';
+        if(precioCompraItemInput) precioCompraItemInput.value = '';
+        if(notasPrecioItemInput) notasPrecioItemInput.value = '';
+        if(searchInputPrecioItem) searchInputPrecioItem.focus();
     }
 
     function renderizarTablaPrecios() {
+        if(!tablaPreciosACargarBody) return;
         tablaPreciosACargarBody.innerHTML = '';
         if (preciosACargarArray.length === 0) {
-            noPreciosItemsMessage.style.display = 'block';
+            if(noPreciosItemsMessage) noPreciosItemsMessage.style.display = 'block';
         } else {
-            noPreciosItemsMessage.style.display = 'none';
+            if(noPreciosItemsMessage) noPreciosItemsMessage.style.display = 'none';
             preciosACargarArray.forEach((item, index) => {
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
@@ -255,16 +260,19 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         actualizarInputsOcultosPreciosParaEnvio();
     }
-    
-    tablaPreciosACargarBody.addEventListener('click', function(event) {
-        if (event.target.classList.contains('btn-eliminar-precio-item')) {
-            const indexAEliminar = parseInt(event.target.dataset.index);
-            preciosACargarArray.splice(indexAEliminar, 1);
-            renderizarTablaPrecios();
-        }
-    });
+
+    if (tablaPreciosACargarBody) {
+        tablaPreciosACargarBody.addEventListener('click', function(event) {
+            if (event.target.classList.contains('btn-eliminar-precio-item')) {
+                const indexAEliminar = parseInt(event.target.dataset.index);
+                preciosACargarArray.splice(indexAEliminar, 1);
+                renderizarTablaPrecios();
+            }
+        });
+    }
 
     function actualizarInputsOcultosPreciosParaEnvio() {
+        if(!hiddenInputsPreciosContainer) return;
         hiddenInputsPreciosContainer.innerHTML = '';
         preciosACargarArray.forEach((item, index) => {
             const inputId = document.createElement('input');
@@ -273,10 +281,10 @@ document.addEventListener('DOMContentLoaded', function() {
             inputId.value = item.id_producto;
             hiddenInputsPreciosContainer.appendChild(inputId);
 
-            const inputUnidad = document.createElement('input'); 
+            const inputUnidad = document.createElement('input');
             inputUnidad.type = 'hidden';
             inputUnidad.name = `precios[${index}][unidad_compra_proveedor]`;
-            inputUnidad.value = item.unidad_compra_proveedor; 
+            inputUnidad.value = item.unidad_compra_proveedor;
             hiddenInputsPreciosContainer.appendChild(inputUnidad);
 
             const inputPrecio = document.createElement('input');
@@ -284,7 +292,7 @@ document.addEventListener('DOMContentLoaded', function() {
             inputPrecio.name = `precios[${index}][precio_compra]`;
             inputPrecio.value = item.precio_compra;
             hiddenInputsPreciosContainer.appendChild(inputPrecio);
-            
+
             const inputNotas = document.createElement('input');
             inputNotas.type = 'hidden';
             inputNotas.name = `precios[${index}][notas]`;
@@ -293,29 +301,30 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    formCargarPreciosManual.addEventListener('submit', function(event) {
-        const proveedorSelected = document.getElementById('id_proveedor_lp').value;
-        if (!proveedorSelected) {
-            alert("Por favor, selecciona un proveedor.");
-            event.preventDefault();
-            return;
-        }
-        if (preciosACargarArray.length === 0) {
-            alert("Debes añadir al menos un precio a la lista.");
-            event.preventDefault();
-            return;
-        }
-    });
+    if(formCargarPreciosManual) {
+        formCargarPreciosManual.addEventListener('submit', function(event) {
+            const proveedorSelected = document.getElementById('id_proveedor_lp').value;
+            if (!proveedorSelected) {
+                alert("Por favor, selecciona un proveedor.");
+                event.preventDefault();
+                return;
+            }
+            if (preciosACargarArray.length === 0) {
+                alert("Debes añadir al menos un precio a la lista.");
+                event.preventDefault();
+                return;
+            }
+            // Asegurarse de que los inputs ocultos estén actualizados antes del envío
+            actualizarInputsOcultosPreciosParaEnvio();
+        });
+    }
 
-    // Para repopular la tabla si hay datos en form_data_lp (ej. después de un error de validación del backend)
     const form_data_lp = JSON.parse('{{ form_data_lp | tojson | safe }}' || '{}');
     if (form_data_lp.precios && Array.isArray(form_data_lp.precios)) {
         preciosACargarArray = form_data_lp.precios.map(p => ({
-            // Asumiendo que el backend devuelve los datos necesarios para reconstruir
-            // Necesitarías pasar nombre_producto y sku_producto también si quieres mostrarlos
             id_producto: p.id_producto,
-            nombre_producto: p.nombre_producto_display || `Producto ID ${p.id_producto}`, // Necesitarías pasar esto
-            sku_producto: p.sku_producto_display || '', // Necesitarías pasar esto
+            nombre_producto: p.nombre_producto_display || `Producto ID ${p.id_producto}`,
+            sku_producto: p.sku_producto_display || '',
             unidad_compra_proveedor: p.unidad_compra_proveedor,
             precio_compra: parseFloat(p.precio_compra),
             notas: p.notas
@@ -331,7 +340,7 @@ document.addEventListener('DOMContentLoaded', function() {
         /* padding: 20px; */ /* <--- COMENTA O ELIMINA ESTA LÍNEA */
         margin-bottom: 25px;
         border-radius: var(--radio-borde-general);
-        background-color: #fdfdfd;
+        background-color: #fdfdff;
     }
     .form-section legend {
         font-weight: 600;
@@ -339,30 +348,29 @@ document.addEventListener('DOMContentLoaded', function() {
         padding: 0 10px;
         color: var(--color-texto-principal);
     }
-    /* .form-grid-dynamic se define en línea, pero .form-grid-2col y .form-grid-3col vienen de style.css */
-    .form-group { position: relative; /* Necesario para .autocomplete-results */ }
+    .form-group { position: relative; }
     .form-group label { display: block; margin-bottom: 6px; font-weight: 500; font-size: 0.85em; color: var(--color-texto-secundario); }
     .form-group label .required { color: var(--color-peligro); margin-left: 3px;}
-    
+
     .form-group input[type="text"],
     .form-group input[type="number"],
     .form-group input[type="date"],
     .form-group select,
     .form-group textarea {
-        display: block; width: 100%; height: 40px; padding: 8px 12px; 
+        display: block; width: 100%; height: 40px; padding: 8px 12px;
         font-size: 0.9em; font-family: var(--font-principal);
-        color: var(--color-texto-principal); background-color: #ffffff; 
-        border: 1px solid var(--color-borde-input); 
-        border-radius: var(--radio-borde-general); box-sizing: border-box; 
+        color: var(--color-texto-principal); background-color: #ffffff;
+        border: 1px solid var(--color-borde-input);
+        border-radius: var(--radio-borde-general); box-sizing: border-box;
         transition: border-color 0.2s ease, box-shadow 0.2s ease;
     }
     .form-group textarea { height: auto; min-height: 60px; padding-top: 10px; padding-bottom: 10px;}
     .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
-        border-color: var(--color-texto-principal); outline: none; 
-        box-shadow: 0 0 0 0.15rem rgba(20, 20, 20, 0.1);
+        border-color: var(--color-texto-principal); outline: none;
+        box-shadow: 0 0 0 0.15rem rgba(20, 20, 20, 0.15);
     }
-    .input-fecha-estilizado { min-width: 150px; } /* Para el input de fecha */
-    
+    .input-fecha-estilizado { min-width: 150px; }
+
     .autocomplete-results {
         position: absolute; top: 100%; left: 0; right: 0; background-color: white;
         border: 1px solid var(--color-borde-input); border-top: none;
@@ -374,10 +382,10 @@ document.addEventListener('DOMContentLoaded', function() {
         padding: 8px 12px; cursor: pointer; font-size: 0.88em;
     }
     .autocomplete-item:hover { background-color: #f0f0f0; }
-    
-    .selected-product-info-box-compact { 
+
+    .selected-product-info-box-compact {
         margin-top: 5px; padding: 8px 12px; background-color: #f0f8ff;
-        border: 1px solid #d6eaff; border-radius: var(--radio-borde-general); 
+        border: 1px solid #d6eaff; border-radius: var(--radio-borde-general);
         font-size: 0.85em; color: var(--color-texto-secundario);
     }
     .selected-product-info-box-compact strong { color: var(--color-texto-principal); font-weight: 500;}
@@ -390,8 +398,8 @@ document.addEventListener('DOMContentLoaded', function() {
         background-color: var(--color-peligro); color: white;
         border: none; padding: 5px 10px; font-size: 0.8em;
         border-radius: var(--radio-borde-general); cursor: pointer;
-        height: auto; /* Permitir que la altura se ajuste al contenido */
-        line-height: 1.4; /* Mejorar legibilidad */
+        height: auto;
+        line-height: 1.4;
     }
     .form-actions { margin-top: 25px; text-align: right; padding-top: 20px; border-top: 1px solid var(--color-borde-sutil); }
 </style>

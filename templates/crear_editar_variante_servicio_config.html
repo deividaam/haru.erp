@@ -1,0 +1,215 @@
+{% extends "base.html" %}
+
+{% block content %}
+    {# El título de la página se establece en app.py.
+       Ej: "Nueva Variante para: Mesa de Dulces" o "Editar Variante: Premium Mixta" #}
+
+    <form method="POST" class="styled-form" id="formVarianteServicioConfig" action="{{ url_for('admin_servicios_bp.admin_vista_crear_editar_variante_config', id_variante_config=variante_config_obj.id_variante_config if variante_config_obj else None) }}">
+        {# --- Sección 1: Datos Generales de la Variante de Servicio --- #}
+        <fieldset class="form-section">
+            <legend><h4>Datos Generales de la Variante de Servicio</h4></legend>
+
+            <div class="form-group">
+                <label for="id_tipo_servicio_base">Tipo de Servicio Base al que pertenece: <span class="required-indicator">*</span></label>
+                <select name="id_tipo_servicio_base" id="id_tipo_servicio_base" required
+                        {% if variante_config_obj and variante_config_obj.id_tipo_servicio_base %}disabled{% endif %}>
+                    <option value="">-- Selecciona un Tipo de Servicio Base --</option>
+                    {% for tipo_base in todos_tipos_servicio_base %}
+                        <option value="{{ tipo_base.id_tipo_servicio_base }}"
+                                data-nombre-tipo-base="{{ tipo_base.nombre }}"
+                                {% if (variante_config_form_data.get('id_tipo_servicio_base')|string == tipo_base.id_tipo_servicio_base|string) %}selected{% endif %}>
+                            {{ tipo_base.nombre }}
+                        </option>
+                    {% endfor %}
+                </select>
+                {% if variante_config_obj and variante_config_obj.id_tipo_servicio_base %}
+                    <small class="form-text text-muted">El tipo de servicio base no se puede cambiar una vez que la variante está creada.</small>
+                    <input type="hidden" name="id_tipo_servicio_base" value="{{ variante_config_obj.id_tipo_servicio_base }}">
+                {% endif %}
+            </div>
+
+            <div class="form-grid-2col">
+                <div class="form-group">
+                    <label for="nivel_paquete">Nivel de Paquete (Ej: Clásica, Premium): <span class="required-indicator">*</span></label>
+                    <input type="text" name="nivel_paquete" id="nivel_paquete"
+                           value="{{ variante_config_form_data.get('nivel_paquete', '') }}" required>
+                    <small class="form-text text-muted">Define la gama principal del servicio.</small>
+                </div>
+                <div class="form-group">
+                    <label for="nivel_perfil">Nivel de Perfil (Ej: Dulce, Salada): <span class="required-indicator">*</span></label>
+                    <input type="text" name="nivel_perfil" id="nivel_perfil"
+                           value="{{ variante_config_form_data.get('nivel_perfil', '') }}" required>
+                    <small class="form-text text-muted">Define el sub-tipo o perfil dentro del paquete.</small>
+                </div>
+            </div>
+
+            {# El input para "Nombre Completo de la Variante" y su previsualización han sido eliminados.
+               Se generará completamente en el backend.
+            #}
+            {#
+            <div class="form-group" style="margin-top: 10px;">
+                <label>Nombre de Variante (Generado Automáticamente):</label>
+                <input type="text" id="nombre_variante_preview" value="{{ variante_config_form_data.get('nombre_variante', '(Se generará al guardar)') }}" readonly class="form-control-disabled-visual">
+                <small class="form-text text-muted">Se formará como: [Tipo Servicio] - [Nivel Paquete] - [Nivel Perfil]</small>
+            </div>
+            #}
+
+            {# CAMPOS TEMPORALMENTE OCULTADOS #}
+            {#
+            <div class="form-grid-2col">
+                <div class="form-group">
+                    <label for="codigo_identificador_variante">Código Identificador (Opcional):</label>
+                    <input type="text" name="codigo_identificador_variante" id="codigo_identificador_variante"
+                           value="{{ variante_config_form_data.get('codigo_identificador_variante', '') }}">
+                    <small class="form-text text-muted">Se generará después basado en opciones (ej. "MD-CLA-SAL-001").</small>
+                </div>
+                <div class="form-group">
+                    <label for="precio_base_sugerido">Precio Base Sugerido (Opcional):</label>
+                    <input type="number" step="0.01" name="precio_base_sugerido" id="precio_base_sugerido"
+                           value="{{ variante_config_form_data.get('precio_base_sugerido', '') }}"
+                           min="0">
+                    <small>Precio si se vende como un paquete cerrado, antes de personalizaciones.</small>
+                </div>
+            </div>
+            #}
+
+            <div class="form-group">
+                <label for="descripcion_publica">Descripción Pública (para el cliente, Opcional):</label>
+                <textarea name="descripcion_publica" id="descripcion_publica" rows="3">{{ variante_config_form_data.get('descripcion_publica', '') }}</textarea>
+            </div>
+
+            {# SECCIÓN DE CANTIDAD BASE TEMPORALMENTE OCULTADA #}
+            {#
+            <h5 style="margin-top: 20px; margin-bottom: 10px; font-weight:500;">Configuración de Cantidad Base del Servicio:</h5>
+            <div class="form-grid-2col">
+                <div class="form-group">
+                    <label for="cantidad_base_por_invitado">Cantidad Base por Invitado (Opcional):</label>
+                    <input type="number" step="any" name="cantidad_base_por_invitado" id="cantidad_base_por_invitado"
+                           value="{{ variante_config_form_data.get('cantidad_base_por_invitado', '') }}">
+                    <small>Ej: 0.075 (para 75g de dulces por invitado).</small>
+                </div>
+                <div class="form-group">
+                    <label for="unidad_medida_servicio_por_invitado">Unidad (para Cant. por Invitado):</label>
+                    <input type="text" name="unidad_medida_servicio_por_invitado" id="unidad_medida_servicio_por_invitado"
+                           value="{{ variante_config_form_data.get('unidad_medida_servicio_por_invitado', '') }}">
+                    <small>Ej: "kg", "porciones", "unidades".</small>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="cantidad_base_fija_servicio">Cantidad Base Fija del Servicio (Opcional):</label>
+                <input type="number" step="any" name="cantidad_base_fija_servicio" id="cantidad_base_fija_servicio"
+                       value="{{ variante_config_form_data.get('cantidad_base_fija_servicio', '') }}">
+                <small>Usar si la cantidad del servicio no depende de invitados (ej. 1 arreglo floral).</small>
+            </div>
+            #}
+
+            <div class="form-group checkbox-group" style="padding: 10px 0; margin-top:10px;">
+                <input type="checkbox" name="activo" id="activo" class="form-checkbox"
+                       {% if variante_config_form_data.get('activo', es_nuevo) %}checked{% endif %}>
+                <label for="activo" class="checkbox-label">Variante Activa</label>
+            </div>
+        </fieldset>
+
+        {% if not es_nuevo and variante_config_obj %}
+        <fieldset class="form-section">
+            <legend><h4>Grupos de Componentes Configurables</h4></legend>
+            <p class="subtle-text">Define las categorías de opciones que el cliente podrá elegir para esta variante de servicio (ej. "Tipos de Gomitas", "Tipos de Botanas").</p>
+
+            <div id="lista-grupos-componentes" style="margin-bottom: 20px;">
+                {% if variante_config_obj.grupos_componentes %}
+                    <ul class="list-styled">
+                        {% for grupo in variante_config_obj.grupos_componentes|sort(attribute='orden_display') %}
+                            <li class="list-item-config">
+                                <strong>{{ grupo.nombre_grupo }}</strong>
+                                <small class="text-muted-config">
+                                    (Elegir {{ grupo.cantidad_opciones_seleccionables }} opc.
+                                    {% if grupo.porcentaje_del_total_servicio is not none %}
+                                    | {{ (grupo.porcentaje_del_total_servicio * 100)|round(1) }}% del total del servicio
+                                    {% endif %})
+                                </small>
+                                <div class="actions-config">
+                                    <a href="{{ url_for('admin_servicios_bp.admin_vista_editar_grupo_componente', id_grupo_config=grupo.id_grupo_config) }}" class="button-edit-black-small">Editar Grupo</a>
+                                    <a href="{{ url_for('admin_servicios_bp.admin_vista_gestionar_opciones_componente', id_variante_config=variante_config_obj.id_variante_config, id_grupo_config=grupo.id_grupo_config) }}" class="button-secondary-small">Gestionar Opciones</a>
+                                </div>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p>Aún no se han definido grupos de componentes para esta variante.</p>
+                {% endif %}
+            </div>
+            <a href="{{ url_for('admin_servicios_bp.admin_vista_crear_grupo_componente', id_variante_config=variante_config_obj.id_variante_config) }}" class="button button-secondary">
+                <i class="fas fa-plus-circle" style="margin-right: 5px;"></i> Añadir Nuevo Grupo de Componentes
+            </a>
+        </fieldset>
+        {% endif %}
+
+        <div class="form-actions">
+            {% set cancel_url = url_for('admin_servicios_bp.admin_vista_listar_todas_variantes') %}
+            {% if variante_config_obj and variante_config_obj.id_tipo_servicio_base %}
+                {% set cancel_url = url_for('admin_servicios_bp.admin_vista_listar_variantes_por_tipo', id_tipo_servicio_base=variante_config_obj.id_tipo_servicio_base) %}
+            {% elif id_tipo_servicio_base_preseleccionado %}
+                {% set cancel_url = url_for('admin_servicios_bp.admin_vista_listar_variantes_por_tipo', id_tipo_servicio_base=id_tipo_servicio_base_preseleccionado) %}
+            {% endif %}
+            <a href="{{ cancel_url }}" class="button button-secondary">Cancelar</a>
+            <input type="submit" value="{{ 'Guardar Cambios' if variante_config_obj and variante_config_obj.id_variante_config else 'Crear Variante' }}" class="button button-primary">
+        </div>
+    </form>
+
+<style>
+    /* ... (Estilos existentes) ... */
+    .form-control-disabled-visual {
+        background-color: #e9ecef;
+        color: #495057;
+        border: 1px solid #ced4da;
+        opacity: 0.7;
+        cursor: default;
+    }
+</style>
+
+<script>
+// El script para actualizar nombre_variante_preview ya no es necesario si se elimina el campo de preview.
+// Si decides mantener la preview, el script anterior era correcto.
+// Por ahora, lo comento/elimino ya que el campo de preview se ha comentado en el HTML.
+/*
+document.addEventListener('DOMContentLoaded', function() {
+    const tipoServicioSelect = document.getElementById('id_tipo_servicio_base');
+    const nivelPaqueteInput = document.getElementById('nivel_paquete');
+    const nivelPerfilInput = document.getElementById('nivel_perfil');
+    const nombreVariantePreview = document.getElementById('nombre_variante_preview');
+
+    function actualizarNombrePreview() {
+        if (!nombreVariantePreview) return;
+
+        const tipoServicioOption = tipoServicioSelect.options[tipoServicioSelect.selectedIndex];
+        const tipoServicioNombre = (tipoServicioOption && tipoServicioOption.dataset.nombreTipoBase) ? tipoServicioOption.dataset.nombreTipoBase : '';
+        const paquete = nivelPaqueteInput ? nivelPaqueteInput.value.trim() : '';
+        const perfil = nivelPerfilInput ? nivelPerfilInput.value.trim() : '';
+
+        let previewText = "";
+        if (tipoServicioNombre) {
+            previewText += tipoServicioNombre;
+        }
+        if (paquete) {
+            previewText += (previewText ? " - " : "") + paquete;
+        }
+        if (perfil) {
+            previewText += (previewText ? " - " : "") + perfil;
+        }
+
+        nombreVariantePreview.value = previewText || '(Se generará al guardar)';
+    }
+
+    if (tipoServicioSelect) tipoServicioSelect.addEventListener('change', actualizarNombrePreview);
+    if (nivelPaqueteInput) nivelPaqueteInput.addEventListener('input', actualizarNombrePreview);
+    if (nivelPerfilInput) nivelPerfilInput.addEventListener('input', actualizarNombrePreview);
+
+    // Actualizar al cargar la página por si hay valores prellenados (ej. al editar)
+    // y el campo de preview todavía existe.
+    if (nombreVariantePreview) {
+        actualizarNombrePreview();
+    }
+});
+*/
+</script>
+{% endblock %}

@@ -2,7 +2,8 @@
 
 {% block content %}
     <div class="content-actions-bar">
-        <a href="{{ url_for('vista_registrar_compra') }}" class="button button-primary">Registrar Nueva Compra/Factura</a>
+        {# CORREGIDO el url_for aquí #}
+        <a href="{{ url_for('compras_bp.vista_registrar_compra') }}" class="button button-primary">Registrar Nueva Compra/Factura</a>
     </div>
 
     {% if encabezados %}
@@ -32,7 +33,7 @@
                             </td>
                             <td class="actions">
                                 {# Aquí podrías enlazar a una vista de detalle de la factura si la creas #}
-                                {# <a href="{{ url_for('vista_detalle_factura_compra', id_encabezado=enc.id_encabezado_compra) }}" class="button-edit-black">Ver Detalles</a> #}
+                                {# <a href="{{ url_for('compras_bp.vista_detalle_factura_compra', id_encabezado=enc.id_encabezado_compra) }}" class="button-edit-black">Ver Detalles</a> #}
                                 <span style="font-size:0.9em; color: #777;">(Detalles Próximamente)</span>
                             </td>
                         </tr>
@@ -46,16 +47,16 @@
      <style>
         .content-actions-bar {
             display: flex;
-            justify-content: flex-end; 
+            justify-content: flex-end;
             align-items: center;
             margin-bottom: 20px;
         }
-        .data-table th, .data-table td { 
-            padding: 10px 12px; 
+        .data-table th, .data-table td {
+            padding: 10px 12px;
             white-space: nowrap;
         }
-        .data-table td { 
-            font-size: 0.95em; 
+        .data-table td {
+            font-size: 0.95em;
         }
     </style>
 {% endblock %}

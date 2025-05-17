@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-T">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Cotizador Mesa de Dulces v5</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .grupo-componente { margin-bottom: 2rem; padding: 1rem; border: 1px solid #e2e8f0; border-radius: 0.5rem; background-color: #f9fafb;}
+        .opcion-item { display: flex; align-items: center; margin-bottom: 0.5rem; }
+        .opcion-item input[type="checkbox"] { margin-right: 0.5rem; }
+        .opcion-item input[type="checkbox"]:disabled + span { color: #9ca3af; /* Tailwind gray-400 */ cursor: not-allowed; }
+        .opcion-item label:has(input[type="checkbox"]:disabled) { cursor: not-allowed; opacity: 0.7; }
+        .resultados-item { border-bottom: 1px solid #eee; padding-bottom: 0.5rem; margin-bottom: 0.5rem; }
+        .resultados-item:last-child { border-bottom: none; }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800 p-4 md:p-8">
+
+    <div class="container mx-auto max-w-4xl bg-white p-6 md:p-8 rounded-lg shadow-xl">
+        <header class="mb-8 text-center">
+            <h1 class="text-3xl font-bold text-pink-600">Simulador de Cotización: Mesa de Dulces v5</h1>
+            <p class="text-gray-600">Checkbox dinámicos y redondeo mejorado.</p>
+        </header>
+
+        <div class="mb-6">
+            <label for="numero_invitados" class="block text-sm font-medium text-gray-700 mb-1">Número de Invitados:</label>
+            <input type="number" id="numero_invitados" value="50" min="1" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-pink-500 focus:border-pink-500 sm:text-sm">
+        </div>
+
+        <form id="cotizadorForm">
+            <div id="gruposContainer" class="space-y-6"></div>
+
+            <div class="mt-8 text-center">
+                <button type="submit" class="bg-pink-600 hover:bg-pink-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-150 ease-in-out">
+                    Calcular Cantidades
+                </button>
+            </div>
+        </form>
+
+        <div id="resultadosContainer" class="mt-10 p-6 border border-pink-200 rounded-lg bg-pink-50" style="display: none;">
+            <h2 class="text-2xl font-semibold text-pink-700 mb-2">Resultados del Cálculo:</h2>
+            <p id="infoAjusteGlobal" class="text-sm text-pink-600 mb-4"></p>
+            <div id="listaResultados" class="space-y-3">
+                </div>
+            <div id="resumenTotal" class="mt-6 pt-4 border-t border-pink-300">
+                 <h3 class="text-xl font-semibold text-pink-700 mb-2">Resumen Total de Insumos para el Evento:</h3>
+                 <div id="listaResumenTotal" class="space-y-1"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- DATOS DE PRUEBA (igual que v4) ---
+        const productosDB = [
+            { id: 'gom1', nombre: 'Panditas Clásicos', unidad_base: 'g', es_indivisible: false, categoria: 'gomitas' },
+            { id: 'gom2', nombre: 'Gomitas de Frutitas', unidad_base: 'g', es_indivisible: false, categoria: 'gomitas' },
+            { id: 'gom3', nombre: 'Gusanos Ácidos', unidad_base: 'g', es_indivisible: false, categoria: 'gomitas' },
+            { id: 'gom4', nombre: 'Corazones de Durazno', unidad_base: 'g', es_indivisible: false, categoria: 'gomitas' },
+            { id: 'gom5', nombre: 'Mangomitas Enchiladas', unidad_base: 'g', es_indivisible: false, categoria: 'gomitas' },
+            { id: 'gom6', nombre: 'Aros de Manzana', unidad_base: 'g', es_indivisible: false, categoria: 'gomitas' },
+            { id: 'gom7', nombre: 'Gomitas de Lombriz Neon', unidad_base: 'g', es_indivisible: false, categoria: 'gomitas' },
+            { id: 'gom8', nombre: 'Gotitas de Chocolate (Chocoretas)', unidad_base: 'g', es_indivisible: false, categoria: 'gomitas' },
+            { id: 'gom9', nombre: 'Dientes de Vampiro', unidad_base: 'g', es_indivisible: false, categoria: 'gomitas' },
+            { id: 'gom10', nombre: 'Ositos Rojos Enchilados', unidad_base: 'g', es_indivisible: false, categoria: 'gomitas' },
+            { id: 'choc1', nombre: 'Kisses Hershey\'s (pieza)', unidad_base: 'pieza', es_indivisible: true, categoria: 'chocolates' },
+            { id: 'choc2', nombre: 'Carlos V Individual (pieza)', unidad_base: 'pieza', es_indivisible: true, categoria: 'chocolates' },
+            { id: 'choc3', nombre: 'Monedas de Chocolate (pieza)', unidad_base: 'pieza', es_indivisible: true, categoria: 'chocolates' },
+            { id: 'choc4', nombre: 'Chocoretas (bolsita individual)', unidad_base: 'pieza', es_indivisible: true, categoria: 'chocolates' },
+            { id: 'choc5', nombre: 'Bocadín (pieza)', unidad_base: 'pieza', es_indivisible: true, categoria: 'chocolates' },
+            { id: 'choc6', nombre: 'Mini Mamut (pieza)', unidad_base: 'pieza', es_indivisible: true, categoria: 'chocolates' },
+            { id: 'choc7', nombre: 'Ferrero Rocher (pieza)', unidad_base: 'pieza', es_indivisible: true, categoria: 'chocolates' },
+            { id: 'choc8', nombre: 'Conejito Turín (pieza)', unidad_base: 'pieza', es_indivisible: true, categoria: 'chocolates' },
+            { id: 'choc9', nombre: 'Snickers Mini (pieza)', unidad_base: 'pieza', es_indivisible: true, categoria: 'chocolates' },
+            { id: 'choc10', nombre: 'Paleta Payaso Mini (pieza)', unidad_base: 'pieza', es_indivisible: true, categoria: 'chocolates' },
+            { id: 'bot1', nombre: 'Cacahuates Japoneses', unidad_base: 'g', es_indivisible: false, categoria: 'botanas' },
+            { id: 'bot2', nombre: 'Churritos de Maíz con Chile', unidad_base: 'g', es_indivisible: false, categoria: 'botanas' },
+            { id: 'bot3', nombre: 'Papas Fritas Caseras', unidad_base: 'g', es_indivisible: false, categoria: 'botanas' },
+            { id: 'bot4', nombre: 'Pretzels Salados', unidad_base: 'g', es_indivisible: false, categoria: 'botanas' },
+            { id: 'bot5', nombre: 'Habas Enchiladas', unidad_base: 'g', es_indivisible: false, categoria: 'botanas' },
+            { id: 'bot6', nombre: 'Garbanzos Enchilados', unidad_base: 'g', es_indivisible: false, categoria: 'botanas' },
+            { id: 'bot7', nombre: 'Pistaches con Sal', unidad_base: 'g', es_indivisible: false, categoria: 'botanas' },
+            { id: 'bot8', nombre: 'Semillas de Girasol Saladas', unidad_base: 'g', es_indivisible: false, categoria: 'botanas' },
+            { id: 'bot9', nombre: 'Palomitas de Maíz Naturales', unidad_base: 'g', es_indivisible: false, categoria: 'botanas' },
+            { id: 'bot10', nombre: 'Frituras de Harina (Chicharrones)', unidad_base: 'g', es_indivisible: false, categoria: 'botanas' },
+            { id: 'ind1', nombre: 'Paleta de Caramelo Grande', unidad_base: 'pieza', es_indivisible: true, categoria: 'individuales' },
+            { id: 'ind2', nombre: 'Mazapán de la Rosa', unidad_base: 'pieza', es_indivisible: true, categoria: 'individuales' },
+            { id: 'ind3', nombre: 'Pulparindo Clásico', unidad_base: 'pieza', es_indivisible: true, categoria: 'individuales' },
+            { id: 'ind4', nombre: 'Bolsita de Skittles', unidad_base: 'pieza', es_indivisible: true, categoria: 'individuales' },
+            { id: 'ind5', nombre: 'Duvalín Avellana-Vainilla', unidad_base: 'pieza', es_indivisible: true, categoria: 'individuales' },
+            { id: 'ind6', nombre: 'Glorias de Linares (individual)', unidad_base: 'pieza', es_indivisible: true, categoria: 'individuales' },
+            { id: 'ind7', nombre: 'Pelón Pelo Rico', unidad_base: 'pieza', es_indivisible: true, categoria: 'individuales' },
+            { id: 'ind8', nombre: 'Chicle Canel\'s (paq. 4)', unidad_base: 'pieza', es_indivisible: true, categoria: 'individuales' },
+            { id: 'ind9', nombre: 'Banderilla de Tamarindo', unidad_base: 'pieza', es_indivisible: true, categoria: 'individuales' },
+            { id: 'ind10', nombre: 'Cucharita de Tamarindo', unidad_base: 'pieza', es_indivisible: true, categoria: 'individuales' },
+            { id: 'pic1', nombre: 'Picafresas (bolsita)', unidad_base: 'pieza', es_indivisible: true, categoria: 'picositos' },
+            { id: 'pic2', nombre: 'Rielitos de Tamarindo', unidad_base: 'g', es_indivisible: false, categoria: 'picositos' },
+            { id: 'pic3', nombre: 'Miguelito en Polvo (sobre)', unidad_base: 'pieza', es_indivisible: true, categoria: 'picositos' },
+            { id: 'pic4', nombre: 'Skwinkles Rellenos (tira)', unidad_base: 'pieza', es_indivisible: true, categoria: 'picositos' },
+            { id: 'pic5', nombre: 'Tamaroca (pieza)', unidad_base: 'pieza', es_indivisible: true, categoria: 'picositos' },
+            { id: 'pic6', nombre: 'Cacahuates Enchilados (a granel)', unidad_base: 'g', es_indivisible: false, categoria: 'picositos' },
+            { id: 'pic7', nombre: 'Ollitas de Tamarindo (pieza)', unidad_base: 'pieza', es_indivisible: true, categoria: 'picositos' },
+            { id: 'pic8', nombre: 'Lucas Muecas (paleta con chile)', unidad_base: 'pieza', es_indivisible: true, categoria: 'picositos' },
+            { id: 'pic9', nombre: 'Bolitas de Tamarindo con Chile (a granel)', unidad_base: 'g', es_indivisible: false, categoria: 'picositos' },
+            { id: 'pic10', nombre: 'Tiritas de Mango Enchilado (a granel)', unidad_base: 'g', es_indivisible: false, categoria: 'picositos' },
+        ];
+
+        const opcionesServicioConfig = [
+            ...productosDB.filter(p => p.categoria === 'gomitas').map(p => ({ id: p.id, nombre_display: p.nombre, id_producto_interno: p.id, cantidad_consumo_base: 20, unidad_consumo_base: 'g' })),
+            ...productosDB.filter(p => p.categoria === 'chocolates').map(p => ({ id: p.id, nombre_display: p.nombre, id_producto_interno: p.id, cantidad_consumo_base: 2, unidad_consumo_base: 'pieza' })),
+            ...productosDB.filter(p => p.categoria === 'botanas').map(p => ({ id: p.id, nombre_display: p.nombre, id_producto_interno: p.id, cantidad_consumo_base: 25, unidad_consumo_base: 'g' })),
+            ...productosDB.filter(p => p.categoria === 'individuales').map(p => ({ id: p.id, nombre_display: p.nombre, id_producto_interno: p.id, cantidad_consumo_base: 1, unidad_consumo_base: 'pieza' })),
+            ...productosDB.filter(p => p.categoria === 'picositos').map(p => ({
+                id: p.id, nombre_display: p.nombre, id_producto_interno: p.id,
+                cantidad_consumo_base: p.unidad_base === 'g' ? 20 : 1, unidad_consumo_base: p.unidad_base
+            })),
+        ];
+
+        const gruposComponentesConfig = [
+            { id_grupo: 'gc1', nombre: 'Selección de Gomitas', opciones_permitidas: 5, opciones_disponibles_ids: productosDB.filter(p => p.categoria === 'gomitas').map(p => p.id) },
+            { id_grupo: 'gc2', nombre: 'Variedad de Chocolates', opciones_permitidas: 4, opciones_disponibles_ids: productosDB.filter(p => p.categoria === 'chocolates').map(p => p.id) },
+            { id_grupo: 'gc3', nombre: 'Mix de Botanas Saladas', opciones_permitidas: 4, opciones_disponibles_ids: productosDB.filter(p => p.categoria === 'botanas').map(p => p.id) },
+            { id_grupo: 'gc4', nombre: 'Dulces Individuales Clásicos', opciones_permitidas: 6, opciones_disponibles_ids: productosDB.filter(p => p.categoria === 'individuales').map(p => p.id) },
+            { id_grupo: 'gc5', nombre: 'Picositos y Tamarindos', opciones_permitidas: 5, opciones_disponibles_ids: productosDB.filter(p => p.categoria === 'picositos').map(p => p.id) },
+        ];
+        // --- FIN DATOS DE PRUEBA ---
+
+        const gruposContainer = document.getElementById('gruposContainer');
+        const infoAjusteGlobalP = document.getElementById('infoAjusteGlobal');
+
+        // --- GENERACIÓN DINÁMICA DE GRUPOS Y OPCIONES (igual que v5) ---
+        gruposComponentesConfig.forEach(grupo => {
+            const divGrupo = document.createElement('div');
+            divGrupo.classList.add('grupo-componente');
+            divGrupo.dataset.idGrupo = grupo.id_grupo;
+            divGrupo.dataset.opcionesPermitidas = grupo.opciones_permitidas;
+            const h3 = document.createElement('h3');
+            h3.classList.add('text-xl', 'font-semibold', 'mb-3', 'text-pink-700');
+            h3.textContent = `${grupo.nombre} (Elige hasta ${grupo.opciones_permitidas})`;
+            divGrupo.appendChild(h3);
+            const pInfo = document.createElement('p');
+            pInfo.classList.add('text-xs', 'text-gray-500', 'mb-3', 'italic');
+            pInfo.textContent = `Si eliges menos de ${grupo.opciones_permitidas}, la cantidad por persona de los seleccionados aumentará proporcionalmente. Si omites grupos completos, la cantidad de los grupos que sí elijas también se incrementará.`;
+            divGrupo.appendChild(pInfo);
+            const gridDiv = document.createElement('div');
+            gridDiv.classList.add('grid', 'grid-cols-1', 'md:grid-cols-2', 'gap-x-4', 'gap-y-2');
+            grupo.opciones_disponibles_ids.forEach(opcionId => {
+                const opcionConfig = opcionesServicioConfig.find(o => o.id === opcionId);
+                if (opcionConfig) {
+                    const producto = productosDB.find(p => p.id === opcionConfig.id_producto_interno);
+                    const label = document.createElement('label');
+                    label.classList.add('opcion-item', 'p-2', 'hover:bg-pink-50', 'rounded-md', 'transition-colors', 'duration-150', 'cursor-pointer');
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.name = `grupo_${grupo.id_grupo}`;
+                    checkbox.value = opcionConfig.id;
+                    checkbox.classList.add('form-checkbox', 'h-5', 'w-5', 'text-pink-600', 'border-gray-300', 'rounded', 'focus:ring-pink-500');
+                    checkbox.dataset.nombreProducto = producto ? producto.nombre : opcionConfig.nombre_display;
+                    const span = document.createElement('span');
+                    span.classList.add('ml-2', 'text-sm', 'text-gray-700');
+                    span.textContent = `${opcionConfig.nombre_display} (${opcionConfig.cantidad_consumo_base} ${opcionConfig.unidad_consumo_base} base por persona)`;
+                    label.appendChild(checkbox);
+                    label.appendChild(span);
+                    gridDiv.appendChild(label);
+                }
+            });
+            divGrupo.appendChild(gridDiv);
+            gruposContainer.appendChild(divGrupo);
+        });
+        // --- FIN GENERACIÓN DINÁMICA ---
+
+        // --- LÓGICA PARA HABILITAR/DESHABILITAR CHECKBOXES (igual que v5) ---
+        document.querySelectorAll('.grupo-componente').forEach(grupoDiv => {
+            const checkboxesEnGrupo = Array.from(grupoDiv.querySelectorAll('input[type="checkbox"]'));
+            const maxSeleccionables = parseInt(grupoDiv.dataset.opcionesPermitidas);
+
+            checkboxesEnGrupo.forEach(checkbox => {
+                checkbox.addEventListener('change', () => {
+                    const seleccionadosActual = checkboxesEnGrupo.filter(cb => cb.checked).length;
+                    if (seleccionadosActual >= maxSeleccionables) {
+                        checkboxesEnGrupo.forEach(cb => {
+                            if (!cb.checked) {
+                                cb.disabled = true;
+                                cb.parentElement.classList.add('opacity-50', 'cursor-not-allowed');
+                            }
+                        });
+                    } else {
+                        checkboxesEnGrupo.forEach(cb => {
+                            cb.disabled = false;
+                             cb.parentElement.classList.remove('opacity-50', 'cursor-not-allowed');
+                        });
+                    }
+                });
+            });
+        });
+        // --- FIN LÓGICA DE CHECKBOXES ---
+
+        document.getElementById('cotizadorForm').addEventListener('submit', async function(event) {
+            event.preventDefault();
+            // ... (recolección de datos igual que v5) ...
+            const numeroInvitados = parseInt(document.getElementById('numero_invitados').value) || 1;
+            const seleccion = {};
+            let numeroDeGruposConSelecciones = 0;
+
+            document.querySelectorAll('.grupo-componente').forEach(grupoDiv => {
+                const idGrupo = grupoDiv.dataset.idGrupo;
+                const opcionesPermitidas = parseInt(grupoDiv.dataset.opcionesPermitidas);
+                const opcionesSeleccionadas = [];
+                grupoDiv.querySelectorAll('input[type="checkbox"]:checked').forEach(chk => {
+                    opcionesSeleccionadas.push(chk.value);
+                });
+                if (opcionesSeleccionadas.length > 0) {
+                    seleccion[idGrupo] = {
+                        opciones_seleccionadas_ids: opcionesSeleccionadas,
+                        opciones_permitidas_en_grupo: opcionesPermitidas
+                    };
+                    numeroDeGruposConSelecciones++;
+                }
+            });
+
+            const payload = {
+                numero_invitados: numeroInvitados,
+                seleccion_grupos: seleccion,
+                total_grupos_disponibles: gruposComponentesConfig.length,
+                numero_grupos_con_selecciones: numeroDeGruposConSelecciones
+            };
+
+            const resultadosCalculados = calcularCantidadesLocalmente(payload);
+            mostrarResultados(resultadosCalculados.detalles_calculados, resultadosCalculados.resumen_total_insumos, resultadosCalculados.factor_ajuste_global_debug);
+        });
+
+        function calcularCantidadesLocalmente(payload) {
+            // ... (Lógica de cálculo igual que v5) ...
+            const detallesCalculados = [];
+            const resumenTotalInsumos = {};
+            const numeroInvitados = payload.numero_invitados;
+            const totalGruposDisponibles = payload.total_grupos_disponibles;
+            const numeroGruposConSelecciones = payload.numero_grupos_con_selecciones;
+
+            let factorAjusteGlobalDeGrupos = 1.0;
+            if (numeroGruposConSelecciones > 0 && numeroGruposConSelecciones < totalGruposDisponibles) {
+                factorAjusteGlobalDeGrupos = totalGruposDisponibles / numeroGruposConSelecciones;
+            }
+
+            let factor_ajuste_global_debug_msg = `Factor de Ajuste Global de Grupos: ${factorAjusteGlobalDeGrupos.toFixed(2)} (Total Grupos: ${totalGruposDisponibles}, Grupos Seleccionados: ${numeroGruposConSelecciones})`;
+             if (numeroGruposConSelecciones === 0) {
+                 factor_ajuste_global_debug_msg = "No se seleccionaron opciones de ningún grupo.";
+            } else if (factorAjusteGlobalDeGrupos === 1) {
+                 factor_ajuste_global_debug_msg = "Se seleccionaron opciones de todos los grupos disponibles o solo de un grupo (si solo uno estaba disponible/seleccionado). Sin ajuste global de grupos.";
+            }
+
+
+            for (const idGrupo in payload.seleccion_grupos) {
+                const grupoData = payload.seleccion_grupos[idGrupo];
+                const opcionesSeleccionadasIds = grupoData.opciones_seleccionadas_ids;
+                const opcionesPermitidasEnGrupo = grupoData.opciones_permitidas_en_grupo;
+                const numOpcionesRealmenteElegidasEnGrupo = opcionesSeleccionadasIds.length;
+
+                if (numOpcionesRealmenteElegidasEnGrupo === 0) continue;
+
+                const factorAjusteIntraGrupo = opcionesPermitidasEnGrupo / numOpcionesRealmenteElegidasEnGrupo;
+
+                opcionesSeleccionadasIds.forEach(opcionId => {
+                    const opcionConfig = opcionesServicioConfig.find(o => o.id === opcionId);
+                    if (!opcionConfig) return;
+                    const producto = productosDB.find(p => p.id === opcionConfig.id_producto_interno);
+                    if (!producto) return;
+
+                    let cantidadConsumoBase = parseFloat(opcionConfig.cantidad_consumo_base);
+                    let cantidadAjustadaPorPersonaBruta = cantidadConsumoBase * factorAjusteIntraGrupo * factorAjusteGlobalDeGrupos;
+                    let cantidadAjustadaPorPersonaFinal;
+
+                    if (producto.es_indivisible) {
+                        cantidadAjustadaPorPersonaFinal = Math.ceil(cantidadAjustadaPorPersonaBruta);
+                    } else {
+                        cantidadAjustadaPorPersonaFinal = Math.ceil(cantidadAjustadaPorPersonaBruta / 5) * 5;
+                        if (cantidadAjustadaPorPersonaFinal < cantidadAjustadaPorPersonaBruta) {
+                             cantidadAjustadaPorPersonaFinal = Math.ceil(cantidadAjustadaPorPersonaBruta / 5.000001) * 5;
+                        }
+                        // No es necesario el .toFixed(3) aquí, ya que el múltiplo de 5 será entero o .0
+                    }
+
+                    let cantidadTotalEventoFinal = cantidadAjustadaPorPersonaFinal * numeroInvitados;
+
+                    detallesCalculados.push({
+                        nombre_producto: producto.nombre,
+                        cantidad_por_persona: cantidadAjustadaPorPersonaFinal,
+                        unidad_base: producto.unidad_base,
+                        cantidad_total_evento: cantidadTotalEventoFinal,
+                        debug_factor_intra: factorAjusteIntraGrupo,
+                        debug_factor_global: factorAjusteGlobalDeGrupos
+                    });
+
+                    if (!resumenTotalInsumos[producto.nombre]) {
+                        resumenTotalInsumos[producto.nombre] = { cantidad: 0, unidad: producto.unidad_base, es_indivisible: producto.es_indivisible };
+                    }
+                    resumenTotalInsumos[producto.nombre].cantidad += cantidadTotalEventoFinal;
+                });
+            }
+
+            for(const nombreProducto in resumenTotalInsumos){
+                if(resumenTotalInsumos[nombreProducto].es_indivisible){
+                     resumenTotalInsumos[nombreProducto].cantidad = Math.ceil(resumenTotalInsumos[nombreProducto].cantidad);
+                } else {
+                     // Para gramos, el total puede tener decimales si el redondeo por persona no da un entero al multiplicar por invitados.
+                     // Pero si la cantidad por persona ya es múltiplo de 5, el total también lo será.
+                     // Si queremos el total también redondeado a múltiplo de 5 (podría ser excesivo):
+                     // resumenTotalInsumos[nombreProducto].cantidad = Math.ceil(resumenTotalInsumos[nombreProducto].cantidad / 5) * 5;
+                     // Por ahora, solo aplicamos precisión si no es indivisible.
+                     resumenTotalInsumos[nombreProducto].cantidad = parseFloat(resumenTotalInsumos[nombreProducto].cantidad.toFixed(3));
+                }
+            }
+            return {
+                detalles_calculados: detallesCalculados,
+                resumen_total_insumos: resumenTotalInsumos,
+                factor_ajuste_global_debug: factor_ajuste_global_debug_msg
+            };
+        }
+
+        function mostrarResultados(detalles, resumen, factorGlobalDebugMsg) {
+            const listaResultadosDiv = document.getElementById('listaResultados');
+            const listaResumenTotalDiv = document.getElementById('listaResumenTotal');
+            const infoAjusteGlobalP = document.getElementById('infoAjusteGlobal');
+
+            listaResultadosDiv.innerHTML = '';
+            listaResumenTotalDiv.innerHTML = '';
+            infoAjusteGlobalP.textContent = factorGlobalDebugMsg || '';
+
+            if (detalles.length === 0) {
+                listaResultadosDiv.innerHTML = '<p class="text-gray-600">No se seleccionaron opciones.</p>';
+            } else {
+                detalles.forEach(item => {
+                    const div = document.createElement('div');
+                    div.classList.add('resultados-item', 'text-sm');
+                    
+                    // Ajuste de formato para gramos
+                    let cantidadPorPersonaDisplay = item.cantidad_por_persona;
+                    if (item.unidad_base === 'g' && cantidadPorPersonaDisplay % 1 === 0) {
+                        cantidadPorPersonaDisplay = cantidadPorPersonaDisplay.toFixed(0);
+                    } else if (item.unidad_base === 'g') {
+                        cantidadPorPersonaDisplay = cantidadPorPersonaDisplay.toFixed(3); // Mantener decimales si los tiene
+                    } else { // para piezas
+                        cantidadPorPersonaDisplay = cantidadPorPersonaDisplay.toFixed(0);
+                    }
+
+                    let cantidadTotalDisplay = item.cantidad_total_evento;
+                     if (item.unidad_base === 'g' && cantidadTotalDisplay % 1 === 0) {
+                        cantidadTotalDisplay = cantidadTotalDisplay.toFixed(0);
+                    } else if (item.unidad_base === 'g') {
+                        cantidadTotalDisplay = cantidadTotalDisplay.toFixed(3);
+                    } else { // para piezas
+                        cantidadTotalDisplay = cantidadTotalDisplay.toFixed(0);
+                    }
+
+
+                    div.innerHTML = `
+                        <strong class="text-pink-600">${item.nombre_producto}:</strong><br>
+                        Cantidad por persona: ${cantidadPorPersonaDisplay} ${item.unidad_base}
+                        <em class="text-xs text-gray-500">(Ajuste intra-grupo: x${item.debug_factor_intra.toFixed(2)}, Ajuste global: x${item.debug_factor_global.toFixed(2)})</em><br>
+                        Cantidad total para ${document.getElementById('numero_invitados').value} invitados: <strong>${cantidadTotalDisplay} ${item.unidad_base}</strong>
+                    `;
+                    listaResultadosDiv.appendChild(div);
+                });
+            }
+
+            if (Object.keys(resumen).length > 0) {
+                for (const prodNombre in resumen) {
+                    const item = resumen[prodNombre];
+                    let cantidadResumenDisplay = item.cantidad;
+                     if (item.unidad === 'g' && cantidadResumenDisplay % 1 === 0) {
+                        cantidadResumenDisplay = cantidadResumenDisplay.toFixed(0);
+                    } else if (item.unidad === 'g') {
+                        cantidadResumenDisplay = cantidadResumenDisplay.toFixed(3);
+                    } else { // para piezas
+                        cantidadResumenDisplay = cantidadResumenDisplay.toFixed(0);
+                    }
+
+                    const div = document.createElement('div');
+                    div.classList.add('text-sm');
+                    div.innerHTML = `
+                        <strong class="text-pink-600">${prodNombre}:</strong>
+                        ${cantidadResumenDisplay} ${item.unidad}
+                    `;
+                    listaResumenTotalDiv.appendChild(div);
+                }
+            } else if (detalles.length > 0) {
+                 listaResumenTotalDiv.innerHTML = '<p class="text-gray-600">No se pudo generar el resumen total.</p>';
+            }
+            document.getElementById('resultadosContainer').style.display = 'block';
+        }
+    </script>
+</body>
+</html>

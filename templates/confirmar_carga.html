@@ -1,20 +1,19 @@
 {% extends "base.html" %}
 
 {% block content %}
-    {# El título h2 ya no es necesario aquí, se toma del content-header de base.html #}
-    {# El título de la página se establece en app.py como "Confirmar Carga de Productos" #}
+    {# El título de la página se establece en app.py como "Confirmar Carga de Productos Internos" #}
 
     {% if errores %}
-        {# Ya no usamos .card-section aquí, los estilos se aplicarán directamente o se heredarán #}
         <div class="error-summary" style="margin-bottom: 25px;"> 
-            <h4>Errores Encontrados Durante el Parseo del CSV:</h4>
+            <h4>Errores Encontrados Durante el Parseo del CSV de Productos Internos:</h4>
             <p class="subtle-text">Las siguientes filas tuvieron problemas y no serán cargadas. Por favor, corrige el archivo CSV original y vuelve a subirlo si es necesario.</p>
             <ul class="error-list">
                 {% for error in errores %}
                     <li>
                         <strong>Fila {{ error.fila }}:</strong> {{ error.error }} 
                         <details class="error-details">
-                            <summary>Ver datos de la fila</summary>
+                            <summary>Ver datos de la fila original</summary>
+                            {# Asumiendo que error.datos contiene la fila original del CSV #}
                             <pre>{{ error.datos | tojson(indent=2) }}</pre>
                         </details>
                     </li>
@@ -23,29 +22,37 @@
         </div>
     {% endif %}
 
-    {% if productos %}
-        {# Ya no usamos .card-section aquí #}
+    {% if productos %} {# 'productos' es la lista de 'producto_info' desde la sesión #}
         <div class="preview-section" style="margin-bottom: 25px;"> 
-            <h4>Previsualización de Productos a Cargar ({{ productos|length }} productos):</h4>
-            <p class="subtle-text">Estos productos parecen estar correctos y se crearán en la base de datos si confirmas. El SKU se generará automáticamente.</p>
+            <h4>Previsualización de Productos Internos a Cargar ({{ productos|length }} productos):</h4>
+            <p class="subtle-text">Estos productos internos parecen estar correctos y se crearán en la base de datos si confirmas. El SKU se generará automáticamente.</p>
             
             <div class="table-responsive" style="margin-top: 15px; margin-bottom:25px;">
-                <table class="preview-table-enhanced"> {# Nueva clase para la tabla mejorada #}
+                <table class="preview-table-enhanced data-table"> {# Usando clase data-table para estilos base #}
                     <thead>
                         <tr>
                             <th>Nombre Producto</th>
-                            <th>Categoría (del CSV)</th>
-                            <th>Subcategoría (del CSV)</th>
-                            <th>Presentación</th>
+                            <th>Unidad Base</th>
+                            <th>Categoría Principal (CSV)</th>
+                            <th>Subcategoría Específica (CSV)</th>
+                            <th>Subcategoría Padre (CSV)</th>
+                            <th>Presentación Compra</th>
+                            <th>Cant. en Presentación</th>
+                            {# Podrías añadir más columnas si son cruciales para la confirmación visual #}
                         </tr>
                     </thead>
                     <tbody>
-                        {% for prod in productos %}
+                        {% for prod_info in productos %} {# prod_info es el diccionario parseado #}
                             <tr>
-                                <td>{{ prod.nombre_producto }}</td>
-                                <td>{{ prod.nombre_categoria_csv }}</td>
-                                <td>{{ prod.nombre_subcategoria or '-' }}</td>
-                                <td>{{ prod.presentacion or '-'}}</td>
+                                <td>{{ prod_info.nombre_producto }}</td>
+                                <td>{{ prod_info.unidad_medida_base }}</td>
+                                <td>{{ prod_info.csv_categoria_principal or '-' }}</td>
+                                <td>{{ prod_info.csv_subcategoria_especifica or '-' }}</td>
+                                <td>{{ prod_info.csv_subcategoria_padre or '-' }}</td>
+                                <td>{{ prod_info.presentacion_compra or '-'}}</td>
+                                <td style="text-align: right;">
+                                    {{ prod_info.cantidad_en_presentacion_compra if prod_info.cantidad_en_presentacion_compra is not none else '-' }}
+                                </td>
                             </tr>
                         {% endfor %}
                     </tbody>
@@ -53,7 +60,7 @@
             </div>
             <form method="POST" class="confirmation-actions">
                 <button type="submit" name="confirmar" class="button button-confirm-pastel">
-                    Confirmar y Guardar Productos
+                    Confirmar y Guardar Productos Internos
                 </button>
                 <button type="submit" name="cancelar" class="button button-cancel-pastel">
                     Cancelar Carga
@@ -61,40 +68,35 @@
             </form>
         </div>
     {% elif not errores %}
-        {# Ya no usamos .card-section aquí #}
         <div>
-             <p>No se encontraron productos válidos para cargar en el archivo CSV.</p>
+             <p>No se encontraron productos internos válidos para cargar en el archivo CSV.</p>
              <a href="{{ url_for('vista_cargar_productos') }}" class="button-secondary" style="margin-top:15px;">Intentar con otro archivo</a>
         </div>
     {% endif %}
 
     {% if not productos and errores %}
-        {# Ya no usamos .card-section aquí, pero mantenemos un div para el botón si es necesario #}
         <div style="text-align:center; padding-top:0; margin-bottom: 25px;">
              <a href="{{ url_for('vista_cargar_productos') }}" class="button-secondary" style="text-decoration:none; display:inline-block;">Volver a Cargar Archivo</a>
         </div>
     {% endif %}
 
-    {# Estilos específicos para esta página. Podrían moverse a static/css/style.css #}
+    {# Estilos específicos para esta página (se mantienen similares a la v1) #}
     <style>
-        /* Eliminamos .card-section ya que el contenido ahora está directamente en la tarjeta principal de base.html */
-        
         .subtle-text {
-            font-size: 0.9em; /* Aumentado ligeramente */
+            font-size: 0.9em;
             color: var(--color-texto-secundario);
-            margin-bottom: 20px; /* Más espacio */
+            margin-bottom: 20px;
             line-height: 1.6;
         }
-
         .error-summary { 
-            border: 1px solid #ffdade; /* Borde más sutil para la sección de errores */
+            border: 1px solid #ffdade;
             background-color: #fff3f3;
             padding: 15px 20px;
             border-radius: var(--radio-borde-general);
         }
         .error-summary h4 { 
             color: var(--color-peligro); 
-            font-size: 1.05em; /* Ligeramente más grande */
+            font-size: 1.05em;
             font-weight: 600;
             margin-top: 0;
             margin-bottom: 10px;
@@ -106,15 +108,14 @@
         }
         .error-list li { 
             margin-bottom: 8px; 
-            background-color: #ffebee; /* Un poco más oscuro que el fondo del sumario */
+            background-color: #ffebee;
             padding: 10px 12px; 
-            border-radius: 4px; /* Bordes menos redondeados para los items */
-            /* border: 1px solid #ffcdd2; */ /* Quitar borde individual si el fondo ya lo distingue */
+            border-radius: 4px;
         }
         .error-details summary { 
             cursor: pointer; 
             font-weight: 500; 
-            color: var(--color-acento-primario);
+            color: var(--color-acento-primario); /* O un color de error más sutil */
             font-size: 0.9em;
             margin-top: 5px;
         }
@@ -128,48 +129,31 @@
             margin-top: 5px;
             border: 1px dashed #ffc6ce;
         }
-
         .preview-section h4 { 
-            color: var(--color-acento-secundario); 
-            font-size: 1.05em; /* Ligeramente más grande */
+            color: var(--color-acento-secundario); /* O un color más neutro si prefieres */
+            font-size: 1.05em;
             font-weight: 600;
             margin-top: 0;
             margin-bottom: 10px;
         }
-        
-        .preview-table-enhanced { 
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.95em; /* Tamaño de fuente de datos de tabla más grande */
-        }
+        /* Estilos para la tabla de previsualización (usando .data-table como base) */
         .preview-table-enhanced th, .preview-table-enhanced td {
-            border: none;
-            border-bottom: 1px solid var(--color-borde-sutil); 
-            padding: 12px 10px; /* Más padding para celdas */
-            text-align: left;
+            /* .data-table ya define padding, border, etc. */
+            /* Puedes añadir especificidad si es necesario */
         }
         .preview-table-enhanced th {
-            font-weight: 600; /* Encabezados más notorios (Lexend SemiBold) */
-            font-size: 0.9em; /* Tamaño de fuente de encabezados más grande */
-            color: var(--color-texto-principal); /* Encabezados más oscuros */
-            background-color: #f8f9fa; /* Fondo muy sutil para encabezados */
-            text-transform: none; /* Sin mayúsculas, como en la imagen */
+            /* .data-table ya define estilos para th */
+            font-weight: 600; /* Asegurar que sea notorio */
         }
-         .preview-table-enhanced tr:last-child td {
-            border-bottom: none;
-        }
-
-
         .confirmation-actions {
-            margin-top: 30px; /* Más espacio sobre los botones */
+            margin-top: 30px;
             text-align: right; 
         }
         .confirmation-actions .button { 
-            margin-left: 12px; /* Más espacio entre botones */
+            margin-left: 12px;
             font-weight: 500; 
-            padding: 10px 20px; /* Botones un poco más grandes */
+            padding: 10px 20px;
         }
-
         .button-confirm-pastel {
             background-color: #e0f2f1; 
             color: #00695c; 
@@ -180,7 +164,6 @@
             border-color: #00695c;
             color: #004d40; 
         }
-
         .button-cancel-pastel {
             background-color: #ffebed; 
             color: #c62828; 

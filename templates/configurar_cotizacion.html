@@ -1,0 +1,790 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <form method="POST" action="{{ url_for('cotizaciones_bp.vista_guardar_configuracion_cotizacion', id_proyecto=proyecto.id_proyecto, id_cotizacion=(cotizacion.id_cotizacion if cotizacion and cotizacion.id_cotizacion else None)) }}" class="styled-form" id="formConfigurarCotizacion">
+        {# --- Sección 0: Información del Proyecto (Solo lectura) --- #}
+        <fieldset class="form-section view-section" style="background-color: #f0f7ff;">
+            <legend><h4>Proyecto Asociado</h4></legend>
+            <div class="details-grid-cols-2">
+                <div class="detail-item">
+                    <span class="detail-label">Nombre del Evento:</span>
+                    <span class="detail-value">
+                        <a href="{{ url_for('proyectos_bp.vista_detalle_proyecto', id_proyecto=proyecto.id_proyecto) }}" target="_blank" title="Ver detalles completos del proyecto">
+                            {{ proyecto.nombre_evento }}
+                        </a>
+                    </span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Identificador:</span>
+                    <span class="detail-value">{{ proyecto.identificador_evento }}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Fecha del Evento:</span>
+                    <span class="detail-value">{{ proyecto.fecha_evento.strftime('%d/%m/%Y') if proyecto.fecha_evento else '-' }}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">No. Invitados (Proyecto):</span>
+                    <span class="detail-value" id="proyecto_numero_invitados_display">{{ proyecto.numero_invitados or '-' }}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Cliente:</span>
+                    <span class="detail-value">{{ proyecto.cliente_nombre or '-' }}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Tipo Ubicación:</span>
+                    <span class="detail-value">{{ proyecto.tipo_ubicacion or 'Local' }}</span>
+                </div>
+            </div>
+        </fieldset>
+
+        {# --- Sección 1: Datos Generales de la Cotización --- #}
+        <fieldset class="form-section">
+            <legend><h4>Datos Generales de la Cotización</h4></legend>
+            <input type="hidden" name="id_proyecto" value="{{ proyecto.id_proyecto }}">
+            {% if cotizacion and cotizacion.id_cotizacion %}
+                <input type="hidden" name="id_cotizacion" value="{{ cotizacion.id_cotizacion }}">
+            {% endif %}
+
+            <div class="form-grid-3col">
+                <div class="form-group">
+                    <label for="version">Versión:</label>
+                    <input type="number" name="version" id="version"
+                           value="{{ request.form.get('version', (cotizacion.version if cotizacion else 1)) }}"
+                           min="1" required readonly class="form-control-disabled-visual">
+                </div>
+                <div class="form-group">
+                    <label for="fecha_emision">Fecha de Emisión: <span class="required-indicator">*</span></label>
+                    <input type="date" name="fecha_emision" id="fecha_emision"
+                           value="{{ request.form.get('fecha_emision', (cotizacion.fecha_emision.isoformat() if cotizacion and cotizacion.fecha_emision else fecha_hoy)) }}"
+                           required>
+                </div>
+                <div class="form-group">
+                    <label for="fecha_validez">Válida Hasta (Opcional):</label>
+                    <input type="date" name="fecha_validez" id="fecha_validez"
+                           value="{{ request.form.get('fecha_validez', (cotizacion.fecha_validez.isoformat() if cotizacion and cotizacion.fecha_validez else '')) }}">
+                </div>
+            </div>
+             <div class="form-grid-2col">
+                <div class="form-group">
+                    <label for="estado">Estado de la Cotización:</label>
+                    <select name="estado" id="estado">
+                        {% set current_estado = request.form.get('estado', (cotizacion.estado if cotizacion else 'Borrador')) %}
+                        <option value="Borrador" {% if current_estado == 'Borrador' %}selected{% endif %}>Borrador</option>
+                        <option value="Presentada" {% if current_estado == 'Presentada' %}selected{% endif %}>Presentada</option>
+                        <option value="Aceptada" {% if current_estado == 'Aceptada' %}selected{% endif %}>Aceptada</option>
+                        <option value="Rechazada" {% if current_estado == 'Rechazada' %}selected{% endif %}>Rechazada</option>
+                        <option value="Cancelada" {% if current_estado == 'Cancelada' %}selected{% endif %}>Cancelada</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="numero_invitados_cotizacion">Número de Invitados para esta Cotización:</label>
+                    <input type="number" name="numero_invitados_cotizacion" id="numero_invitados_cotizacion"
+                           value="{{ request.form.get('numero_invitados_cotizacion', (cotizacion.numero_invitados_override if cotizacion and cotizacion.numero_invitados_override is not none else proyecto.numero_invitados or 1)) }}"
+                           min="1" required>
+                    <small>Por defecto, toma los del proyecto. Modifica si es específico para esta cotización.</small>
+                </div>
+            </div>
+        </fieldset>
+
+        {# --- NUEVA SECCIÓN: Configuración de Servicio Detallada --- #}
+        <fieldset class="form-section">
+            <legend><h4>Añadir/Configurar Servicio Detallado</h4></legend>
+            <p class="subtle-text">Selecciona un tipo de servicio, paquete y perfil para configurar sus componentes. Una vez configurado, podrás añadirlo como un ítem a la cotización.</p>
+
+            <div class="form-grid-3col" style="margin-bottom: 20px;">
+                <div class="form-group">
+                    <label for="select_tipo_servicio_base">1. Tipo de Servicio:</label>
+                    <select id="select_tipo_servicio_base" class="form-control">
+                        <option value="">-- Selecciona Tipo --</option>
+                        {% for tsb in todos_tipos_servicio_base_activos %} {# Debes pasar esto desde la ruta Flask #}
+                            <option value="{{ tsb.id_tipo_servicio_base }}">{{ tsb.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="select_nivel_paquete">2. Nivel de Paquete:</label>
+                    <select id="select_nivel_paquete" class="form-control" disabled>
+                        <option value="">-- Selecciona Paquete --</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="select_nivel_perfil">3. Nivel de Perfil:</label>
+                    <select id="select_nivel_perfil" class="form-control" disabled>
+                        <option value="">-- Selecciona Perfil --</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="info_variante_seleccionada" class="selected-product-info-box-compact" style="display:none; margin-bottom:15px; background-color: #e6fff3; border-color: #b3ffda;">
+                Variante Seleccionada: <strong id="nombre_variante_display"></strong> (ID: <span id="id_variante_display"></span>)
+            </div>
+
+            <div id="contenedor_grupos_columnas" class="opciones-servicio-container-columnas" style="display:none;">
+                </div>
+            <div id="acciones_servicio_configurable" style="margin-top: 20px; display:none;">
+                 <button type="button" id="btnAnadirServicioConfiguradoComoItem" class="button button-primary">
+                    Añadir este Servicio Configurado a la Cotización
+                </button>
+            </div>
+        </fieldset>
+
+
+        {# --- Sección Ítems de la Cotización (donde se añadirán los servicios configurados) --- #}
+        <fieldset class="form-section">
+            <legend><h4>Ítems Actuales de la Cotización</h4></legend>
+            <div id="items-cotizacion-container">
+                {# Los ítems existentes se renderizan aquí desde el backend si se está editando #}
+                {% if cotizacion and cotizacion.items_cotizacion %}
+                    {% for item_cot_idx, item_cot in enumerate(cotizacion.items_cotizacion|sort(attribute='orden_display_cot')) %}
+                        <div class="item-cotizacion-card" data-item-idx="{{ item_cot_idx }}">
+                            <input type="hidden" name="items[{{ item_cot_idx }}][id_item_cotizacion]" value="{{ item_cot.id_item_cotizacion or '' }}">
+                            <input type="hidden" name="items[{{ item_cot_idx }}][id_variante_servicio_config]" value="{{ item_cot.id_variante_servicio_config or '' }}">
+
+                            <div class="item-cotizacion-header">
+                                <h5 class="item-nombre-display"> {# Clase añadida para estilo #}
+                                    <input type="text" name="items[{{ item_cot_idx }}][nombre_display_servicio]"
+                                           value="{{ item_cot.nombre_display_servicio }}" placeholder="Nombre del Servicio/Paquete" class="input-inline-editable" required>
+                                </h5>
+                                <button type="button" class="button button-danger-small remove-item-cotizacion-btn">Eliminar Servicio</button> {# Texto cambiado #}
+                            </div>
+                            <div class="form-grid-2col">
+                                <div class="form-group">
+                                    <label>Cantidad del Servicio:</label>
+                                    <input type="number" name="items[{{ item_cot_idx }}][cantidad_servicio]" value="{{ item_cot.cantidad_servicio|float if item_cot.cantidad_servicio is not none else 1.0 }}" min="0.1" step="any" class="input-cantidad-servicio">
+                                </div>
+                                <div class="form-group">
+                                    <label>Precio Total Ítem:</label>
+                                     <input type="number" step="0.01" name="items[{{ item_cot_idx }}][precio_total_item_calculado]"
+                                       value="{{ '{:.2f}'.format(item_cot.precio_total_item_calculado|float) if item_cot.precio_total_item_calculado is not none else '0.00' }}"
+                                       class="input-precio-item" readonly style="font-weight:bold; background-color:#e9ecef;">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Descripción (para el cliente):</label>
+                                <textarea name="items[{{ item_cot_idx }}][descripcion_servicio_cotizado]" rows="2" class="input-descripcion-servicio">{{ item_cot.descripcion_servicio_cotizado or '' }}</textarea>
+                            </div>
+
+                            {# Mostrar componentes seleccionados para este ítem #}
+                            <div class="componentes-seleccionados-display-container">
+                                <strong class="componentes-display-titulo">Componentes Incluidos:</strong>
+                                {% if item_cot.componentes_seleccionados %}
+                                <ul class="componentes-display-lista">
+                                {% for comp_sel in item_cot.componentes_seleccionados %}
+                                    <li class="componentes-display-item">
+                                        {{ comp_sel.opcion_componente_elegida.nombre_display_cliente }}
+                                        <span class="componente-cantidad-display">
+                                            (Cant: {% if comp_sel.opcion_componente_elegida.producto_interno_ref and comp_sel.opcion_componente_elegida.producto_interno_ref.es_indivisible %}
+                                                {{ comp_sel.cantidad_final_producto_interno_calc | round(0) if comp_sel.cantidad_final_producto_interno_calc is not none else 'N/A' }}
+                                            {% else %}
+                                                {{ comp_sel.cantidad_final_producto_interno_calc | round(1) if comp_sel.cantidad_final_producto_interno_calc is not none else 'N/A' }}
+                                            {% endif %}
+                                            {{ comp_sel.opcion_componente_elegida.producto_interno_ref.unidad_medida_base if comp_sel.opcion_componente_elegida.producto_interno_ref else comp_sel.opcion_componente_elegida.unidad_consumo_base }})
+                                        </span>
+                                    </li>
+                                {% endfor %}
+                                </ul>
+                                {% else %}
+                                <p class="componentes-display-none"><em>Este ítem no tiene componentes detallados o es un servicio personalizado.</em></p>
+                                {% endif %}
+                                 {# Inputs ocultos para los componentes seleccionados de este ítem #}
+                                {% for comp_idx, comp_sel in enumerate(item_cot.componentes_seleccionados) %}
+                                    <input type="hidden" name="items[{{ item_cot_idx }}][componentes][{{ comp_idx }}][id_opcion_componente]" value="{{ comp_sel.id_opcion_componente }}">
+                                    <input type="hidden" name="items[{{ item_cot_idx }}][componentes][{{ comp_idx }}][cantidad_opcion_solicitada_cliente]" value="{{ comp_sel.cantidad_opcion_solicitada_cliente }}">
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            </div>
+            <p id="noItemsCotizacionMessage" style="text-align:center; padding:10px; {% if not (cotizacion and cotizacion.items_cotizacion) %}display:block;{% else %}display:none;{% endif %}">
+                Aún no has añadido ítems a esta cotización. Configura un servicio detallado arriba y añádelo.
+            </p>
+        </fieldset>
+
+        {# --- Sección 3: Costos Logísticos y Totales --- #}
+        <fieldset class="form-section">
+            <legend><h4>Costos Logísticos y Totales de la Cotización</h4></legend>
+            <div class="form-grid-3col">
+                <div class="form-group">
+                    <label for="monto_costos_logisticos">Costos Logísticos Adicionales ($):</label>
+                    <input type="number" step="0.01" name="monto_costos_logisticos" id="monto_costos_logisticos"
+                           value="{{ request.form.get('monto_costos_logisticos', '{:.2f}'.format(cotizacion.monto_costos_logisticos|float if cotizacion and cotizacion.monto_costos_logisticos is not none else (proyecto.costo_transporte_estimado or 0)|float + (proyecto.costo_viaticos_estimado or 0)|float + (proyecto.costo_hospedaje_estimado or 0)|float)) }}"
+                           min="0">
+                </div>
+                <div class="form-group">
+                    <label for="monto_descuento_global">Descuento Global ($):</label>
+                    <input type="number" step="0.01" name="monto_descuento_global" id="monto_descuento_global"
+                           value="{{ request.form.get('monto_descuento_global', '{:.2f}'.format(cotizacion.monto_descuento_global|float) if cotizacion and cotizacion.monto_descuento_global is not none else '0.00') }}"
+                           min="0">
+                </div>
+                <div class="form-group">
+                    <label for="monto_impuestos">Impuestos (ej. IVA) ($):</label>
+                    <input type="number" step="0.01" name="monto_impuestos" id="monto_impuestos"
+                           value="{{ request.form.get('monto_impuestos', '{:.2f}'.format(cotizacion.monto_impuestos|float) if cotizacion and cotizacion.monto_impuestos is not none else '0.00') }}"
+                           min="0">
+                </div>
+            </div>
+            <hr style="margin: 20px 0;">
+            <div class="resumen-totales" style="text-align: right; font-size: 1.1em;">
+                <p>Subtotal Servicios/Productos: <strong id="displaySubtotalServicios">$0.00</strong></p>
+                <p>Subtotal General (con Logística): <strong id="displaySubtotalGeneral">$0.00</strong></p>
+                <p style="color: var(--color-peligro);">Menos Descuento Global: <strong id="displayDescuentoGlobal">-$0.00</strong></p>
+                <p>Más Impuestos: <strong id="displayImpuestos">+$0.00</strong></p>
+                <h4 style="margin-top:10px; font-size: 1.3em;">TOTAL COTIZADO: <strong id="displayTotalCotizado" style="color: var(--color-acento-secundario);">$0.00</strong></h4>
+            </div>
+        </fieldset>
+
+        {# --- Sección 4: Términos y Notas --- #}
+         <fieldset class="form-section">
+            <legend><h4>Términos, Condiciones y Notas Adicionales</h4></legend>
+            <div class="form-group">
+                <label for="terminos_condiciones">Términos y Condiciones:</label>
+                <textarea name="terminos_condiciones" id="terminos_condiciones" rows="4">{{ request.form.get('terminos_condiciones', cotizacion.terminos_condiciones if cotizacion else '') }}</textarea>
+            </div>
+            <div class="form-group">
+                <label for="notas_cotizacion">Notas Internas de la Cotización (no visibles al cliente):</label>
+                <textarea name="notas_cotizacion" id="notas_cotizacion" rows="2">{{ request.form.get('notas_cotizacion', cotizacion.notas_cotizacion if cotizacion else '') }}</textarea>
+            </div>
+        </fieldset>
+
+        <div class="form-actions">
+            <a href="{{ url_for('cotizaciones_bp.vista_listar_cotizaciones_por_proyecto', id_proyecto=proyecto.id_proyecto) }}" class="button button-secondary">Cancelar y Volver al Proyecto</a>
+            <button type="submit" name="accion" value="guardar_borrador" class="button button-secondary">Guardar Borrador</button>
+            <button type="submit" name="accion" value="guardar_finalizar" class="button button-primary">
+                {{ 'Actualizar Cotización' if cotizacion and cotizacion.id_cotizacion else 'Finalizar y Guardar Cotización' }}
+            </button>
+        </div>
+    </form>
+
+<style>
+    /* ... (Estilos existentes de configurar_cotizacion.html) ... */
+    .opciones-servicio-container-columnas {
+        display: flex;
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 20px;
+        padding: 15px;
+        border: 1px solid #e0e0e0;
+        border-radius: var(--radio-borde-general);
+        margin-top: 15px;
+        background-color: #fdfdfd;
+    }
+    .grupo-columna {
+        flex-basis: 280px;
+        flex-grow: 1;
+        padding: 15px;
+        border: 1px solid #d1d5db;
+        border-radius: var(--radio-borde-general);
+        background-color: #ffffff;
+        box-shadow: var(--sombra-caja-ligera);
+    }
+    .grupo-columna h6 {
+        font-size: 1.05em;
+        font-weight: 600;
+        color: var(--color-texto-principal);
+        margin-top: 0;
+        margin-bottom: 12px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid var(--color-borde-sutil);
+    }
+    .grupo-columna .opcion-checkbox-item {
+        display: block;
+        margin-bottom: 10px;
+    }
+    .grupo-columna .opcion-checkbox-item label {
+        font-size: 0.9em;
+        color: var(--color-texto-secundario);
+        display: flex;
+        align-items: center;
+        cursor: pointer;
+    }
+    .grupo-columna .opcion-checkbox-item input[type="checkbox"] {
+        margin-right: 8px;
+        height: 16px;
+        width: 16px;
+    }
+    .grupo-columna .opcion-checkbox-item input[type="checkbox"]:disabled + span {
+        color: #b0b0b0;
+        text-decoration: line-through;
+    }
+    .grupo-columna .opcion-checkbox-item label:has(input[type="checkbox"]:disabled) {
+        cursor: not-allowed;
+        opacity: 0.6;
+    }
+    .subtle-text { font-size: 0.9em; color: var(--color-texto-secundario); line-height: 1.5; }
+
+    /* Estilos para la tarjeta de ítem de cotización */
+    .item-cotizacion-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px; /* Aumentado para más espacio */
+        padding-bottom: 10px;
+        border-bottom: 1px solid #eee;
+    }
+    .item-cotizacion-header .item-nombre-display { /* Estilo para el h5 que contiene el input */
+        margin: 0;
+        flex-grow: 1;
+        font-size: 1.1em; /* Tamaño de fuente base para el nombre del servicio */
+        font-weight: 600;
+        color: var(--color-texto-principal);
+    }
+    .input-inline-editable { /* Para el input del nombre del servicio */
+        border: none;
+        background-color: transparent;
+        padding: 2px 5px; /* Pequeño padding para que no se vea pegado */
+        font-size: inherit; /* Hereda de .item-nombre-display */
+        font-weight: inherit; /* Hereda de .item-nombre-display */
+        color: inherit; /* Hereda de .item-nombre-display */
+        width: calc(100% - 10px); /* Ocupar el espacio disponible menos padding */
+        box-shadow: none; /* Quitar sombra si la tiene por defecto */
+    }
+    .input-inline-editable:focus {
+        background-color: #f0f8ff; /* Un fondo sutil al enfocar */
+        border: 1px solid var(--color-borde-input);
+        box-shadow: none;
+    }
+    .button.button-danger-small.remove-item-cotizacion-btn { /* Asegurar que el botón de eliminar use las variables de color */
+        background-color: var(--color-peligro);
+        color: white;
+        border: 1px solid var(--color-peligro);
+        padding: 6px 12px; /* Ajustar padding si es necesario */
+        font-size: 0.85em;
+    }
+    .button.button-danger-small.remove-item-cotizacion-btn:hover {
+        background-color: #c82333; /* Un rojo más oscuro para hover */
+        border-color: #bd2130;
+    }
+
+
+    /* Estilos para la visualización de componentes en el ítem de cotización */
+    .componentes-seleccionados-display-container {
+        margin-top: 15px;
+        padding: 12px 15px; /* Ajustado padding */
+        background-color: #f8f9fa;
+        border: 1px solid #e9ecef;
+        border-radius: var(--radio-borde-general);
+        font-size: 0.9em;
+    }
+    .componentes-display-titulo {
+        display: block;
+        font-weight: 600;
+        color: var(--color-texto-principal);
+        margin-bottom: 8px;
+        font-size: 0.95em; /* Un poco más grande */
+    }
+    .componentes-display-lista {
+        list-style-type: none;
+        padding-left: 0;
+        margin-bottom: 0;
+    }
+    .componentes-display-item {
+        padding: 5px 0; /* Más espaciado vertical */
+        color: var(--color-texto-secundario);
+        border-bottom: 1px dotted #e0e0e0;
+        display: flex; /* Para alinear nombre y cantidad */
+        justify-content: space-between; /* Para separar nombre y cantidad */
+        align-items: center;
+    }
+    .componentes-display-item:last-child {
+        border-bottom: none;
+    }
+    .componente-cantidad-display {
+        font-size: 0.9em;
+        color: #555; /* Un poco más oscuro */
+        background-color: #e9ecef; /* Fondo para la cantidad */
+        padding: 2px 6px;
+        border-radius: 4px;
+    }
+    .componentes-display-none {
+        color: #777;
+        font-style: italic;
+        padding: 5px 0;
+    }
+</style>
+
+<script>
+// Lógica JS para selectores dependientes y carga de opciones
+document.addEventListener('DOMContentLoaded', function() {
+    const selectTipoServicio = document.getElementById('select_tipo_servicio_base');
+    const selectNivelPaquete = document.getElementById('select_nivel_paquete');
+    const selectNivelPerfil = document.getElementById('select_nivel_perfil');
+    const infoVarianteDiv = document.getElementById('info_variante_seleccionada');
+    const nombreVarianteDisplay = document.getElementById('nombre_variante_display');
+    const idVarianteDisplay = document.getElementById('id_variante_display');
+    const contenedorGruposColumnas = document.getElementById('contenedor_grupos_columnas');
+    const accionesServicioConfigurableDiv = document.getElementById('acciones_servicio_configurable');
+    const btnAnadirServicioConfigurado = document.getElementById('btnAnadirServicioConfiguradoComoItem');
+    const itemsCotizacionContainer = document.getElementById('items-cotizacion-container');
+    const noItemsMessage = document.getElementById('noItemsCotizacionMessage');
+    let itemCotizacionIndex = document.querySelectorAll('#items-cotizacion-container .item-cotizacion-card').length;
+    let currentConfiguredVariant = null;
+    let currentConfiguredVariantEstructura = null;
+
+    function populateSelect(selectElement, options, placeholder) {
+        selectElement.innerHTML = `<option value="">${placeholder}</option>`;
+        options.forEach(option => {
+            const value = typeof option === 'object' ? option.id : option;
+            const text = typeof option === 'object' ? option.nombre : option;
+            selectElement.add(new Option(text, value));
+        });
+        selectElement.disabled = false;
+    }
+
+    if (selectTipoServicio) {
+        selectTipoServicio.addEventListener('change', async function() {
+            const tipoBaseId = this.value;
+            selectNivelPaquete.innerHTML = '<option value="">-- Selecciona Paquete --</option>';
+            selectNivelPaquete.disabled = true;
+            selectNivelPerfil.innerHTML = '<option value="">-- Selecciona Perfil --</option>';
+            selectNivelPerfil.disabled = true;
+            contenedorGruposColumnas.style.display = 'none';
+            contenedorGruposColumnas.innerHTML = '';
+            infoVarianteDiv.style.display = 'none';
+            accionesServicioConfigurableDiv.style.display = 'none';
+            currentConfiguredVariant = null;
+            currentConfiguredVariantEstructura = null;
+
+            if (tipoBaseId) {
+                try {
+                    const response = await fetch(`{{ url_for('admin_servicios_bp.api_get_niveles_paquete') }}?id_tipo_base=${tipoBaseId}`);
+                    if (!response.ok) throw new Error('Error al cargar paquetes');
+                    const paquetes = await response.json();
+                    populateSelect(selectNivelPaquete, paquetes, '-- Selecciona Paquete --');
+                } catch (error) {
+                    console.error("Error fetching paquetes:", error);
+                }
+            }
+        });
+    }
+
+    if (selectNivelPaquete) {
+        selectNivelPaquete.addEventListener('change', async function() {
+            const tipoBaseId = selectTipoServicio.value;
+            const paqueteNombre = this.value;
+            selectNivelPerfil.innerHTML = '<option value="">-- Selecciona Perfil --</option>';
+            selectNivelPerfil.disabled = true;
+            contenedorGruposColumnas.style.display = 'none';
+            contenedorGruposColumnas.innerHTML = '';
+            infoVarianteDiv.style.display = 'none';
+            accionesServicioConfigurableDiv.style.display = 'none';
+            currentConfiguredVariant = null;
+            currentConfiguredVariantEstructura = null;
+
+            if (tipoBaseId && paqueteNombre) {
+                try {
+                    const response = await fetch(`{{ url_for('admin_servicios_bp.api_get_niveles_perfil') }}?id_tipo_base=${tipoBaseId}&paquete=${encodeURIComponent(paqueteNombre)}`);
+                    if (!response.ok) throw new Error('Error al cargar perfiles');
+                    const perfiles = await response.json();
+                    populateSelect(selectNivelPerfil, perfiles, '-- Selecciona Perfil --');
+                } catch (error) {
+                    console.error("Error fetching perfiles:", error);
+                }
+            }
+        });
+    }
+
+    if (selectNivelPerfil) {
+        selectNivelPerfil.addEventListener('change', async function() {
+            const tipoBaseId = selectTipoServicio.value;
+            const paqueteNombre = selectNivelPaquete.value;
+            const perfilNombre = this.value;
+            contenedorGruposColumnas.style.display = 'none';
+            contenedorGruposColumnas.innerHTML = '';
+            infoVarianteDiv.style.display = 'none';
+            accionesServicioConfigurableDiv.style.display = 'none';
+            currentConfiguredVariant = null;
+            currentConfiguredVariantEstructura = null;
+
+            if (tipoBaseId && paqueteNombre && perfilNombre) {
+                try {
+                    const response = await fetch(`{{ url_for('admin_servicios_bp.api_buscar_variante_por_niveles') }}?id_tipo_base=${tipoBaseId}&paquete=${encodeURIComponent(paqueteNombre)}&perfil=${encodeURIComponent(perfilNombre)}`);
+                    if (!response.ok) throw new Error('Variante no encontrada o error');
+                    const varianteData = await response.json();
+
+                    if (varianteData && varianteData.id_variante_config) {
+                        currentConfiguredVariant = varianteData;
+                        nombreVarianteDisplay.textContent = varianteData.nombre_variante;
+                        idVarianteDisplay.textContent = varianteData.id_variante_config;
+                        infoVarianteDiv.style.display = 'block';
+                        cargarEstructuraVariante(varianteData.id_variante_config);
+                    } else {
+                        infoVarianteDiv.innerHTML = '<p class="text-red-500">No se encontró una variante de servicio para esta combinación.</p>';
+                        infoVarianteDiv.style.display = 'block';
+                    }
+                } catch (error) {
+                    console.error("Error buscando variante:", error);
+                    infoVarianteDiv.innerHTML = `<p class="text-red-500">Error al buscar variante: ${error.message}</p>`;
+                    infoVarianteDiv.style.display = 'block';
+                }
+            }
+        });
+    }
+
+    async function cargarEstructuraVariante(idVariante) {
+        try {
+            const response = await fetch(`{{ url_for('admin_servicios_bp.api_get_estructura_variante') }}?id_variante_config=${idVariante}`);
+            if (!response.ok) throw new Error('Error al cargar estructura de la variante');
+            currentConfiguredVariantEstructura = await response.json();
+
+            renderizarGruposEnColumnas(currentConfiguredVariantEstructura.grupos);
+            accionesServicioConfigurableDiv.style.display = 'block';
+            contenedorGruposColumnas.style.display = 'flex';
+        } catch (error) {
+            console.error("Error cargando estructura variante:", error);
+            contenedorGruposColumnas.innerHTML = `<p class="text-red-500">Error al cargar opciones: ${error.message}</p>`;
+            contenedorGruposColumnas.style.display = 'block';
+        }
+    }
+
+    function renderizarGruposEnColumnas(grupos) {
+        contenedorGruposColumnas.innerHTML = '';
+        if (!grupos || grupos.length === 0) {
+            contenedorGruposColumnas.innerHTML = '<p>Esta variante no tiene grupos de componentes configurados.</p>';
+            return;
+        }
+
+        grupos.forEach(grupo => {
+            const divColumnaGrupo = document.createElement('div');
+            divColumnaGrupo.classList.add('grupo-columna');
+            divColumnaGrupo.dataset.idGrupo = grupo.id_grupo_config;
+            divColumnaGrupo.dataset.opcionesPermitidas = grupo.opciones_permitidas_seleccionables;
+
+            const h6 = document.createElement('h6');
+            h6.textContent = `${grupo.nombre_grupo} (Elige ${grupo.opciones_permitidas_seleccionables})`;
+            divColumnaGrupo.appendChild(h6);
+
+            if (grupo.opciones_disponibles && grupo.opciones_disponibles.length > 0) {
+                grupo.opciones_disponibles.forEach(opcion => {
+                    const divOpcion = document.createElement('div');
+                    divOpcion.classList.add('opcion-checkbox-item');
+                    const label = document.createElement('label');
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.name = `grupo_opcion_${grupo.id_grupo_config}`;
+                    checkbox.value = opcion.id_opcion_componente;
+                    checkbox.dataset.nombreOpcion = opcion.nombre_display_cliente;
+                    checkbox.dataset.cantidadConsumoBase = opcion.cantidad_consumo_base;
+                    checkbox.dataset.unidadConsumoBase = opcion.unidad_consumo_base;
+                    checkbox.dataset.idProductoInterno = opcion.producto_info ? opcion.producto_info.id_producto_interno : '';
+                    checkbox.dataset.unidadProductoBase = opcion.producto_info ? opcion.producto_info.unidad_medida_base : opcion.unidad_consumo_base;
+                    checkbox.dataset.productoEsIndivisible = opcion.producto_info ? opcion.producto_info.es_indivisible : (opcion.unidad_consumo_base === 'pieza');
+
+
+                    const span = document.createElement('span');
+                    span.textContent = ` ${opcion.nombre_display_cliente} (${opcion.cantidad_consumo_base} ${opcion.unidad_consumo_base})`;
+                    label.appendChild(checkbox);
+                    label.appendChild(span);
+                    divOpcion.appendChild(label);
+                    divColumnaGrupo.appendChild(divOpcion);
+                });
+            } else {
+                divColumnaGrupo.innerHTML += '<p class="text-xs text-gray-500">No hay opciones en este grupo.</p>';
+            }
+            contenedorGruposColumnas.appendChild(divColumnaGrupo);
+        });
+        aplicarLogicaCheckboxesDinamicos();
+    }
+
+    function aplicarLogicaCheckboxesDinamicos() {
+        document.querySelectorAll('#contenedor_grupos_columnas .grupo-columna').forEach(grupoDiv => {
+            const checkboxesEnGrupo = Array.from(grupoDiv.querySelectorAll('input[type="checkbox"]'));
+            const maxSeleccionables = parseInt(grupoDiv.dataset.opcionesPermitidas);
+            checkboxesEnGrupo.forEach(checkbox => {
+                checkbox.addEventListener('change', () => {
+                    const seleccionadosActual = checkboxesEnGrupo.filter(cb => cb.checked).length;
+                    if (seleccionadosActual >= maxSeleccionables) {
+                        checkboxesEnGrupo.forEach(cb => {
+                            if (!cb.checked) {
+                                cb.disabled = true;
+                                cb.closest('label').classList.add('opacity-60', 'cursor-not-allowed');
+                            }
+                        });
+                    } else {
+                        checkboxesEnGrupo.forEach(cb => {
+                            cb.disabled = false;
+                            cb.closest('label').classList.remove('opacity-60', 'cursor-not-allowed');
+                        });
+                    }
+                });
+            });
+        });
+    }
+
+    if (btnAnadirServicioConfigurado) {
+        btnAnadirServicioConfigurado.addEventListener('click', function() {
+            if (!currentConfiguredVariant || !currentConfiguredVariant.id_variante_config || !currentConfiguredVariantEstructura) {
+                alert("Por favor, selecciona y configura un servicio completamente primero (Tipo, Paquete, Perfil).");
+                return;
+            }
+
+            const numeroInvitados = parseInt(document.getElementById('numero_invitados_cotizacion').value) || 1;
+            const componentesSeleccionadosParaItem = [];
+            let detalleHtmlComponentes = '';
+            const totalGruposDisponiblesEnVariante = currentConfiguredVariantEstructura.grupos.length;
+            let numeroDeGruposConSeleccionesEnVariante = 0;
+
+            currentConfiguredVariantEstructura.grupos.forEach(grupo => {
+                const grupoDiv = contenedorGruposColumnas.querySelector(`.grupo-columna[data-id-grupo="${grupo.id_grupo_config}"]`);
+                if (grupoDiv && grupoDiv.querySelectorAll('input[type="checkbox"]:checked').length > 0) {
+                    numeroDeGruposConSeleccionesEnVariante++;
+                }
+            });
+
+            let factorAjusteGlobalDeGrupos = 1.0;
+            if (numeroDeGruposConSeleccionesEnVariante > 0 && numeroDeGruposConSeleccionesEnVariante < totalGruposDisponiblesEnVariante) {
+                factorAjusteGlobalDeGrupos = totalGruposDisponiblesEnVariante / numeroDeGruposConSeleccionesEnVariante;
+            }
+
+            currentConfiguredVariantEstructura.grupos.forEach(grupo => {
+                const grupoDiv = contenedorGruposColumnas.querySelector(`.grupo-columna[data-id-grupo="${grupo.id_grupo_config}"]`);
+                if (!grupoDiv) return;
+                const opcionesPermitidasEnGrupo = parseInt(grupoDiv.dataset.opcionesPermitidas);
+                const checkboxesSeleccionados = Array.from(grupoDiv.querySelectorAll('input[type="checkbox"]:checked'));
+                const numOpcionesRealmenteElegidasEnGrupo = checkboxesSeleccionados.length;
+                if (numOpcionesRealmenteElegidasEnGrupo === 0) return;
+                const factorAjusteIntraGrupo = opcionesPermitidasEnGrupo / numOpcionesRealmenteElegidasEnGrupo;
+
+                checkboxesSeleccionados.forEach(chk => {
+                    const opcionOriginal = grupo.opciones_disponibles.find(o => o.id_opcion_componente == chk.value);
+                    if (!opcionOriginal) return;
+                    let cantidadConsumoBase = parseFloat(opcionOriginal.cantidad_consumo_base);
+                    let cantidadAjustadaPorPersonaBruta = cantidadConsumoBase * factorAjusteIntraGrupo * factorAjusteGlobalDeGrupos;
+                    let cantidadAjustadaPersonaFinal;
+                    let unidadFinal = opcionOriginal.producto_info ? opcionOriginal.producto_info.unidad_medida_base : opcionOriginal.unidad_consumo_base;
+                    let esIndivisible = opcionOriginal.producto_info ? opcionOriginal.producto_info.es_indivisible : (unidadFinal === 'pieza');
+
+                    if (esIndivisible) {
+                        cantidadAjustadaPersonaFinal = Math.ceil(cantidadAjustadaPorPersonaBruta);
+                    } else {
+                        cantidadAjustadaPersonaFinal = Math.ceil(cantidadAjustadaPorPersonaBruta / 5) * 5;
+                         if (cantidadAjustadaPersonaFinal < cantidadAjustadaPorPersonaBruta) {
+                             cantidadAjustadaPersonaFinal = Math.ceil(cantidadAjustadaPorPersonaBruta / 5.000001) * 5;
+                        }
+                    }
+                    let cantidadTotalEventoFinal = cantidadAjustadaPersonaFinal * numeroInvitados;
+                    let cantFinalDisplay = esIndivisible ? cantidadTotalEventoFinal.toFixed(0) : (cantidadTotalEventoFinal % 1 === 0 ? cantidadTotalEventoFinal.toFixed(0) : cantidadTotalEventoFinal.toFixed(1));
+
+                    detalleHtmlComponentes += `<li class="componentes-display-item">${opcionOriginal.nombre_display_cliente} <span class="componente-cantidad-display">(Cant: ${cantFinalDisplay} ${unidadFinal})</span></li>`;
+                    componentesSeleccionadosParaItem.push({
+                        id_opcion_componente: opcionOriginal.id_opcion_componente,
+                        cantidad_opcion_solicitada_cliente: "1",
+                    });
+                });
+            });
+
+            if (componentesSeleccionadosParaItem.length === 0) {
+                alert("Debes seleccionar al menos una opción de algún grupo para añadir el servicio.");
+                return;
+            }
+
+            itemCotizacionIndex++;
+            const nuevoItemIdx = itemCotizacionIndex - 1;
+            const itemHtml = `
+                <div class="item-cotizacion-card" data-item-idx="${nuevoItemIdx}">
+                    <input type="hidden" name="items[${nuevoItemIdx}][id_item_cotizacion]" value="">
+                    <input type="hidden" name="items[${nuevoItemIdx}][id_variante_servicio_config]" value="${currentConfiguredVariant.id_variante_config}">
+                    <div class="item-cotizacion-header">
+                        <h5 class="item-nombre-display">
+                            <input type="text" name="items[${nuevoItemIdx}][nombre_display_servicio]"
+                                   value="${currentConfiguredVariant.nombre_variante}" class="input-inline-editable" required>
+                        </h5>
+                        <button type="button" class="button button-danger-small remove-item-cotizacion-btn">Eliminar Servicio</button>
+                    </div>
+                    <div class="form-grid-2col">
+                        <div class="form-group">
+                            <label>Cantidad del Servicio:</label>
+                            <input type="number" name="items[${nuevoItemIdx}][cantidad_servicio]" value="1.0" min="0.1" step="any" class="input-cantidad-servicio">
+                        </div>
+                        <div class="form-group">
+                            <label>Precio Total Ítem (se calculará):</label>
+                             <input type="number" step="0.01" name="items[${nuevoItemIdx}][precio_total_item_calculado]"
+                                   value="0.00" class="input-precio-item" readonly style="font-weight:bold; background-color:#e9ecef;">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Descripción (para el cliente):</label>
+                        <textarea name="items[${nuevoItemIdx}][descripcion_servicio_cotizado]" rows="2" class="input-descripcion-servicio"></textarea>
+                    </div>
+                    <div class="componentes-seleccionados-display-container">
+                        <strong class="componentes-display-titulo">Componentes Incluidos:</strong>
+                        ${detalleHtmlComponentes ? `<ul class="componentes-display-lista">${detalleHtmlComponentes}</ul>` : '<p class="componentes-display-none"><em>No se seleccionaron componentes específicos.</em></p>'}
+                        ${componentesSeleccionadosParaItem.map((comp, compIdx) => `
+                            <input type="hidden" name="items[${nuevoItemIdx}][componentes][${compIdx}][id_opcion_componente]" value="${comp.id_opcion_componente}">
+                            <input type="hidden" name="items[${nuevoItemIdx}][componentes][${compIdx}][cantidad_opcion_solicitada_cliente]" value="${comp.cantidad_opcion_solicitada_cliente}">
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+            itemsCotizacionContainer.insertAdjacentHTML('beforeend', itemHtml);
+            if(noItemsMessage) noItemsMessage.style.display = 'none';
+
+            selectTipoServicio.value = '';
+            selectTipoServicio.dispatchEvent(new Event('change'));
+            currentConfiguredVariant = null;
+            currentConfiguredVariantEstructura = null;
+            calcularTotalesGenerales();
+        });
+    }
+
+    if (itemsCotizacionContainer) {
+        itemsCotizacionContainer.addEventListener('click', function(event) {
+            if (event.target.classList.contains('remove-item-cotizacion-btn')) {
+                event.target.closest('.item-cotizacion-card').remove();
+                let currentIdx = 0;
+                itemsCotizacionContainer.querySelectorAll('.item-cotizacion-card').forEach(card => {
+                    card.dataset.itemIdx = currentIdx;
+                    card.querySelectorAll('[name^="items["]').forEach(input => {
+                        const oldName = input.name;
+                        const newName = oldName.replace(/items\[\d+\]/, `items[${currentIdx}]`);
+                        input.name = newName;
+                    });
+                    currentIdx++;
+                });
+                itemCotizacionIndex = currentIdx;
+
+                if (itemsCotizacionContainer.children.length === 0 && noItemsMessage) {
+                    noItemsMessage.style.display = 'block';
+                }
+                calcularTotalesGenerales();
+            }
+        });
+    }
+
+    const formCotizacion = document.getElementById('formConfigurarCotizacion');
+    function calcularTotalesGenerales() {
+        let subtotalServicios = 0;
+        formCotizacion.querySelectorAll('.input-precio-item').forEach(input => {
+            subtotalServicios += parseFloat(input.value) || 0;
+        });
+        document.getElementById('displaySubtotalServicios').textContent = '$' + subtotalServicios.toFixed(2);
+
+        const costosLogisticos = parseFloat(document.getElementById('monto_costos_logisticos').value) || 0;
+        const subtotalGeneral = subtotalServicios + costosLogisticos;
+        document.getElementById('displaySubtotalGeneral').textContent = '$' + subtotalGeneral.toFixed(2);
+
+        const descuentoGlobal = parseFloat(document.getElementById('monto_descuento_global').value) || 0;
+        document.getElementById('displayDescuentoGlobal').textContent = '-$' + descuentoGlobal.toFixed(2);
+
+        const impuestos = parseFloat(document.getElementById('monto_impuestos').value) || 0;
+        document.getElementById('displayImpuestos').textContent = '+$' + impuestos.toFixed(2);
+
+        const totalCotizado = subtotalGeneral - descuentoGlobal + impuestos;
+        document.getElementById('displayTotalCotizado').textContent = '$' + totalCotizado.toFixed(2);
+    }
+
+    if (formCotizacion) {
+        formCotizacion.addEventListener('input', function(event) {
+            if (event.target.classList.contains('input-precio-item') ||
+                event.target.id === 'monto_costos_logisticos' ||
+                event.target.id === 'monto_descuento_global' ||
+                event.target.id === 'monto_impuestos' ||
+                event.target.classList.contains('input-cantidad-servicio')) {
+                calcularTotalesGenerales();
+            }
+        });
+        calcularTotalesGenerales();
+    }
+});
+</script>
+{% endblock %}

@@ -5,20 +5,28 @@
         <td>{{ producto.sku or '-' }}</td>
         <td>{{ producto.nombre_producto }}</td>
         <td>
-            {% if producto.subcategoria and producto.subcategoria.categoria %}
-                {{ producto.subcategoria.categoria.nombre_categoria }}
-            {% elif producto.categoria_directa %}
-                {{ producto.categoria_directa.nombre_categoria }}
+            {# Mostrar Categoría Principal del Producto Interno #}
+            {% if producto.categoria_principal_producto %}
+                {{ producto.categoria_principal_producto.nombre_categoria }}
+            {% elif producto.subcategoria_especifica_producto and producto.subcategoria_especifica_producto.categoria_contenedora %}
+                {{ producto.subcategoria_especifica_producto.categoria_contenedora.nombre_categoria }}
             {% else %}
                 -
             {% endif %}
         </td>
-        <td>{{ producto.subcategoria.nombre_subcategoria if producto.subcategoria else '-' }}</td>
+        <td>
+            {# Mostrar Subcategoría Específica del Producto Interno #}
+            {% if producto.subcategoria_especifica_producto %}
+                {{ producto.subcategoria_especifica_producto.nombre_subcategoria }}
+            {% else %}
+                -
+            {% endif %}
+        </td>
         <td class="description-cell" title="{{ producto.descripcion_completa_generada or '' }}">
             <div>{{ producto.descripcion_completa_generada or '-' }}</div>
         </td>
-        <td>{{ producto.presentacion or '-' }}</td>
-        
+        <td>{{ producto.presentacion_compra or '-' }}</td> {# Corregido de producto.presentacion #}
+
         {# Nuevas Columnas de Precios #}
         <td class="price-info-cell">
             {% if producto.info_precios and producto.info_precios.precio_min is not none %}
@@ -42,11 +50,18 @@
                 -
             {% endif %}
         </td>
-        <td style="text-align: center;">{{ (aumento_mensual_est * 100) | round(2) }}%</td>
+        <td style="text-align: center;">
+            {% if aumento_mensual_est is defined and aumento_mensual_est is not none %} {# Asegurar que la variable exista #}
+                {{ (aumento_mensual_est * 100) | round(2) }}%
+            {% else %}
+                N/A
+            {% endif %}
+        </td>
 
         <td>{{ 'Sí' if producto.activo else 'No' }}</td>
         <td class="actions">
-            <a href="{{ url_for('vista_editar_producto', id_producto=producto.id_producto) }}" class="button-edit-black">Editar</a>
+            {# CORREGIDO el url_for aquí #}
+            <a href="{{ url_for('productos_bp.vista_editar_producto', id_producto=producto.id_producto) }}" class="button-edit-black">Editar</a>
         </td>
     </tr>
 {% else %}

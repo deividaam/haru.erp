@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block content %}
+    {# El título de la página se establece en app.py, ej: "Tipos de Servicio Base" #}
+
+    <div class="content-actions-bar">
+        {# CORREGIDO el url_for aquí #}
+        <a href="{{ url_for('admin_servicios_bp.admin_vista_crear_editar_tipo_servicio_base') }}" class="button button-primary">Nuevo Tipo de Servicio</a>
+    </div>
+
+    {% if tipos_servicio_base %}
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th style="width: 50px; text-align: left;">ID</th>
+                        <th style="text-align: left;">Nombre del Tipo de Servicio</th>
+                        <th style="text-align: left;">Descripción</th>
+                        <th style="width: 100px; text-align: center;">Activo</th>
+                        <th style="width: 230px; text-align: center;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for tipo_servicio in tipos_servicio_base %}
+                        <tr>
+                            <td>{{ tipo_servicio.id_tipo_servicio_base }}</td>
+                            <td class="nombre-servicio-texto">
+                                {{ tipo_servicio.nombre }}
+                            </td>
+                            <td style="white-space: normal; min-width: 250px;">
+                                {{ tipo_servicio.descripcion or '-' }}
+                            </td>
+                            <td style="text-align:center;" class="estado-activo-texto">
+                                {% if tipo_servicio.activo %}Sí{% else %}No{% endif %}
+                            </td>
+                            <td class="actions" style="text-align: center;">
+                                {# CORREGIDO el url_for aquí #}
+                                <a href="{{ url_for('admin_servicios_bp.admin_vista_crear_editar_tipo_servicio_base', id_tipo_servicio_base=tipo_servicio.id_tipo_servicio_base) }}" class="button-edit-black">Editar</a>
+                                {# CORREGIDO el url_for aquí #}
+                                <a href="{{ url_for('admin_servicios_bp.admin_vista_listar_variantes_por_tipo', id_tipo_servicio_base=tipo_servicio.id_tipo_servicio_base) }}" class="button-edit-black">Ver Variantes</a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div style="text-align: center; padding: 20px; background-color: #f9f9f9; border-radius: var(--radio-borde-general);">
+            <p style="font-size: 1.1em; color: var(--color-texto-secundario);">No hay tipos de servicio base definidos todavía.</p>
+            <p style="margin-top: 15px;">
+                {# CORREGIDO el url_for aquí #}
+                <a href="{{ url_for('admin_servicios_bp.admin_vista_crear_editar_tipo_servicio_base') }}" class="button button-primary">Crea el Primer Tipo de Servicio</a>
+            </p>
+        </div>
+    {% endif %}
+
+<style>
+    .content-actions-bar {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+
+    .data-table th, .data-table td {
+        vertical-align: middle; /* Centra verticalmente el contenido de las celdas */
+    }
+
+    /* Estilo para el texto del nombre del servicio */
+    .nombre-servicio-texto {
+        color: var(--color-texto-principal); /* #141414 */
+        font-weight: 500; /* O normal si prefieres menos énfasis */
+    }
+
+    /* Estilo para el texto del estado "Activo" */
+    .estado-activo-texto {
+        color: var(--color-texto-principal); /* #141414 */
+    }
+
+    .actions a.button-edit-black {
+        margin: 0 4px; /* Espacio entre botones */
+        /* La clase button-edit-black ya debe estar definida en tu style.css global
+           para tener fondo --color-texto-principal y texto blanco.
+        */
+    }
+    .actions a.button-edit-black:hover {
+        opacity: 0.85; /* Efecto hover estándar para botones */
+    }
+
+</style>
+{% endblock %}
