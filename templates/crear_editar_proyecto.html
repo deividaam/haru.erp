@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+
+{% block content %}
+    {# El título de la página se establece en app.py y se muestra en el content-header de base.html #}
+    {# Ej: "Nuevo Proyecto" o "Editar Proyecto: Nombre del Proyecto" #}
+
+    <form method="POST" class="styled-form" id="formProyecto">
+        {# Sección de Información General del Proyecto #}
+        <fieldset class="form-section">
+            <legend><h4>Información General del Evento</h4></legend>
+
+            <div class="form-group">
+                <label for="identificador_evento">Identificador Único del Evento: <span class="required-indicator">*</span></label>
+                <input type="text" name="identificador_evento" id="identificador_evento"
+                       value="{{ request.form.get('identificador_evento', proyecto.identificador_evento if not es_nuevo and proyecto else '') }}"
+                       required {% if not es_nuevo and proyecto.identificador_evento %} readonly {% endif %}>
+                <small class="form-text text-muted">Ej: "graduacion_valeria_2024", "boda_ana_y_luis". Sin espacios ni caracteres especiales.</small>
+            </div>
+
+            <div class="form-group">
+                <label for="nombre_evento">Nombre del Evento: <span class="required-indicator">*</span></label>
+                <input type="text" name="nombre_evento" id="nombre_evento"
+                       value="{{ request.form.get('nombre_evento', proyecto.nombre_evento if not es_nuevo and proyecto else '') }}"
+                       required>
+            </div>
+
+            <div class="form-grid-2col">
+                <div class="form-group">
+                    <label for="fecha_evento">Fecha del Evento: <span class="required-indicator">*</span></label>
+                    <input type="date" name="fecha_evento" id="fecha_evento"
+                           value="{{ request.form.get('fecha_evento', (proyecto.fecha_evento.isoformat() if proyecto.fecha_evento else '') if not es_nuevo and proyecto else (fecha_hoy if fecha_hoy else '')) }}"
+                           required>
+                </div>
+                <div class="form-group">
+                    <label for="numero_invitados">Número de Invitados (Estimado):</label>
+                    <input type="number" name="numero_invitados" id="numero_invitados"
+                           value="{{ request.form.get('numero_invitados', (proyecto.numero_invitados if proyecto.numero_invitados is not none else '') if not es_nuevo and proyecto else '') }}"
+                           min="0">
+                </div>
+            </div>
+        </fieldset>
+
+        {# Sección de Información del Cliente #}
+        <fieldset class="form-section">
+            <legend><h4>Información del Cliente</h4></legend>
+            <div class="form-group">
+                <label for="cliente_nombre">Nombre del Cliente:</label>
+                <input type="text" name="cliente_nombre" id="cliente_nombre"
+                       value="{{ request.form.get('cliente_nombre', proyecto.cliente_nombre if not es_nuevo and proyecto else '') }}">
+            </div>
+            <div class="form-grid-2col">
+                <div class="form-group">
+                    <label for="cliente_telefono">Teléfono del Cliente:</label>
+                    <input type="tel" name="cliente_telefono" id="cliente_telefono"
+                           value="{{ request.form.get('cliente_telefono', proyecto.cliente_telefono if not es_nuevo and proyecto else '') }}">
+                </div>
+                <div class="form-group">
+                    <label for="cliente_email">Email del Cliente:</label>
+                    <input type="email" name="cliente_email" id="cliente_email"
+                           value="{{ request.form.get('cliente_email', proyecto.cliente_email if not es_nuevo and proyecto else '') }}">
+                </div>
+            </div>
+        </fieldset>
+
+        {# Sección de Detalles de Ubicación y Logística #}
+        <fieldset class="form-section">
+            <legend><h4>Detalles de Ubicación y Logística</h4></legend>
+            <div class="form-group">
+                <label for="direccion_evento_autocomplete">Dirección del Evento:</label>
+                <gmp-place-autocomplete
+                    id="direccion_evento_autocomplete"
+                    name="direccion_evento"
+                    placeholder="Comienza a escribir la dirección..."
+                    value="{{ request.form.get('direccion_evento', proyecto.direccion_evento if not es_nuevo and proyecto else '') }}">
+                </gmp-place-autocomplete>
+            </div>
+            <div class="form-group">
+                <label for="tipo_ubicacion">Tipo de Ubicación:</label>
+                {% set default_tipo_ubicacion = 'Local (CDMX y Área Metropolitana)' %}
+                {% if not es_nuevo and proyecto %}
+                    {% set current_tipo_ubicacion = request.form.get('tipo_ubicacion', proyecto.tipo_ubicacion) %}
+                {% else %}
+                    {% set current_tipo_ubicacion = request.form.get('tipo_ubicacion', default_tipo_ubicacion) %}
+                {% endif %}
+                <select name="tipo_ubicacion" id="tipo_ubicacion">
+                    <option value="Local (CDMX y Área Metropolitana)" {% if current_tipo_ubicacion == 'Local (CDMX y Área Metropolitana)' %}selected{% endif %}>Local (CDMX y Área Metropolitana)</option>
+                    <option value="Foráneo (Interior de la República)" {% if current_tipo_ubicacion == 'Foráneo (Interior de la República)' %}selected{% endif %}>Foráneo (Interior de la República)</option>
+                    <option value="Foráneo (Internacional)" {% if current_tipo_ubicacion == 'Foráneo (Internacional)' %}selected{% endif %}>Foráneo (Internacional)</option>
+                    <option value="Otro" {% if current_tipo_ubicacion == 'Otro' %}selected{% endif %}>Otro</option>
+                </select>
+            </div>
+            <div class="form-grid-3col">
+                <div class="form-group">
+                    <label for="costo_transporte_estimado">Costo Transporte Estimado ($):</label>
+                    <input type="number" step="0.01" name="costo_transporte_estimado" id="costo_transporte_estimado"
+                           value="{{ request.form.get('costo_transporte_estimado', ('{:.2f}'.format(proyecto.costo_transporte_estimado|float if proyecto.costo_transporte_estimado is not none else 0.0)) if not es_nuevo and proyecto else '0.00') }}"
+                           min="0">
+                </div>
+                <div class="form-group">
+                    <label for="costo_viaticos_estimado">Costo Viáticos Estimado ($):</label>
+                    <input type="number" step="0.01" name="costo_viaticos_estimado" id="costo_viaticos_estimado"
+                           value="{{ request.form.get('costo_viaticos_estimado', ('{:.2f}'.format(proyecto.costo_viaticos_estimado|float if proyecto.costo_viaticos_estimado is not none else 0.0)) if not es_nuevo and proyecto else '0.00') }}"
+                           min="0">
+                </div>
+                <div class="form-group">
+                    <label for="costo_hospedaje_estimado">Costo Hospedaje Estimado ($):</label>
+                    <input type="number" step="0.01" name="costo_hospedaje_estimado" id="costo_hospedaje_estimado"
+                           value="{{ request.form.get('costo_hospedaje_estimado', ('{:.2f}'.format(proyecto.costo_hospedaje_estimado|float if proyecto.costo_hospedaje_estimado is not none else 0.0)) if not es_nuevo and proyecto else '0.00') }}"
+                           min="0">
+                </div>
+            </div>
+        </fieldset>
+
+        {# Sección de Notas Adicionales #}
+        <fieldset class="form-section">
+            <legend><h4>Notas Adicionales del Proyecto</h4></legend>
+            <div class="form-group">
+                <label for="notas_proyecto">Notas:</label>
+                <textarea name="notas_proyecto" id="notas_proyecto" rows="3">{{ request.form.get('notas_proyecto', proyecto.notas_proyecto if not es_nuevo and proyecto else '') }}</textarea>
+            </div>
+        </fieldset>
+
+        <div class="form-actions">
+            {# CORREGIDO el url_for aquí #}
+            <a href="{{ url_for('proyectos_bp.vista_listar_proyectos') }}" class="button button-secondary">Cancelar</a>
+            <input type="submit" value="{{ 'Guardar Cambios' if not es_nuevo else 'Crear Proyecto' }}" class="button button-primary">
+        </div>
+    </form>
+
+<style>
+    /* Estilos generales del formulario ... */
+    .form-text.text-muted {
+        font-size: 0.8em;
+        color: #6c757d;
+        display: block;
+        margin-top: 4px;
+    }
+    .required-indicator {
+        color: var(--color-peligro);
+        font-weight: bold;
+        margin-left: 2px;
+    }
+    .form-section + .form-section {
+        margin-top: 25px;
+    }
+    gmp-place-autocomplete {
+        width: 100%;
+    }
+    .pac-container {
+        background-color: #FFF;
+        z-index: 1050 !important;
+        border-radius: var(--radio-borde-general);
+        border: 1px solid #CCC;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+        font-family: var(--font-principal);
+    }
+    .pac-item {
+        padding: 8px 12px;
+        font-size: 0.9em;
+        cursor: pointer;
+        border-top: 1px solid #EEE;
+    }
+    .pac-item:first-child { border-top: none; }
+    .pac-item:hover { background-color: #f0f0f0; }
+    .pac-item-query { font-weight: 600; }
+    .pac-icon { display: none; }
+</style>
+
+{# Script de Google Places API - REEMPLAZA TU_API_KEY con tu clave de API real #}
+<script async
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCtxjYNWb7TU7MZJAI4KZF9MEZ1KSyftrg&libraries=places,core&loading=async&callback=initAutocompleteCore">
+</script>
+
+<script>
+    async function initAutocompleteCore() {
+        await google.maps.importLibrary("places");
+        await google.maps.importLibrary("core");
+
+        console.log("Google Maps API (con Places y Core) cargada.");
+        initAutocomplete();
+    }
+
+    function initAutocomplete() {
+        const autocompleteElement = document.getElementById('direccion_evento_autocomplete');
+
+        if (autocompleteElement) {
+            autocompleteElement.country = ['mx'];
+            // autocompleteElement.requestedPlaceFields = ['formattedAddress', 'addressComponents', 'geometry', 'name', 'place_id'];
+
+
+            autocompleteElement.addEventListener('gmp-placechange', () => {
+                const place = autocompleteElement.place;
+                if (!place || !place.id) {
+                    console.warn("El lugar seleccionado no es válido o no se encontró.");
+                    return;
+                }
+
+                console.log("Lugar seleccionado:", place);
+                console.log("Dirección formateada:", place.formattedAddress);
+                console.log("ID del Lugar (Place ID):", place.id);
+
+                if (place.addressComponents) {
+                    place.addressComponents.forEach(component => {
+                        console.log(component.types[0] + ": " + component.longText);
+                    });
+                }
+            });
+        } else {
+            console.error("Elemento 'gmp-place-autocomplete' con ID 'direccion_evento_autocomplete' no encontrado.");
+        }
+    }
+</script>
+{% endblock %}

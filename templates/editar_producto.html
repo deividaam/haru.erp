@@ -1,192 +1,247 @@
 {% extends "base.html" %}
 
 {% block content %}
-    {# El título h2 se elimina. El título principal se muestra en el content-header de base.html 
-       a través de la variable titulo_pagina pasada desde app.py #}
-    
-    <p class="sku-display">SKU: <strong>{{ producto.sku }}</strong> 
-        <span class="sku-note">(El SKU se genera automáticamente y no se puede editar directamente aquí. Cambiar la categoría principal podría afectarlo en una futura implementación.)</span>
+    <p class="sku-display">SKU: <strong>{{ producto.sku or 'N/A' }}</strong>
+        <span class="sku-note">(El SKU se genera automáticamente y no se puede editar directamente aquí. Cambiar la categoría/subcategoría podría afectarlo si la lógica de regeneración de SKU está implementada.)</span>
     </p>
 
-    <form method="POST" class="edit-form">
-        <div class="form-grid">
-            <div class="form-group full-width"> {# Ocupa todo el ancho si es necesario #}
-                <label for="nombre_producto">Nombre del Producto:</label>
-                <input type="text" name="nombre_producto" id="nombre_producto" value="{{ producto.nombre_producto or '' }}" required>
-            </div>
-
-            <div class="form-group">
-                <label>Categoría:</label>
-                <input type="text" value="{{ (producto.subcategoria.categoria.nombre_categoria if producto.subcategoria and producto.subcategoria.categoria else producto.categoria_directa.nombre_categoria) or 'N/A' }}" class="form-control-disabled" disabled>
-            </div>
-            <div class="form-group">
-                <label>Subcategoría:</label>
-                <input type="text" value="{{ producto.subcategoria.nombre_subcategoria if producto.subcategoria else '-' }}" class="form-control-disabled" disabled>
-            </div>
-            
-            <div class="form-group full-width">
-                <label for="descripcion_adicional">Descripción Adicional:</label>
-                <textarea name="descripcion_adicional" id="descripcion_adicional" rows="3">{{ producto.descripcion_adicional or '' }}</textarea>
-            </div>
-
-            <div class="form-group">
-                <label for="presentacion">Presentación:</label>
-                <input type="text" name="presentacion" id="presentacion" value="{{ producto.presentacion or '' }}">
-            </div>
-            <div class="form-group">
-                <label for="cantidad_por_presentacion">Cantidad por Presentación:</label>
-                <input type="text" name="cantidad_por_presentacion" id="cantidad_por_presentacion" value="{{ producto.cantidad_por_presentacion or '' }}">
-            </div>
-            <div class="form-group">
-                <label for="unidad_medida_venta">Unidad de Medida Venta:</label>
-                <input type="text" name="unidad_medida_venta" id="unidad_medida_venta" value="{{ producto.unidad_medida_venta or '' }}">
-            </div>
-
-            <hr class="separator full-width">
-
-            <div class="form-group">
-                <label for="sabor">Sabor:</label>
-                <input type="text" name="sabor" id="sabor" value="{{ producto.sabor or '' }}">
-            </div>
-            <div class="form-group">
-                <label for="color">Color:</label>
-                <input type="text" name="color" id="color" value="{{ producto.color or '' }}">
-            </div>
-            <div class="form-group">
-                <label for="tamano_pulgadas">Tamaño (Pulgadas):</label>
-                <input type="text" name="tamano_pulgadas" id="tamano_pulgadas" value="{{ producto.tamano_pulgadas or '' }}">
-            </div>
-            <div class="form-group">
-                <label for="material">Material:</label>
-                <input type="text" name="material" id="material" value="{{ producto.material or '' }}">
-            </div>
-            <div class="form-group">
-                <label for="dimensiones_capacidad">Dimensiones/Capacidad:</label>
-                <input type="text" name="dimensiones_capacidad" id="dimensiones_capacidad" value="{{ producto.dimensiones_capacidad or '' }}">
-            </div>
-            <div class="form-group">
-                <label for="tema_estilo">Tema/Estilo:</label>
-                <input type="text" name="tema_estilo" id="tema_estilo" value="{{ producto.tema_estilo or '' }}">
-            </div>
-
-            <hr class="separator full-width">
+    <form method="POST" class="styled-form edit-form" id="formEditarProductoUnico">
+        {# Sección de Información General del Producto Interno #}
+        <fieldset class="form-section">
+            <legend><h4>Información General del Producto Interno</h4></legend>
             
             <div class="form-group">
-                <label for="modalidad_servicio">Modalidad Servicio (si aplica):</label>
-                <input type="text" name="modalidad_servicio" id="modalidad_servicio" value="{{ producto.modalidad_servicio or '' }}">
+                <label for="nombre_producto">Nombre del Producto Interno: <span class="required-indicator">*</span></label>
+                <input type="text" name="nombre_producto" id="nombre_producto" value="{{ request.form.get('nombre_producto', producto.nombre_producto or '') }}" required>
+                <small class="form-text text-muted">Ej: "Gomita Panditas Bolsa 1kg Sabor Limón"</small>
+            </div>
+
+            {# Selección de Categoría y Subcategoría #}
+            <div class="form-grid-2col">
+                <div class="form-group">
+                    <label for="id_categoria_principal_producto">Categoría Principal:</label>
+                    <select name="id_categoria_principal_producto" id="id_categoria_principal_producto">
+                        <option value="">-- Selecciona una categoría principal --</option>
+                        {% for cat in categorias_para_select %}
+                            <option value="{{ cat.id_categoria }}"
+                                    data-nombre-categoria="{{ cat.nombre_categoria }}"
+                                    {% if (request.form.get('id_categoria_principal_producto') == cat.id_categoria|string) or (not request.form and producto.id_categoria_principal_producto == cat.id_categoria) %}selected{% endif %}>
+                                {{ cat.nombre_categoria }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="id_subcategoria_especifica_producto">Subcategoría Específica:</label>
+                    <select name="id_subcategoria_especifica_producto" id="id_subcategoria_especifica_producto">
+                        <option value="">-- Selecciona una subcategoría --</option>
+                        {% for subcat in subcategorias_para_select %}
+                             <option value="{{ subcat.id_subcategoria }}"
+                                     data-id-categoria-contenedora="{{ subcat.id_categoria_contenedora or '' }}"
+                                     data-id-subcat-padre="{{ subcat.id_subcategoria_padre or '' }}"
+                                     {% if (request.form.get('id_subcategoria_especifica_producto') == subcat.id_subcategoria|string) or (not request.form and producto.id_subcategoria_especifica_producto == subcat.id_subcategoria) %}selected{% endif %}>
+                                 {{ subcat.nombre_subcategoria }}
+                                 {% if subcat.categoria_contenedora %} ({{ subcat.categoria_contenedora.nombre_categoria }})
+                                 {% elif subcat.subcategoria_padre %} (Sub de: {{ subcat.subcategoria_padre.nombre_subcategoria }}) 
+                                 {% endif %}
+                             </option>
+                        {% endfor %}
+                    </select>
+                     <small class="form-text text-muted">Un producto debe tener al menos una categoría principal o una subcategoría específica.</small>
+                </div>
             </div>
             
-            <div class="form-group checkbox-group full-width"> {# Checkbox ocupa todo el ancho para alineación #}
-                <input type="checkbox" name="activo" id="activo" {% if producto.activo %}checked{% endif %} class="form-checkbox">
-                <label for="activo" class="checkbox-label">Producto Activo</label>
+            <div class="form-group">
+                <label for="descripcion_adicional">Descripción Adicional (Notas Internas):</label>
+                <textarea name="descripcion_adicional" id="descripcion_adicional" rows="2">{{ request.form.get('descripcion_adicional', producto.descripcion_adicional or '') }}</textarea>
             </div>
+        </fieldset>
+
+        {# Sección de Detalles de Compra e Inventario #}
+        <fieldset class="form-section">
+            <legend><h4>Detalles de Compra e Inventario Base</h4></legend>
+            <div class="form-grid-3col">
+                <div class="form-group">
+                    <label for="presentacion_compra">Presentación de Compra:</label>
+                    <input type="text" name="presentacion_compra" id="presentacion_compra" value="{{ request.form.get('presentacion_compra', producto.presentacion_compra or '') }}">
+                    <small>Ej: "Bolsa 1kg", "Caja 24pz"</small>
+                </div>
+                <div class="form-group">
+                    <label for="cantidad_en_presentacion_compra">Cantidad en Presentación de Compra:</label>
+                    <input type="number" step="any" name="cantidad_en_presentacion_compra" id="cantidad_en_presentacion_compra" value="{{ request.form.get('cantidad_en_presentacion_compra', producto.cantidad_en_presentacion_compra or '') }}">
+                    <small>En términos de Unidad Base.</small>
+                </div>
+                <div class="form-group">
+                    <label for="unidad_medida_base">Unidad de Medida Base: <span class="required-indicator">*</span></label>
+                    <input type="text" name="unidad_medida_base" id="unidad_medida_base" value="{{ request.form.get('unidad_medida_base', producto.unidad_medida_base or '') }}" required>
+                    <small>Ej: "g", "ml", "pieza".</small>
+                </div>
+            </div>
+             <div class="form-group">
+                <label for="dias_anticipacion_compra_proveedor">Días Anticipación Compra a Proveedor:</label>
+                <input type="number" name="dias_anticipacion_compra_proveedor" id="dias_anticipacion_compra_proveedor" value="{{ request.form.get('dias_anticipacion_compra_proveedor', producto.dias_anticipacion_compra_proveedor or '') }}" min="0">
+            </div>
+        </fieldset>
+
+        {# Sección de Atributos Descriptivos Adicionales #}
+        <fieldset class="form-section">
+            <legend><h4>Atributos Descriptivos Adicionales</h4></legend>
+            <div class="form-grid-3col">
+                <div class="form-group">
+                    <label for="sabor">Sabor:</label>
+                    <input type="text" name="sabor" id="sabor" value="{{ request.form.get('sabor', producto.sabor or '') }}">
+                </div>
+                <div class="form-group">
+                    <label for="color">Color:</label>
+                    <input type="text" name="color" id="color" value="{{ request.form.get('color', producto.color or '') }}">
+                </div>
+                <div class="form-group">
+                    <label for="tamano_pulgadas">Tamaño (Pulgadas):</label>
+                    <input type="text" name="tamano_pulgadas" id="tamano_pulgadas" value="{{ request.form.get('tamano_pulgadas', producto.tamano_pulgadas or '') }}">
+                </div>
+                <div class="form-group">
+                    <label for="material">Material:</label>
+                    <input type="text" name="material" id="material" value="{{ request.form.get('material', producto.material or '') }}">
+                </div>
+                <div class="form-group">
+                    <label for="dimensiones_capacidad">Dimensiones/Capacidad:</label>
+                    <input type="text" name="dimensiones_capacidad" id="dimensiones_capacidad" value="{{ request.form.get('dimensiones_capacidad', producto.dimensiones_capacidad or '') }}">
+                </div>
+                 <div class="form-group">
+                    <label for="tema_estilo">Tema/Estilo:</label>
+                    <input type="text" name="tema_estilo" id="tema_estilo" value="{{ request.form.get('tema_estilo', producto.tema_estilo or '') }}">
+                </div>
+                 <div class="form-group">
+                    <label for="forma_tipo">Forma/Tipo:</label>
+                    <input type="text" name="forma_tipo" id="forma_tipo" value="{{ request.form.get('forma_tipo', producto.forma_tipo or '') }}">
+                </div>
+                <div class="form-group">
+                    <label for="modalidad_servicio_directo">Modalidad (si es un servicio directo):</label>
+                    <input type="text" name="modalidad_servicio_directo" id="modalidad_servicio_directo" value="{{ request.form.get('modalidad_servicio_directo', producto.modalidad_servicio_directo or '') }}">
+                </div>
+            </div>
+        </fieldset>
+
+        <div class="form-group checkbox-group full-width" style="padding: 10px 0; margin-top:15px; border-top: 1px solid var(--color-borde-sutil); border-bottom: 1px solid var(--color-borde-sutil);">
+            <input type="checkbox" name="activo" id="activo" class="form-checkbox" 
+                   {% if request.form.get('activo', producto.activo if producto else True) == True or request.form.get('activo') == 'on' %}checked{% endif %}>
+            <label for="activo" class="checkbox-label">Producto Activo</label>
         </div>
 
         <div class="form-actions">
             <a href="{{ url_for('vista_listar_productos') }}" class="button button-secondary">Cancelar</a>
-            <input type="submit" value="Guardar Cambios" class="button button-primary"> {# Botón primario para guardar #}
+            <input type="submit" value="Guardar Cambios" class="button button-primary">
         </div>
     </form>
 
-    {# Estilos específicos para esta página de edición #}
-    <style>
-        .sku-display {
-            font-size: 0.95em;
-            color: var(--color-texto-secundario);
-            margin-bottom: 25px; /* Más espacio debajo del SKU */
-            background-color: #f8f9fa; /* Fondo sutil */
-            padding: 10px 15px;
-            border-radius: var(--radio-borde-general);
-            border: 1px solid var(--color-borde-sutil);
-        }
-        .sku-display strong {
-            color: var(--color-texto-principal);
-            font-weight: 600; /* Lexend SemiBold */
-        }
-        .sku-note {
-            font-size: 0.85em;
-            display: block;
-            margin-top: 4px;
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const categoriaPrincipalSelect = document.getElementById('id_categoria_principal_producto');
+    const subcategoriaEspecificaSelect = document.getElementById('id_subcategoria_especifica_producto');
+    
+    // Guardar las opciones originales de subcategorías para poder filtrarlas
+    // Clonamos los nodos para no modificar la colección original directamente si se quitan y añaden
+    const todasLasSubcategoriasOptions = Array.from(subcategoriaEspecificaSelect.options)
+                                             .filter(opt => opt.value !== "")
+                                             .map(opt => opt.cloneNode(true));
+
+
+    function filtrarSubcategorias() {
+        const selectedCategoriaId = categoriaPrincipalSelect.value;
+        let valorActualSubcategoria = subcategoriaEspecificaSelect.value;
+
+        // Limpiar opciones actuales (excepto el placeholder)
+        while (subcategoriaEspecificaSelect.options.length > 1) {
+            subcategoriaEspecificaSelect.remove(1);
         }
 
-        .edit-form { margin-top: 10px; } /* Reducido, ya que el h2 se fue */
-        
-        .form-grid {
-            display: grid;
-            /* Ajustar para tener 2 o 3 columnas según el ancho */
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); 
-            gap: 20px 25px; /* Espacio vertical y horizontal */
-            margin-bottom: 25px;
-        }
-        .form-group { 
-            margin-bottom: 0; /* El gap del grid maneja el espaciado inferior */
-        } 
-        .form-group.full-width {
-            grid-column: 1 / -1; /* Hace que el elemento ocupe todas las columnas */
-        }
-
-        .form-group label { 
-            display: block; 
-            margin-bottom: 8px; /* Más espacio entre label e input */
-            font-weight: 500; /* Lexend Medium */
-            font-size: 0.9em; /* Tamaño de label un poco más grande */
-            color: var(--color-texto-secundario);
-        }
-        .form-group input[type="text"], 
-        .form-group textarea {
-            width: 100%;
-            padding: 12px 15px; /* Padding más generoso */
-            border: 1px solid var(--color-borde-input);
-            border-radius: var(--radio-borde-general);
-            box-sizing: border-box;
-            font-size: 0.95em; /* Texto de input más grande */
-            font-family: var(--font-principal);
-        }
-        .form-group input[disabled], .form-control-disabled { /* Clase para inputs deshabilitados */
-            background-color: #e9ecef; /* Gris claro */
-            color: #6c757d;
-            cursor: not-allowed;
-            border: 1px solid #ced4da;
+        if (selectedCategoriaId) {
+            todasLasSubcategoriasOptions.forEach(optionElement => {
+                // Lógica de filtrado simplificada: subcategoría pertenece directamente a la categoría principal seleccionada
+                if (optionElement.dataset.idCategoriaContenedora === selectedCategoriaId) {
+                    subcategoriaEspecificaSelect.add(optionElement.cloneNode(true));
+                }
+                // Para una jerarquía más profunda, necesitarías recorrer `optionElement.dataset.idSubcatPadre`
+                // y comparar con los hijos de `selectedCategoriaId`, o pasar una estructura de datos más completa.
+            });
+        } else {
+            // Si no hay categoría principal seleccionada, mostrar todas las subcategorías originales
+            todasLasSubcategoriasOptions.forEach(optionElement => {
+                subcategoriaEspecificaSelect.add(optionElement.cloneNode(true));
+            });
         }
         
-        .checkbox-group { 
-            display: flex; 
-            align-items: center; 
-            margin-top: 10px;
-            padding: 10px 0; /* Padding para el grupo de checkbox */
+        // Intentar restaurar la selección anterior si aún es válida entre las opciones filtradas
+        let foundPreviousSelection = false;
+        for (let i = 0; i < subcategoriaEspecificaSelect.options.length; i++) {
+            if (subcategoriaEspecificaSelect.options[i].value === valorActualSubcategoria) {
+                subcategoriaEspecificaSelect.selectedIndex = i;
+                foundPreviousSelection = true;
+                break;
+            }
         }
-        .form-checkbox { /* Estilo para el checkbox en sí */
-            width: auto;
-            margin-right: 10px; 
-            height: 18px; /* Hacer el checkbox un poco más grande */
-            width: 18px;
-            accent-color: var(--color-acento-primario); /* Color del check (navegadores modernos) */
+        // Si la selección anterior no se encontró (o no había), seleccionar el placeholder
+        if (!foundPreviousSelection && subcategoriaEspecificaSelect.options.length > 0) {
+            subcategoriaEspecificaSelect.options[0].selected = true;
         }
-        .checkbox-label { 
-            font-weight: normal !important; /* Sobreescribir el bold de .form-group label */
-            margin-bottom: 0 !important; 
-            font-size: 0.95em !important;
-            color: var(--color-texto-principal) !important;
-        }
-        
-        .separator {
-            grid-column: 1 / -1; 
-            border: 0;
-            height: 1px;
-            background-color: var(--color-borde-sutil);
-            margin: 15px 0;
-        }
+    }
 
-        .form-actions { 
-            margin-top: 30px; 
-            text-align: right; 
-            padding-top: 20px;
-            border-top: 1px solid var(--color-borde-sutil);
-        }
-        .form-actions .button { /* Estilo general para botones en esta sección */
-             margin-left: 10px;
-        }
-        /* Las clases .button-primary y .button-secondary vienen de style.css */
+    if (categoriaPrincipalSelect && subcategoriaEspecificaSelect) {
+        categoriaPrincipalSelect.addEventListener('change', filtrarSubcategorias);
+        // Filtrar al cargar la página para que las subcategorías coincidan con la categoría principal preseleccionada
+        filtrarSubcategorias(); 
+    }
+});
+</script>
 
-    </style>
+<style>
+    /* Estilos generales ya definidos en style.css */
+    .sku-display {
+        font-size: 0.95em;
+        color: var(--color-texto-secundario);
+        margin-bottom: 25px;
+        background-color: #f8f9fa;
+        padding: 10px 15px;
+        border-radius: var(--radio-borde-general);
+        border: 1px solid var(--color-borde-sutil);
+    }
+    .sku-display strong {
+        color: var(--color-texto-principal);
+        font-weight: 600;
+    }
+    .sku-note {
+        font-size: 0.85em;
+        display: block;
+        margin-top: 4px;
+    }
+    .form-text.text-muted {
+        font-size: 0.8em;
+        color: #6c757d;
+        display: block;
+        margin-top: 4px;
+    }
+    .required-indicator {
+        color: var(--color-peligro);
+        font-weight: bold;
+        margin-left: 2px;
+    }
+    .checkbox-group { 
+        display: flex; 
+        align-items: center; 
+        /* padding: 10px 0;  Ya tiene padding por el fieldset */
+    }
+    .form-checkbox {
+        width: auto;
+        margin-right: 10px; 
+        height: 18px;
+        width: 18px;
+        accent-color: var(--color-acento-primario);
+    }
+    .checkbox-label { 
+        font-weight: normal !important; 
+        margin-bottom: 0 !important; 
+        font-size: 0.95em !important;
+        color: var(--color-texto-principal) !important;
+    }
+</style>
 {% endblock %}

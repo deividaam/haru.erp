@@ -1,0 +1,232 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <div class="content-actions-bar">
+        <div>
+            {% if proyecto_asociado %}
+                <a href="{{ url_for('proyectos_bp.vista_detalle_proyecto', id_proyecto=proyecto_asociado.id_proyecto) }}" class="button button-secondary">
+                    <i class="fas fa-arrow-left icon-spacing"></i>Volver al Proyecto: {{ proyecto_asociado.nombre_evento }}
+                </a>
+            {% else %}
+                <a href="{{ url_for('proyectos_bp.vista_listar_proyectos') }}" class="button button-secondary">
+                    <i class="fas fa-arrow-left icon-spacing"></i>Volver a Proyectos
+                </a>
+            {% endif %}
+        </div>
+        <a href="{{ url_for('cotizaciones_bp.vista_crear_cotizacion_paso1_proyecto') }}" class="button button-primary">
+            <i class="fas fa-plus icon-spacing"></i> Nueva Cotización
+        </a>
+    </div>
+
+    {% if proyecto_asociado %}
+        <h3 class="page-subtitle">
+            Cotizaciones para el Proyecto:
+            <strong class="text-accent">{{ proyecto_asociado.nombre_evento }}</strong>
+        </h3>
+    {% endif %}
+
+    {% if cotizaciones %}
+        <div class="table-responsive-container">
+            <table class="data-table stylish-table">
+                <thead>
+                    <tr>
+                        <th style="width: 80px;">ID Cot.</th>
+                        {% if not proyecto_asociado %}
+                            <th>Proyecto</th>
+                        {% endif %}
+                        <th style="width: 70px; text-align:center;">Versión</th>
+                        <th>Fecha Emisión</th>
+                        <th>Estado</th>
+                        <th style="text-align: right;">Monto Total</th>
+                        <th style="width: 200px; text-align: center;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for cotizacion in cotizaciones|sort(attribute='id_cotizacion', reverse=True) %}
+                        <tr>
+                            <td>{{ cotizacion.id_cotizacion }}</td>
+                            {% if not proyecto_asociado %}
+                                <td>
+                                    <a href="{{ url_for('proyectos_bp.vista_detalle_proyecto', id_proyecto=cotizacion.id_proyecto) }}" class="table-link">
+                                        {{ cotizacion.proyecto.nombre_evento if cotizacion.proyecto else 'N/A' }}
+                                    </a>
+                                </td>
+                            {% endif %}
+                            <td style="text-align:center;">v{{ cotizacion.version }}</td>
+                            <td>{{ cotizacion.fecha_emision.strftime('%d/%m/%Y') if cotizacion.fecha_emision else '-' }}</td>
+                            <td>
+                                <span class="status-badge status-{{ cotizacion.estado|lower|replace(' ', '-') }}">{{ cotizacion.estado }}</span>
+                            </td>
+                            <td style="text-align: right;">
+                                {{ "${:,.2f}".format(cotizacion.monto_total_cotizado|float) if cotizacion.monto_total_cotizado is not none else '-' }}
+                            </td>
+                            <td class="actions-cell">
+                                <a href="{{ url_for('cotizaciones_bp.vista_ver_cotizacion', id_cotizacion=cotizacion.id_cotizacion) }}" class="button button-icon button-view">
+                                    <i class="fas fa-eye"></i> Ver
+                                </a>
+                                <a href="{{ url_for('cotizaciones_bp.vista_crear_cotizacion_paso2_configurar', id_cotizacion=cotizacion.id_cotizacion) }}" class="button button-icon button-edit">
+                                    <i class="fas fa-edit"></i> Editar
+                                </a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="empty-state-container">
+            <i class="fas fa-file-invoice-dollar empty-state-icon"></i>
+            <p class="empty-state-text">
+                {% if proyecto_asociado %}
+                    No hay cotizaciones registradas para el proyecto "{{ proyecto_asociado.nombre_evento }}".
+                {% else %}
+                    No hay cotizaciones registradas todavía.
+                {% endif %}
+            </p>
+            <a href="{{ url_for('cotizaciones_bp.vista_crear_cotizacion_paso1_proyecto') }}" class="button button-primary">
+                <i class="fas fa-plus icon-spacing"></i>Crea la Primera Cotización
+            </a>
+        </div>
+    {% endif %}
+
+<style>
+    .content-actions-bar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 25px; /* Aumentado para más espacio */
+        padding-bottom: 15px;
+        border-bottom: 1px solid var(--color-borde-sutil);
+        flex-wrap: wrap; /* Para que los botones se ajusten en pantallas pequeñas */
+        gap: 10px; /* Espacio entre grupos de botones si se envuelven */
+    }
+    .content-actions-bar .button .icon-spacing {
+        margin-right: 6px;
+    }
+    .page-subtitle {
+        margin-bottom: 20px;
+        font-weight: 500;
+        font-size: 1.2em;
+        color: var(--color-texto-secundario);
+    }
+    .page-subtitle .text-accent {
+        color: var(--color-acento-primario);
+        font-weight: 600;
+    }
+
+    .table-responsive-container {
+        overflow-x: auto;
+        background-color: var(--color-fondo-contenido-card);
+        border-radius: var(--radio-borde-grande);
+        border: 1px solid var(--color-borde-sutil);
+        box-shadow: var(--sombra-caja-ligera);
+    }
+
+    .data-table.stylish-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.9em;
+    }
+    .data-table.stylish-table th,
+    .data-table.stylish-table td {
+        padding: 12px 15px; /* Aumentado para más "aire" */
+        text-align: left;
+        vertical-align: middle;
+        border-bottom: 1px solid var(--color-borde-sutil);
+    }
+    .data-table.stylish-table th {
+        background-color: #f8f9fa; /* Un gris muy claro para encabezados */
+        font-weight: 600;
+        color: var(--color-texto-principal);
+        text-transform: none; /* Quitamos uppercase si no es necesario */
+        font-size: 0.85em;
+        letter-spacing: 0.3px;
+        white-space: nowrap;
+    }
+    .data-table.stylish-table tr:last-child td {
+        border-bottom: none;
+    }
+    .data-table.stylish-table tbody tr:hover {
+        background-color: #fdfdfd; /* Un hover muy sutil */
+    }
+    .table-link {
+        color: var(--color-acento-primario);
+        text-decoration: none;
+        font-weight: 500;
+    }
+    .table-link:hover {
+        text-decoration: underline;
+        color: #000;
+    }
+
+    .status-badge {
+        padding: 4px 10px; /* Un poco más de padding */
+        border-radius: 12px; /* Más redondeado */
+        font-size: 0.75em;
+        font-weight: 600; /* Más bold */
+        color: white;
+        text-transform: uppercase; /* Uppercase para estados */
+        letter-spacing: 0.5px;
+        display: inline-block;
+        white-space: nowrap;
+        line-height: 1.2;
+    }
+    /* Colores de status-badge (asegúrate que estas variables CSS estén definidas o usa colores directos) */
+    .status-borrador { background-color: #6c757d; } /* Gris */
+    .status-presentada { background-color: var(--color-info, #17a2b8); } /* Azul Info */
+    .status-aceptada { background-color: var(--color-acento-secundario, #28a745); } /* Verde Éxito */
+    .status-rechazada { background-color: var(--color-peligro, #dc3545); } /* Rojo Peligro */
+    .status-cancelada { background-color: var(--color-advertencia, #ffc107); color: #333; } /* Amarillo Advertencia */
+
+    .actions-cell {
+        text-align: center;
+        white-space: nowrap;
+    }
+    .actions-cell .button-icon {
+        padding: 6px 12px;
+        font-size: 0.8em;
+        margin: 0 3px;
+        border-radius: var(--radio-borde-general);
+        transition: all 0.2s ease;
+    }
+    .actions-cell .button-icon i {
+        margin-right: 5px;
+    }
+    .button-view {
+        background-color: var(--color-info);
+        border-color: var(--color-info);
+        color: white;
+    }
+    .button-view:hover {
+        background-color: #138496;
+        border-color: #117a8b;
+    }
+    .button-edit {
+        background-color: var(--color-texto-principal);
+        border-color: var(--color-texto-principal);
+        color: white;
+    }
+    .button-edit:hover {
+        background-color: #333;
+        border-color: #2a2a2a;
+    }
+
+    .empty-state-container {
+        text-align: center;
+        padding: 40px 20px;
+        background-color: #f9f9f9;
+        border-radius: var(--radio-borde-grande);
+        border: 1px dashed var(--color-borde-sutil);
+    }
+    .empty-state-icon {
+        font-size: 3em;
+        color: var(--color-borde-input);
+        margin-bottom: 15px;
+    }
+    .empty-state-text {
+        font-size: 1.1em;
+        color: var(--color-texto-secundario);
+        margin-bottom: 20px;
+    }
+</style>
+{% endblock %}

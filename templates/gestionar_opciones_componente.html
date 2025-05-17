@@ -1,0 +1,263 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <div class="content-actions-bar">
+        <a href="{{ url_for('admin_servicios_bp.admin_vista_detalle_variante_config', id_variante_config=variante_config.id_variante_config) }}" class="button button-secondary">
+            &laquo; Volver a Detalle Variante: {{ variante_config.nombre_variante }}
+        </a>
+    </div>
+
+    <h4 style="margin-bottom: 5px;">Gestionando Opciones para Grupo: <strong style="color: var(--color-acento-primario);">{{ grupo_config.nombre_grupo }}</strong></h4>
+    <p class="subtle-text" style="margin-bottom:20px;">
+        Variante: {{ variante_config.nombre_variante }} <br>
+        Tipo de Servicio: {{ variante_config.tipo_servicio_base_ref.nombre }}
+    </p>
+
+    {# SECCIÓN 1: Añadir Nueva Opción de Componente #}
+    <fieldset class="form-section">
+        <legend><h5>Añadir Nueva Opción de Componente al Grupo</h5></legend>
+        <form method="POST" action="{{ url_for('admin_servicios_bp.admin_vista_gestionar_opciones_componente', id_variante_config=variante_config.id_variante_config, id_grupo_config=grupo_config.id_grupo_config) }}" id="formAnadirOpcion">
+            <input type="hidden" name="accion" value="crear_opcion">
+
+            {# --- CAMPO "Producto Interno a Vincular:" REACTIVADO --- #}
+            <div class="form-group">
+                <label for="id_producto_interno">Producto Interno a Vincular (Opcional):</label>
+                <input type="text" id="producto_busqueda_opcion" placeholder="Buscar producto por nombre o SKU..." class="input-busqueda-producto-grande" autocomplete="off">
+                <input type="hidden" name="id_producto_interno" id="id_producto_interno_opcion_hidden">
+                <div id="producto_resultados_opcion" class="autocomplete-results"></div>
+                <div id="info_producto_seleccionado_opcion" class="selected-product-info-box-compact" style="display:none; margin-top:5px;">
+                    Producto Seleccionado: <strong id="nombre_prod_sel_opcion"></strong> (SKU: <span id="sku_prod_sel_opcion"></span>)
+                </div>
+                <small>Si esta opción corresponde a un producto de tu inventario, vincúlalo aquí. Si no, déjalo vacío.</small>
+            </div>
+
+            <div class="form-group">
+                <label for="nombre_display_cliente">Nombre de la Opción (para el Cliente): <span class="required-indicator">*</span></label>
+                <input type="text" name="nombre_display_cliente" id="nombre_display_cliente" required
+                       value="{{ request.form.get('nombre_display_cliente', '') }}">
+                <small>Este es el nombre que verá el cliente (ej. "Panditas Clásicos", "Papas Fritas Caseras").</small>
+            </div>
+
+            <div class="form-grid-3col">
+                <div class="form-group">
+                    <label for="cantidad_consumo_base">Cantidad de Consumo Base: <span class="required-indicator">*</span></label>
+                    <input type="number" step="any" name="cantidad_consumo_base" id="cantidad_consumo_base" required min="0.001"
+                           value="{{ request.form.get('cantidad_consumo_base', '1') }}">
+                </div>
+                <div class="form-group">
+                    <label for="unidad_consumo_base">Unidad de Consumo Base: <span class="required-indicator">*</span></label>
+                    <input type="text" name="unidad_consumo_base" id="unidad_consumo_base" required
+                           value="{{ request.form.get('unidad_consumo_base', '') }}" placeholder="Ej: pieza, porción, gr">
+                </div>
+                <div class="form-group">
+                    <label for="costo_adicional_opcion">Costo Adicional por Opción ($):</label>
+                    <input type="number" step="0.01" name="costo_adicional_opcion" id="costo_adicional_opcion" min="0"
+                           value="{{ request.form.get('costo_adicional_opcion', '0.00') }}">
+                </div>
+            </div>
+             <div class="form-group">
+                <label for="descripcion_display_cliente">Descripción para el Cliente (Opcional):</label>
+                <textarea name="descripcion_display_cliente" id="descripcion_display_cliente" rows="2">{{ request.form.get('descripcion_display_cliente', '') }}</textarea>
+            </div>
+            <div class="form-group checkbox-group">
+                <input type="checkbox" name="opcion_activa" id="opcion_activa" class="form-checkbox" checked>
+                <label for="opcion_activa" class="checkbox-label">Opción Activa</label>
+            </div>
+            <div class="form-actions" style="text-align: left; border-top:none; padding-top:10px;">
+                <button type="submit" class="button button-primary">Añadir Opción al Grupo</button>
+            </div>
+        </form>
+    </fieldset>
+
+    {# SECCIÓN 2: Opciones de Componentes Existentes en este Grupo #}
+    <fieldset class="form-section">
+        <legend><h5>Opciones Actuales del Grupo: {{ grupo_config.nombre_grupo }}</h5></legend>
+        {% if opciones_existentes %}
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Nombre para Cliente</th>
+                            <th>Producto Interno Vinculado (SKU)</th> {# Columna reactivada #}
+                            <th style="text-align:right;">Cant. Consumo</th>
+                            <th>Unidad Consumo</th>
+                            <th style="text-align:right;">Costo Adic.</th>
+                            <th style="text-align:center;">Activa</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for opcion in opciones_existentes|sort(attribute='nombre_display_cliente') %}
+                            <tr>
+                                <td>{{ opcion.nombre_display_cliente }}</td>
+                                <td> {# Mostrar producto vinculado #}
+                                    {% if opcion.producto_interno_ref %}
+                                        <a href="{{ url_for('productos_bp.vista_editar_producto', id_producto=opcion.id_producto_interno) }}" target="_blank" title="Ver/Editar Producto Interno">
+                                            {{ opcion.producto_interno_ref.nombre_producto }} ({{ opcion.producto_interno_ref.sku or 'Sin SKU' }})
+                                        </a>
+                                    {% else %}
+                                        <span style="color: #888;">No vinculado</span>
+                                    {% endif %}
+                                </td>
+                                <td style="text-align:right;">{{ opcion.cantidad_consumo_base|float }}</td>
+                                <td>{{ opcion.unidad_consumo_base }}</td>
+                                <td style="text-align:right;">${{ "%.2f"|format(opcion.costo_adicional_opcion|float) }}</td>
+                                <td style="text-align:center;">
+                                    <span class="status-badge status-{{'activo' if opcion.activo else 'inactivo'}}">
+                                        {{ 'Sí' if opcion.activo else 'No' }}
+                                    </span>
+                                </td>
+                                <td class="actions">
+                                    {# Aquí podrías añadir un botón para editar la opción si lo necesitas en el futuro #}
+                                    <form method="POST" action="{{ url_for('admin_servicios_bp.admin_vista_gestionar_opciones_componente', id_variante_config=variante_config.id_variante_config, id_grupo_config=grupo_config.id_grupo_config) }}" style="display:inline;">
+                                        <input type="hidden" name="accion" value="eliminar_opcion">
+                                        <input type="hidden" name="id_opcion_componente" value="{{ opcion.id_opcion_componente }}">
+                                        <button type="submit" class="button-danger-small" onclick="return confirm('¿Estás seguro de que deseas eliminar esta opción: \'{{ opcion.nombre_display_cliente }}\'? Esta acción no se puede deshacer.');">Eliminar</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p style="text-align:center; padding:15px; color: var(--color-texto-secundario);">Este grupo aún no tiene opciones de componentes definidas.</p>
+        {% endif %}
+    </fieldset>
+
+<style>
+    .subtle-text { font-size: 0.9em; color: var(--color-texto-secundario); line-height: 1.5; }
+    .required-indicator { color: var(--color-peligro); font-weight: bold; margin-left: 2px; }
+    
+    /* Estilos para la búsqueda de productos (si se reactiva) */
+    .form-group { position: relative; } /* Necesario para posicionar autocomplete-results */
+    .autocomplete-results {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background-color: white;
+        border: 1px solid var(--color-borde-input);
+        border-top: none;
+        max-height: 180px;
+        overflow-y: auto;
+        z-index: 1000; /* Para que aparezca sobre otros elementos */
+        border-radius: 0 0 var(--radio-borde-general) var(--radio-borde-general);
+        box-shadow: 0 3px 5px rgba(0,0,0,0.08);
+    }
+    .autocomplete-item, .autocomplete-item-none {
+        padding: 8px 12px;
+        cursor: pointer;
+        font-size: 0.88em;
+    }
+    .autocomplete-item:hover {
+        background-color: #f0f0f0;
+    }
+    .autocomplete-item-none {
+        cursor: default;
+        color: var(--color-texto-secundario);
+    }
+    .selected-product-info-box-compact {
+        margin-top: 5px;
+        padding: 8px 12px;
+        background-color: #e6f7ff; /* Un color diferente para destacar */
+        border: 1px solid #b3e0ff;
+        border-radius: var(--radio-borde-general);
+        font-size: 0.85em;
+        color: var(--color-texto-secundario);
+    }
+    .selected-product-info-box-compact strong {
+        color: var(--color-texto-principal);
+        font-weight: 500;
+    }
+    .input-busqueda-producto-grande { /* Si quieres que el input de búsqueda sea más grande */
+        /* padding: 10px 14px; */ /* Ya heredado de .form-group input */
+        /* font-size: 0.9em; */   /* Ya heredado */
+    }
+
+    .data-table th, .data-table td { font-size: 0.9em; padding: 8px 10px;}
+    .data-table .actions form { margin: 0; }
+    .button-danger-small {
+        background-color: var(--color-peligro); color: white;
+        border: none; padding: 4px 8px; font-size: 0.75em;
+        border-radius: var(--radio-borde-general); cursor: pointer;
+        height: auto; line-height: 1.3;
+    }
+    .status-badge.status-activo { background-color: var(--color-exito); }
+    .status-badge.status-inactivo { background-color: var(--color-peligro); }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInputOpcion = document.getElementById('producto_busqueda_opcion');
+    const resultsContainerOpcion = document.getElementById('producto_resultados_opcion');
+    const hiddenIdProductoOpcion = document.getElementById('id_producto_interno_opcion_hidden');
+    const infoDivOpcion = document.getElementById('info_producto_seleccionado_opcion');
+    const nombreProdSelOpcionSpan = document.getElementById('nombre_prod_sel_opcion');
+    const skuProdSelOpcionSpan = document.getElementById('sku_prod_sel_opcion');
+    let searchDebounceTimerOpcion;
+
+    if (searchInputOpcion) {
+        searchInputOpcion.addEventListener('input', function() {
+            const searchTerm = this.value;
+            clearTimeout(searchDebounceTimerOpcion);
+            hiddenIdProductoOpcion.value = ''; // Limpiar al escribir
+            if(infoDivOpcion) infoDivOpcion.style.display = 'none';
+
+
+            if (searchTerm.length < 2) {
+                if(resultsContainerOpcion) {
+                    resultsContainerOpcion.innerHTML = '';
+                    resultsContainerOpcion.style.display = 'none';
+                }
+                return;
+            }
+            searchDebounceTimerOpcion = setTimeout(() => {
+                // Asegúrate que esta URL de API exista y funcione correctamente
+                fetch(`{{ url_for('productos_bp.api_buscar_productos_por_descripcion') }}?term=${encodeURIComponent(searchTerm)}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if(!resultsContainerOpcion) return;
+                        resultsContainerOpcion.innerHTML = '';
+                        if (data.length > 0) {
+                            data.forEach(producto => {
+                                const item = document.createElement('div');
+                                item.classList.add('autocomplete-item');
+                                // Usar producto.descripcion o producto.nombre según lo que devuelva tu API
+                                item.textContent = (producto.descripcion || producto.nombre) + (producto.sku ? ` (SKU: ${producto.sku})` : '');
+                                item.dataset.id = producto.id;
+                                item.dataset.nombre = producto.nombre; // Asegurar que el nombre esté
+                                item.dataset.sku = producto.sku || '';
+
+                                item.addEventListener('click', function() {
+                                    searchInputOpcion.value = this.dataset.nombre; // Mostrar nombre en el input
+                                    hiddenIdProductoOpcion.value = this.dataset.id;
+                                    
+                                    if(nombreProdSelOpcionSpan) nombreProdSelOpcionSpan.textContent = this.dataset.nombre;
+                                    if(skuProdSelOpcionSpan) skuProdSelOpcionSpan.textContent = this.dataset.sku || 'N/A';
+                                    if(infoDivOpcion) infoDivOpcion.style.display = 'block';
+                                    
+                                    resultsContainerOpcion.innerHTML = '';
+                                    resultsContainerOpcion.style.display = 'none';
+                                });
+                                resultsContainerOpcion.appendChild(item);
+                            });
+                            resultsContainerOpcion.style.display = 'block';
+                        } else {
+                            resultsContainerOpcion.innerHTML = '<div class="autocomplete-item-none">No se encontraron productos.</div>';
+                            resultsContainerOpcion.style.display = 'block';
+                        }
+                    })
+                    .catch(error => console.error('Error al buscar productos para opción:', error));
+            }, 300);
+        });
+        // Ocultar resultados si se hace clic fuera
+        document.addEventListener('click', function(event) {
+            if (resultsContainerOpcion && !resultsContainerOpcion.contains(event.target) && event.target !== searchInputOpcion) {
+                resultsContainerOpcion.style.display = 'none';
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

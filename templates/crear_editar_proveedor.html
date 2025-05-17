@@ -9,110 +9,138 @@
             <div class="form-grid-2col">
                 <div class="form-group">
                     <label for="nombre_proveedor">Nombre Comercial del Proveedor: <span class="required">*</span></label>
-                    <input type="text" name="nombre_proveedor" id="nombre_proveedor" value="{{ proveedor.nombre_proveedor if proveedor else '' }}" required>
+                    <input type="text" name="nombre_proveedor" id="nombre_proveedor" value="{{ proveedor.nombre_proveedor if proveedor else request.form.get('nombre_proveedor', '') }}" required>
                 </div>
                 <div class="form-group">
                     <label for="contacto_nombre">Nombre de Contacto Principal:</label>
-                    <input type="text" name="contacto_nombre" id="contacto_nombre" value="{{ proveedor.contacto_nombre if proveedor else '' }}">
+                    <input type="text" name="contacto_nombre" id="contacto_nombre" value="{{ proveedor.contacto_nombre if proveedor else request.form.get('contacto_nombre', '') }}">
                 </div>
                 <div class="form-group">
                     <label for="telefono">Teléfono Principal:</label>
-                    <input type="text" name="telefono" id="telefono" value="{{ proveedor.telefono if proveedor else '' }}">
+                    <input type="text" name="telefono" id="telefono" value="{{ proveedor.telefono if proveedor else request.form.get('telefono', '') }}">
                 </div>
                 <div class="form-group">
                     <label for="email">Email Principal:</label>
-                    <input type="email" name="email" id="email" value="{{ proveedor.email if proveedor else '' }}">
+                    <input type="email" name="email" id="email" value="{{ proveedor.email if proveedor else request.form.get('email', '') }}">
                 </div>
             </div>
             <div class="form-group">
                 <label for="direccion">Dirección Comercial:</label>
-                <textarea name="direccion" id="direccion" rows="3">{{ proveedor.direccion if proveedor else '' }}</textarea>
+                <textarea name="direccion" id="direccion" rows="3">{{ proveedor.direccion if proveedor else request.form.get('direccion', '') }}</textarea>
             </div>
         </fieldset>
-        
+
         <fieldset class="form-section">
-            <legend><h4>Información Fiscal</h4></legend> {# Título actualizado #}
+            <legend><h4>Información Fiscal</h4></legend>
             <div class="form-grid-2col">
                 <div class="form-group">
                     <label for="razon_social">Razón Social (Nombre Fiscal):</label>
-                    <input type="text" name="razon_social" id="razon_social" value="{{ proveedor.razon_social if proveedor else '' }}">
+                    <input type="text" name="razon_social" id="razon_social" value="{{ proveedor.razon_social if proveedor else request.form.get('razon_social', '') }}">
                 </div>
                 <div class="form-group">
                     <label for="rfc">RFC:</label>
-                    <input type="text" name="rfc" id="rfc" value="{{ proveedor.rfc if proveedor else '' }}" pattern="[A-Z&Ñ]{3,4}[0-9]{2}(0[1-9]|1[012])(0[1-9]|[12][0-9]|3[01])[A-Z0-9]{2}[0-9A]" title="Introduce un RFC válido (ej. XAXX010101000 o XEXX010101000)">
+                    <input type="text" name="rfc" id="rfc" value="{{ proveedor.rfc if proveedor else request.form.get('rfc', '') }}" pattern="[A-Z&Ñ]{3,4}[0-9]{2}(0[1-9]|1[012])(0[1-9]|[12][0-9]|3[01])[A-Z0-9]{2}[0-9A]" title="Introduce un RFC válido (ej. XAXX010101000 o XEXX010101000)">
                 </div>
                 <div class="form-group">
                     <label for="regimen_fiscal">Régimen Fiscal (Clave y Descripción):</label>
-                    <input type="text" name="regimen_fiscal" id="regimen_fiscal" value="{{ proveedor.regimen_fiscal if proveedor else '' }}" placeholder="Ej: 601 - General de Ley Personas Morales">
+                    <input type="text" name="regimen_fiscal" id="regimen_fiscal" value="{{ proveedor.regimen_fiscal if proveedor else request.form.get('regimen_fiscal', '') }}" placeholder="Ej: 601 - General de Ley Personas Morales">
                 </div>
                 <div class="form-group">
                     <label for="codigo_postal_fiscal">Código Postal (Domicilio Fiscal):</label>
-                    <input type="text" name="codigo_postal_fiscal" id="codigo_postal_fiscal" value="{{ proveedor.codigo_postal_fiscal if proveedor else '' }}" pattern="[0-9]{5}" title="Introduce un código postal de 5 dígitos">
+                    <input type="text" name="codigo_postal_fiscal" id="codigo_postal_fiscal" value="{{ proveedor.codigo_postal_fiscal if proveedor else request.form.get('codigo_postal_fiscal', '') }}" pattern="[0-9]{5}" title="Introduce un código postal de 5 dígitos">
                 </div>
                 <div class="form-group">
                     <label for="email_facturacion">Email para Facturación:</label>
-                    <input type="email" name="email_facturacion" id="email_facturacion" value="{{ proveedor.email_facturacion if proveedor else '' }}">
+                    <input type="email" name="email_facturacion" id="email_facturacion" value="{{ proveedor.email_facturacion if proveedor else request.form.get('email_facturacion', '') }}">
                 </div>
             </div>
         </fieldset>
-        
+
         <fieldset class="form-section">
             <legend><h4>Otros Detalles</h4></legend>
             <div class="form-group">
                 <label for="notas">Notas Adicionales Generales:</label>
-                <textarea name="notas" id="notas" rows="3">{{ proveedor.notas if proveedor else '' }}</textarea>
+                <textarea name="notas" id="notas" rows="3">{{ proveedor.notas if proveedor else request.form.get('notas', '') }}</textarea>
             </div>
-            {# Checkbox "Proveedor Activo" eliminado de aquí #}
+            {# Si necesitas un checkbox para 'activo', asegúrate de manejarlo en el backend #}
+            {# Ejemplo:
+            <div class="form-group checkbox-group">
+                <input type="checkbox" name="activo" id="activo" class="form-checkbox"
+                       {% if (proveedor and proveedor.activo) or (not proveedor and request.form.get('activo') == 'on') %}checked{% endif %}>
+                <label for="activo" class="checkbox-label">Proveedor Activo</label>
+            </div>
+            #}
         </fieldset>
 
         <div class="form-actions">
-            <a href="{{ url_for('vista_listar_proveedores') }}" class="button button-secondary">Cancelar</a>
+            {# CORREGIDO el url_for aquí #}
+            <a href="{{ url_for('proveedores_bp.vista_listar_proveedores') }}" class="button button-secondary">Cancelar</a>
             <input type="submit" value="{{ 'Guardar Cambios' if proveedor else 'Crear Proveedor' }}" class="button button-primary">
         </div>
     </form>
-    <style>
-        /* Estilos CSS (sin cambios respecto a la versión anterior de este archivo) */
-        .styled-form { 
-            margin-top: 0;
-        }
-        .form-section {
-            border: 1px solid var(--color-borde-sutil);
-            padding: 20px 25px;
-            margin-bottom: 25px;
-            border-radius: var(--radio-borde-general);
-            background-color: #fdfdff;
-        }
-        .form-section legend {
-            font-weight: 600;
-            font-size: 1em;
-            padding: 0 10px;
-            color: var(--color-texto-principal);
-            margin-left: 10px;
-        }
-        .form-section legend h4 {
-            font-size: 1.1em;
-            font-weight: 600;
-            color: var(--color-texto-principal);
-            margin: 0;
-            padding: 0;
-            line-height: 1;
-        }
-        .form-grid-2col { 
-            display: grid; 
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); 
-            gap: 20px 25px; 
-        }
-        .form-group { 
-            margin-bottom: 15px; 
-        }
-        .form-grid-2col .form-group {
-            margin-bottom: 0; 
-        }
-        .form-group:last-child {
-             margin-bottom: 0; 
-        }
-        .form-group label .required { color: var(--color-peligro); margin-left: 4px;}
-        .form-actions { margin-top: 30px; text-align: right; padding-top: 20px; border-top: 1px solid var(--color-borde-sutil); }
-        .form-actions .button { margin-left: 10px; }
-    </style>
+<style>
+    /* Estilos CSS (sin cambios respecto a la versión anterior de este archivo) */
+    .styled-form {
+        margin-top: 0;
+    }
+    .form-section {
+        border: 1px solid var(--color-borde-sutil);
+        padding: 20px 25px;
+        margin-bottom: 25px;
+        border-radius: var(--radio-borde-general);
+        background-color: #fdfdff;
+    }
+    .form-section legend {
+        font-weight: 600;
+        font-size: 1em;
+        padding: 0 10px;
+        color: var(--color-texto-principal);
+        margin-left: 10px; /* Ajustado para que no se pegue al borde si no hay h4 */
+    }
+    .form-section legend h4 {
+        font-size: 1.1em;
+        font-weight: 600;
+        color: var(--color-texto-principal);
+        margin: 0;
+        padding: 0;
+        line-height: 1;
+    }
+    .form-grid-2col {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 20px 25px;
+    }
+    .form-group {
+        margin-bottom: 15px;
+    }
+    .form-grid-2col .form-group {
+        margin-bottom: 0; /* Para evitar doble margen en grid */
+    }
+    .form-group:last-child { /* Para el último form-group que no está en un grid */
+         margin-bottom: 0;
+    }
+    .form-group label .required { color: var(--color-peligro); margin-left: 4px;} /* Asegúrate que esta clase se use en los labels */
+    .form-actions { margin-top: 30px; text-align: right; padding-top: 20px; border-top: 1px solid var(--color-borde-sutil); }
+    .form-actions .button { margin-left: 10px; }
+
+    /* Estilos para checkbox si se añade */
+    .checkbox-group {
+        display: flex;
+        align-items: center;
+        padding-top: 5px; /* Un poco de espacio arriba */
+    }
+    .form-checkbox {
+        width: auto;
+        margin-right: 10px;
+        height: 18px;
+        width: 18px;
+        accent-color: var(--color-acento-primario);
+    }
+    .checkbox-label {
+        font-weight: normal !important;
+        margin-bottom: 0 !important;
+        font-size: 0.95em !important;
+        color: var(--color-texto-principal) !important;
+    }
+</style>
 {% endblock %}

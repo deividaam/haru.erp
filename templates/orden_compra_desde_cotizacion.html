@@ -1,0 +1,317 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <div class="content-actions-bar" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <a href="{{ url_for('cotizaciones_bp.vista_ver_cotizacion', id_cotizacion=cotizacion.id_cotizacion) }}" class="button button-secondary">
+            &laquo; Volver a la Cotización
+        </a>
+        <button onclick="window.print();" class="button">
+            <i class="fas fa-print" style="margin-right: 5px;"></i> Imprimir Orden de Compra
+        </button>
+    </div>
+
+    <div class="document-container-print" id="ordenDeCompra">
+        <header class="main-header-print">
+            <div class="company-branding-print">
+                <div class="logo-text-placeholder-print">haru.</div>
+                <div class="document-title-print">ORDEN DE COMPRA INTERNA</div>
+            </div>
+            <div class="quote-meta-details-print">
+                <p><strong>Fecha de Generación:</strong> {{ fecha_generacion_oc.strftime('%d/%m/%Y') }}</p>
+                <p><strong>Referencia Cotización:</strong> COT-{{ "%04d"|format(cotizacion.id_cotizacion) }}-V{{ cotizacion.version }}</p>
+                <p><strong>Proyecto:</strong> {{ proyecto.nombre_evento }} ({{ proyecto.identificador_evento }})</p>
+            </div>
+        </header>
+
+        <section class="client-info-print" style="margin-bottom: 25px;">
+            <h3>DETALLES DEL EVENTO</h3>
+            <p><strong>Cliente:</strong> {{ proyecto.cliente_nombre or 'N/A' }}</p>
+            <p><strong>Fecha Evento:</strong> {{ proyecto.fecha_evento.strftime('%d/%m/%Y') if proyecto.fecha_evento else 'N/A' }}</p>
+            <p><strong>No. Invitados (Cotización):</strong> {{ cotizacion.numero_invitados_override or proyecto.numero_invitados or 'N/A' }}</p>
+        </section>
+
+        <section class="items-section-print">
+            <h4>Listado de Insumos Requeridos</h4>
+            {% if orden_por_proveedor %}
+                {% for proveedor_nombre, insumos_del_proveedor in orden_por_proveedor.items() %}
+                    <div class="proveedor-section" style="margin-top: 20px;">
+                        <h5 class="proveedor-header">Proveedor: <strong>{{ proveedor_nombre }}</strong></h5>
+                        <div class="table-responsive-wrapper" style="overflow-x: auto; margin-top: 5px; border: 1px solid var(--color-borde-sutil); border-radius: var(--radio-borde-general);">
+                            <table class="items-table-print">
+                                <thead>
+                                    <tr>
+                                        <th>SKU</th>
+                                        <th>Producto (Insumo)</th>
+                                        <th style="text-align: right;">Cant. Req.</th>
+                                        <th style="text-align: right;">Precio x Pres.</th>
+                                        <th style="text-align: right;">Cant. a Comprar</th>
+                                        <th style="text-align: right;">Costo Estimado</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for insumo in insumos_del_proveedor %}
+                                    <tr>
+                                        <td>{{ insumo.sku or '-' }}</td>
+                                        <td class="td-product-name" style="min-width: 250px; white-space: normal;">{{ insumo.nombre_producto }}</td>
+                                        <td style="text-align: right; white-space: nowrap;">
+                                            {% if insumo.es_indivisible %}
+                                                {{ insumo.cantidad_requerida_base|round(0)|int }}
+                                            {% else %}
+                                                {{ "%.2f"|format(insumo.cantidad_requerida_base|float) }}
+                                            {% endif %}
+                                            {{- insumo.unidad_medida_base -}}
+                                        </td>
+                                        <td style="text-align: right;">
+                                            {% if not insumo.es_opcion_directa %}
+                                                ${{ "%.2f"|format(insumo.precio_por_presentacion|float) }}
+                                            {% else %}
+                                                N/A
+                                            {% endif %}
+                                        </td>
+                                        <td style="text-align: right;">
+                                            {% if not insumo.es_opcion_directa %}
+                                                {{ insumo.cantidad_presentaciones_a_comprar|int }}
+                                            {% else %}
+                                                {{ insumo.cantidad_presentaciones_a_comprar|int }} ({{ insumo.presentacion_compra_proveedor }})
+                                            {% endif %}
+                                        </td>
+                                        <td style="text-align: right;">
+                                            {% if not insumo.es_opcion_directa %}
+                                                ${{ "%.2f"|format(insumo.costo_total_insumo|float) }}
+                                            {% else %}
+                                                A cotizar
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                {% endfor %}
+
+                <div style="margin-top: 25px; padding-top:15px; border-top: 2px solid #333; text-align: right;">
+                    <strong style="font-size: 1.2em;">TOTAL GENERAL ESTIMADO ORDEN DE COMPRA: ${{ "%.2f"|format(costo_total_general_orden|float) }}</strong>
+                </div>
+
+            {% else %}
+                <p style="text-align: center; padding: 20px;">No se calcularon insumos para esta cotización o los servicios no requieren productos internos (Mensaje desde plantilla).</p>
+            {% endif %}
+        </section>
+
+        <footer class="main-footer-print" style="margin-top: 30px;">
+            <p>Esta es una orden de compra interna generada por el sistema Haru ERP.</p>
+        </footer>
+    </div>
+
+<style>
+    /* Estilos para la vista normal (no impresión) */
+    .content-actions-bar .button {
+        font-size: 0.85em;
+        padding: 8px 15px;
+    }
+
+    /* Estilos generales para la vista de impresión/pública */
+    .document-container-print {
+        font-family: 'Lexend', Arial, sans-serif;
+        color: #333;
+        background-color: #fff;
+        max-width: 210mm; /* A4 width */
+        min-height: 270mm; /* A4 height approx, for screen view */
+        margin: 20px auto;
+        padding: 15mm; 
+        border: 1px solid #ccc;
+        box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        box-sizing: border-box;
+    }
+    .main-header-print {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        padding-bottom: 10px;
+        margin-bottom: 20px;
+        border-bottom: 1px solid #e0e0e0;
+    }
+    .company-branding-print .logo-text-placeholder-print {
+        font-size: 2.5em; 
+        font-weight: bold;
+        color: #222;
+        margin: 0;
+        line-height: 1;
+    }
+    .company-branding-print .document-title-print {
+        font-size: 1.1em; 
+        color: #555;
+        margin-top: 2px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .quote-meta-details-print {
+        text-align: right;
+        font-size: 0.8em; 
+        line-height: 1.4;
+    }
+    .quote-meta-details-print p { margin: 0; }
+
+    .client-info-print h3, .items-section-print h4 {
+        font-size: 1em;
+        font-weight: 600;
+        color: #333;
+        margin-top: 0;
+        margin-bottom: 8px;
+        padding-bottom: 4px;
+        border-bottom: 1px solid #eee;
+    }
+    .items-section-print h4 { 
+        margin-bottom: 15px;
+    }
+    .client-info-print p { margin: 2px 0; font-size: 0.9em; }
+
+    .proveedor-section {
+        margin-bottom: 20px; 
+    }
+    .proveedor-header {
+        font-size: 1.1em;
+        font-weight: 500;
+        color: var(--color-texto-principal);
+        margin-bottom: 8px;
+        padding: 5px;
+        background-color: #f0f0f0;
+        border-radius: var(--radio-borde-general) var(--radio-borde-general) 0 0;
+        border: 1px solid var(--color-borde-sutil);
+        border-bottom: none;
+    }
+    .proveedor-header strong {
+        font-weight: 600;
+    }
+    .table-responsive-wrapper { 
+        width: 100%; 
+    }
+    .items-table-print { 
+        width: 100%; 
+        border-collapse: collapse; 
+        font-size: 0.85em; 
+    }
+    .items-table-print th, .items-table-print td {
+        padding: 6px 8px;
+        text-align: left;
+        border-bottom: 1px solid #e0e0e0;
+        vertical-align: top;
+    }
+    .items-table-print thead tr { 
+         border-bottom: 2px solid #c7c7c7;
+    }
+    .items-table-print th {
+        font-weight: 600;
+        background-color: #f9f9f9;
+        color: #444;
+        white-space: nowrap; 
+    }
+    .items-table-print td[style*="min-width"] { 
+        word-break: break-word; 
+    }
+    .items-table-print td[style*="white-space: nowrap"] { 
+        white-space: nowrap;
+    }
+    .main-footer-print {
+        margin-top: 20px;
+        padding-top: 10px;
+        text-align: center;
+        font-size: 0.75em;
+        color: #888;
+        border-top: 1px solid #eee;
+    }
+
+    @media print {
+        body, html { 
+            margin: 0 !important; 
+            padding: 0 !important; 
+            background-color: #fff !important; 
+            font-size: 8.5pt !important; 
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+        .sidebar, .content-header, .content-actions-bar, .main-content > .card > .content-actions-bar { 
+            display: none !important; 
+        }
+        .main-content { 
+            margin: 0 !important; 
+            padding: 0 !important; 
+            width: 100% !important; 
+            background-color: #fff !important; 
+        }
+        .card { 
+            box-shadow: none !important; 
+            border: none !important; 
+            padding: 0 !important; 
+            margin: 0 !important; 
+            background-color: #fff !important; 
+        }
+        .document-container-print {
+            width: 100% !important; 
+            max-width: 100% !important;
+            min-height: initial !important; 
+            margin: 0 !important;
+            padding: 0 !important; /* Los márgenes de la página los controla @page */
+            border: none !important;
+            box-shadow: none !important;
+            background-color: #fff !important; 
+        }
+        .table-responsive-wrapper {
+            overflow-x: visible !important; 
+            border: none !important; 
+            margin-top: 0px !important; 
+        }
+        .proveedor-header {
+            background-color: #f0f0f0 !important; 
+            -webkit-print-color-adjust: exact; 
+            print-color-adjust: exact;
+            border: 1px solid #ccc !important;
+            border-bottom: none !important;
+        }
+        .items-table-print {
+            font-size: 0.8em !important; 
+            table-layout: auto; 
+            width: 100%; 
+        }
+        .items-table-print th,
+        .items-table-print td {
+            white-space: normal !important; 
+            padding: 4px 5px !important; 
+            word-break: break-word; 
+            border-bottom: 1px solid #e0e0e0 !important;
+        }
+         .items-table-print td.td-product-name,
+         .items-table-print td.td-supplier {
+            min-width: auto !important; 
+         }
+         .items-table-print td[style*="white-space: nowrap"] { 
+            white-space: nowrap !important; 
+        }
+        .items-table-print thead tr {
+            border-bottom: 1.5px solid #b0b0b0 !important;
+        }
+
+        /* INICIO: Reglas @page para impresión limpia */
+        @page {
+            size: A4; /* Puedes cambiar a 'letter' si es necesario */
+            margin: 12mm 10mm 12mm 10mm; /* Márgenes de la página (arriba, derecha, abajo, izquierda) */
+
+            /* Eliminar encabezados y pies de página del navegador */
+            @top-left { content: ""; }
+            @top-center { content: ""; }
+            @top-right { content: ""; }
+            @bottom-left { content: ""; }
+            @bottom-center { content: ""; }
+            @bottom-right { content: ""; }
+        }
+        /* FIN: Reglas @page para impresión limpia */
+
+        .items-table-print th { 
+            background-color: #f9f9f9 !important; 
+            -webkit-print-color-adjust: exact; 
+            print-color-adjust: exact; 
+        }
+    }
+</style>
+{% endblock %}

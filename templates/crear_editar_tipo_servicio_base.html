@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block content %}
+    {# El título de la página se establece en app.py #}
+    {# Ej: "Nuevo Tipo de Servicio Base" o "Editar Tipo de Servicio: Mesa de Dulces" #}
+
+    <form method="POST" class="styled-form" id="formTipoServicioBase">
+        <fieldset class="form-section">
+            <legend><h4>Datos del Tipo de Servicio Base</h4></legend>
+
+            <div class="form-group">
+                <label for="nombre">Nombre del Tipo de Servicio: <span class="required-indicator">*</span></label>
+                <input type="text" name="nombre" id="nombre"
+                       value="{{ tipo_servicio.nombre if tipo_servicio and not request.form else request.form.get('nombre', '') }}"
+                       required>
+                <small class="form-text text-muted">Ej: "Mesa de Dulces", "Decoración Floral Principal", "Barra de Bebidas Artesanales".</small>
+            </div>
+
+            <div class="form-group">
+                <label for="descripcion">Descripción (Opcional):</label>
+                <textarea name="descripcion" id="descripcion" rows="3">{{ tipo_servicio.descripcion if tipo_servicio and not request.form else request.form.get('descripcion', '') }}</textarea>
+                <small class="form-text text-muted">Una breve descripción interna o para referencia sobre este tipo de servicio.</small>
+            </div>
+
+            <div class="form-group checkbox-group" style="padding: 10px 0; margin-top:10px;">
+                {# Para el estado activo, manejar el valor del checkbox correctamente #}
+                {% set es_activo_check = es_nuevo %} {# Por defecto activo si es nuevo #}
+                {% if tipo_servicio and tipo_servicio.activo is not none %} {# Si estamos editando y hay valor #}
+                    {% set es_activo_check = tipo_servicio.activo %}
+                {% endif %}
+                {% if request.form.get('activo_submitted') %} {# Si el form se envió, tomar valor del form #}
+                    {% set es_activo_check = request.form.get('activo') == 'on' %}
+                {% endif %}
+
+                <input type="checkbox" name="activo" id="activo" class="form-checkbox"
+                       {% if es_activo_check %}checked{% endif %}>
+                <input type="hidden" name="activo_submitted" value="1"> {# Para saber si el form fue enviado y el checkbox no marcado #}
+                <label for="activo" class="checkbox-label">Activo</label>
+                <small class="form-text text-muted" style="margin-left:15px;">Desmarca para ocultar este tipo de servicio al crear nuevas variantes o cotizaciones.</small>
+            </div>
+        </fieldset>
+
+        <div class="form-actions">
+            {# CORREGIDO el url_for aquí #}
+            <a href="{{ url_for('admin_servicios_bp.admin_vista_listar_tipos_servicio_base') }}" class="button button-secondary">Cancelar</a>
+            <input type="submit" value="{{ 'Guardar Cambios' if tipo_servicio and tipo_servicio.id_tipo_servicio_base else 'Crear Tipo de Servicio' }}" class="button button-primary">
+        </div>
+    </form>
+
+<style>
+    /* Estilos generales del formulario ya definidos en style.css */
+    .form-text.text-muted {
+        font-size: 0.8em;
+        color: #6c757d;
+        display: block;
+        margin-top: 4px;
+    }
+    .required-indicator {
+        color: var(--color-peligro);
+        font-weight: bold;
+        margin-left: 2px;
+    }
+    .checkbox-group {
+        display: flex;
+        align-items: center;
+    }
+    .form-checkbox {
+        width: auto;
+        margin-right: 10px;
+        height: 18px;
+        width: 18px;
+        accent-color: var(--color-acento-primario);
+    }
+    .checkbox-label {
+        font-weight: normal !important;
+        margin-bottom: 0 !important;
+        font-size: 0.95em !important;
+        color: var(--color-texto-principal) !important;
+    }
+</style>
+{% endblock %}

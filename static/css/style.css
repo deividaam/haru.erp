@@ -278,7 +278,8 @@ body {
 .form-group input[type="email"], 
 .form-group input[type="password"], 
 .form-group input[type="search"], 
-.form-group input[type="date"],   
+.form-group input[type="date"],
+.form-group input[type="tel"],   
 .form-group textarea, 
 .form-group select { 
     width: 100%; 
@@ -394,6 +395,7 @@ fieldset.form-section > .form-group:last-of-type:not(.form-grid-2col):not(.form-
     background-color: var(--color-acento-primario);
     border-color: var(--color-acento-primario);
 }
+
 .button-primary:hover {
     opacity: 0.85;
 }

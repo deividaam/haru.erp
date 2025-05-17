@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block content %}
+    {# El título se establece en la vista de Python.
+       Ej: "Nuevo Grupo para Variante: Mesa de Dulces - Clásica - Salada"
+       o "Editar Grupo: Selección de Gomitas" #}
+
+    <form method="POST" class="styled-form" id="formGrupoComponente"
+          action="{{ url_for(request.endpoint, id_variante_config=variante_config.id_variante_config if variante_config else None, id_grupo_config=(grupo_config_original.id_grupo_config if grupo_config_original else None)) }}">
+        {# variante_config es el objeto VarianteServicioConfig padre #}
+        {% if variante_config %}
+            <input type="hidden" name="id_variante_config" value="{{ variante_config.id_variante_config }}">
+        {% endif %}
+        {# grupo_config_original es el objeto GrupoComponenteConfig original si se está editando #}
+        {% if not es_nuevo and grupo_config_original %}
+            <input type="hidden" name="id_grupo_config" value="{{ grupo_config_original.id_grupo_config }}">
+        {% endif %}
+
+        <fieldset class="form-section">
+            <legend><h4>Datos del Grupo de Componentes</h4></legend>
+            {% if variante_config %}
+            <p class="subtle-text" style="margin-bottom: 20px;">
+                Estás {% if es_nuevo %}creando un nuevo grupo{% else %}editando el grupo <strong>{{ grupo_config_original.nombre_grupo if grupo_config_original else form_values.get('nombre_grupo','') }}</strong>{% endif %}
+                para la Variante de Servicio: <br>
+                <strong>{{ variante_config.nombre_variante }}</strong>
+                {% if variante_config.tipo_servicio_base_ref %}
+                    ({{ variante_config.tipo_servicio_base_ref.nombre }})
+                {% endif %}
+            </p>
+            {% endif %}
+
+            <div class="form-group">
+                <label for="nombre_grupo">Nombre del Grupo: <span class="required-indicator">*</span></label>
+                <input type="text" name="nombre_grupo" id="nombre_grupo"
+                       value="{{ form_values.get('nombre_grupo', '') }}"
+                       required>
+                <small class="form-text text-muted">Ej: "Selección de Gomitas", "Tipos de Botanas", "Flores Principales".</small>
+            </div>
+
+            <div class="form-grid-2col">
+                <div class="form-group">
+                    <label for="cantidad_opciones_seleccionables">Cantidad de Opciones Seleccionables por el Cliente: <span class="required-indicator">*</span></label>
+                    <input type="number" name="cantidad_opciones_seleccionables" id="cantidad_opciones_seleccionables"
+                           value="{{ form_values.get('cantidad_opciones_seleccionables', 1) }}"
+                           min="0" required>
+                    <small class="form-text text-muted">¿Cuántos ítems diferentes puede elegir el cliente de este grupo?</small>
+                </div>
+                <div class="form-group">
+                    <label for="orden_display">Orden de Visualización (Opcional):</label>
+                    <input type="number" name="orden_display" id="orden_display"
+                           value="{{ form_values.get('orden_display', 0) }}"
+                           min="0">
+                    <small class="form-text text-muted">Número menor aparece primero. Útil para organizar los grupos.</small>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="porcentaje_del_total_servicio">Porcentaje del Total del Servicio (Opcional):</label>
+                <input type="number" step="0.01" name="porcentaje_del_total_servicio" id="porcentaje_del_total_servicio"
+                       value="{{ form_values.get('porcentaje_del_total_servicio', '') }}"
+                       min="0" max="100">
+                <small class="form-text text-muted">Ej: Si este grupo (ej. Gomitas) representa el 30% de la cantidad total de una Mesa de Dulces, ingresa 30. Déjalo vacío si no aplica.</small>
+            </div>
+        </fieldset>
+
+        <div class="form-actions">
+            {# El enlace de Cancelar te lleva de vuelta a la edición de la Variante de Servicio padre #}
+            <a href="{{ url_for('admin_servicios_bp.admin_vista_crear_editar_variante_config', id_variante_config=variante_config.id_variante_config if variante_config else None) }}" class="button button-secondary">Cancelar</a>
+            <input type="submit" value="{{ 'Guardar Cambios' if not es_nuevo else 'Crear Grupo' }}" class="button button-primary">
+        </div>
+    </form>
+
+<style>
+    .form-text.text-muted { font-size: 0.8em; color: #6c757d; display: block; margin-top: 4px; }
+    .required-indicator { color: var(--color-peligro); font-weight: bold; margin-left: 2px; }
+    .subtle-text { font-size: 0.9em; color: var(--color-texto-secundario); line-height: 1.5; }
+</style>
+{% endblock %}

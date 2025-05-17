@@ -8,95 +8,141 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    {# Icono para el menú hamburguesa (ejemplo usando Font Awesome, puedes cambiarlo por un SVG o similar) #}
+    {# FontAwesome ya no es necesario si quitamos todos los iconos, pero lo dejo por si lo usas en otro lado #}
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
 <body>
     <aside class="sidebar" id="sidebar">
         <div class="sidebar-header">
-            <a href="{{ url_for('index') }}" class="logo">haru.</a>
+            <a href="{{ url_for('index') }}" class="logo">haru. ERP</a>
             <button class="sidebar-close-btn" id="sidebarCloseBtn" aria-label="Cerrar menú">
-                <i class="fas fa-times"></i>
+                <i class="fas fa-times"></i> {# Ícono de cierre se mantiene #}
             </button>
         </div>
         <ul class="sidebar-menu">
             <li><span>MENÚ</span></li>
             <li>
-                {% set productos_active = (
-                                        request.endpoint.startswith('vista_listar_productos') or
-                                        request.endpoint.startswith('vista_cargar_productos') or
-                                        request.endpoint.startswith('vista_confirmar_carga') or
-                                        request.endpoint.startswith('vista_editar_producto') or
-                                        request.endpoint.startswith('vista_crear_producto_unico')
-                                        ) %}
-                <a href="#" class="menu-toggle {{ 'active open' if productos_active else '' }}">
-                    Productos
+                {# Sección de Proyectos #}
+                {% set proyectos_active = request.endpoint.startswith('proyectos_bp.vista_listar_proyectos') or
+                                          request.endpoint.startswith('proyectos_bp.vista_crear_proyecto') or
+                                          request.endpoint.startswith('proyectos_bp.vista_editar_proyecto') or
+                                          request.endpoint.startswith('proyectos_bp.vista_detalle_proyecto') %}
+                <a href="#" class="menu-toggle {{ 'active open' if proyectos_active else '' }}">
+                    Proyectos {# Ícono eliminado #}
                 </a>
-                <ul class="submenu {{ 'open init-open' if productos_active else '' }}">
-                    <li><a href="{{ url_for('vista_crear_producto_unico') }}" class="{{ 'active' if request.endpoint == 'vista_crear_producto_unico' else '' }}">Crear Producto</a></li>
-                    <li><a href="{{ url_for('vista_cargar_productos') }}" class="{{ 'active' if request.endpoint == 'vista_cargar_productos' or request.endpoint == 'vista_confirmar_carga' else '' }}">Carga Masiva Productos</a></li>
-                    <li><a href="{{ url_for('vista_listar_productos') }}" class="{{ 'active' if request.endpoint == 'vista_listar_productos' else '' }}">Listado de Productos</a></li>
+                <ul class="submenu {{ 'open init-open' if proyectos_active else '' }}">
+                    <li><a href="{{ url_for('proyectos_bp.vista_crear_proyecto') }}" class="{{ 'active' if request.endpoint == 'proyectos_bp.vista_crear_proyecto' else '' }}">Nuevo Proyecto</a></li>
+                    <li><a href="{{ url_for('proyectos_bp.vista_listar_proyectos') }}" class="{{ 'active' if request.endpoint == 'proyectos_bp.vista_listar_proyectos' else '' }}">Listado de Proyectos</a></li>
                 </ul>
             </li>
             <li>
+                {# Sección de Cotizaciones #}
+                {% set cotizaciones_active = request.endpoint.startswith('cotizaciones_bp.vista_listar_cotizaciones') or
+                                             request.endpoint.startswith('cotizaciones_bp.vista_crear_cotizacion_paso1_proyecto') or
+                                             request.endpoint.startswith('cotizaciones_bp.vista_crear_cotizacion_paso2_configurar') or
+                                             request.endpoint.startswith('cotizaciones_bp.vista_ver_cotizacion') %}
+                <a href="#" class="menu-toggle {{ 'active open' if cotizaciones_active else '' }}">
+                     Cotizaciones {# Ícono eliminado #}
+                </a>
+                <ul class="submenu {{ 'open init-open' if cotizaciones_active else '' }}">
+                    <li><a href="{{ url_for('cotizaciones_bp.vista_crear_cotizacion_paso1_proyecto') }}" class="{{ 'active' if request.endpoint == 'cotizaciones_bp.vista_crear_cotizacion_paso1_proyecto' else '' }}">Nueva Cotización</a></li>
+                    <li><a href="{{ url_for('cotizaciones_bp.vista_listar_cotizaciones') }}" class="{{ 'active' if request.endpoint == 'cotizaciones_bp.vista_listar_cotizaciones' else '' }}">Listado de Cotizaciones</a></li>
+                </ul>
+            </li>
+
+            <li class="submenu-separator"><hr></li>
+
+            <li>
+                {# Sección de Productos Internos #}
+                {% set productos_internos_active = (
+                                        request.endpoint.startswith('productos_bp.vista_listar_productos') or
+                                        request.endpoint.startswith('productos_bp.vista_cargar_productos') or
+                                        request.endpoint.startswith('productos_bp.vista_confirmar_carga_productos') or
+                                        request.endpoint.startswith('productos_bp.vista_editar_producto') or
+                                        request.endpoint.startswith('productos_bp.vista_crear_producto_unico')
+                                        ) %}
+                <a href="#" class="menu-toggle {{ 'active open' if productos_internos_active else '' }}">
+                    Productos Internos {# Ícono eliminado #}
+                </a>
+                <ul class="submenu {{ 'open init-open' if productos_internos_active else '' }}">
+                    <li><a href="{{ url_for('productos_bp.vista_crear_producto_unico') }}" class="{{ 'active' if request.endpoint == 'productos_bp.vista_crear_producto_unico' else '' }}">Crear Producto Interno</a></li>
+                    {# Texto del submenú acortado #}
+                    <li><a href="{{ url_for('productos_bp.vista_cargar_productos') }}" class="{{ 'active' if request.endpoint == 'productos_bp.vista_cargar_productos' or request.endpoint == 'productos_bp.vista_confirmar_carga_productos' else '' }}">Carga Masiva</a></li>
+                    <li><a href="{{ url_for('productos_bp.vista_listar_productos') }}" class="{{ 'active' if request.endpoint == 'productos_bp.vista_listar_productos' else '' }}">Listado de Productos</a></li>
+                </ul>
+            </li>
+            <li>
+                {# Sección de Proveedores #}
                 {% set proveedores_active = (
-                                          request.endpoint.startswith('vista_listar_proveedores') or
-                                          request.endpoint.startswith('vista_crear_proveedor') or
-                                          request.endpoint.startswith('vista_editar_proveedor') or
-                                          request.endpoint.startswith('vista_cargar_precios_manual') or
-                                          request.endpoint.startswith('vista_cargar_precios_csv') or
-                                          request.endpoint.startswith('vista_confirmar_carga_precios_csv')
+                                          request.endpoint.startswith('proveedores_bp.vista_listar_proveedores') or
+                                          request.endpoint.startswith('proveedores_bp.vista_crear_proveedor') or
+                                          request.endpoint.startswith('proveedores_bp.vista_editar_proveedor') or
+                                          request.endpoint.startswith('proveedores_bp.vista_cargar_precios_manual') or
+                                          request.endpoint.startswith('proveedores_bp.vista_cargar_precios_csv') or
+                                          request.endpoint.startswith('proveedores_bp.vista_confirmar_carga_precios_csv')
                                           ) %}
                 <a href="#" class="menu-toggle {{ 'active open' if proveedores_active else '' }}">
-                    Proveedores
+                    Proveedores {# Ícono eliminado #}
                 </a>
                  <ul class="submenu {{ 'open init-open' if proveedores_active else '' }}">
-                    <li><a href="{{ url_for('vista_crear_proveedor') }}" class="{{ 'active' if request.endpoint == 'vista_crear_proveedor' else '' }}">Añadir Nuevo Proveedor</a></li>
-                    <li><a href="{{ url_for('vista_listar_proveedores') }}" class="{{ 'active' if request.endpoint == 'vista_listar_proveedores' else '' }}">Listado de Proveedores</a></li>
+                    <li><a href="{{ url_for('proveedores_bp.vista_crear_proveedor') }}" class="{{ 'active' if request.endpoint == 'proveedores_bp.vista_crear_proveedor' else '' }}">Añadir Proveedor</a></li>
+                    <li><a href="{{ url_for('proveedores_bp.vista_listar_proveedores') }}" class="{{ 'active' if request.endpoint == 'proveedores_bp.vista_listar_proveedores' else '' }}">Listado de Proveedores</a></li>
                     <li class="submenu-separator"><hr></li>
-                    <li><a href="{{ url_for('vista_cargar_precios_manual') }}" class="{{ 'active' if request.endpoint == 'vista_cargar_precios_manual' else '' }}">Cargar Precios (Manual)</a></li>
-                    <li><a href="{{ url_for('vista_cargar_precios_csv') }}" class="{{ 'active' if request.endpoint == 'vista_cargar_precios_csv' or request.endpoint == 'vista_confirmar_carga_precios_csv' else '' }}">Cargar Precios (CSV)</a></li>
+                    <li><a href="{{ url_for('proveedores_bp.vista_cargar_precios_manual') }}" class="{{ 'active' if request.endpoint == 'proveedores_bp.vista_cargar_precios_manual' else '' }}">Cargar Precios (Manual)</a></li>
+                    <li><a href="{{ url_for('proveedores_bp.vista_cargar_precios_csv') }}" class="{{ 'active' if request.endpoint == 'proveedores_bp.vista_cargar_precios_csv' or request.endpoint == 'proveedores_bp.vista_confirmar_carga_precios_csv' else '' }}">Cargar Precios (CSV)</a></li>
                 </ul>
             </li>
             <li>
+                {# Sección de Compras #}
                 {% set compras_active = (
-                                       request.endpoint.startswith('vista_historial_compras') or
-                                       request.endpoint.startswith('vista_registrar_compra') or
-                                       request.endpoint.startswith('vista_listar_facturas_compra')
+                                       request.endpoint.startswith('compras_bp.vista_historial_compras') or
+                                       request.endpoint.startswith('compras_bp.vista_registrar_compra') or
+                                       request.endpoint.startswith('compras_bp.vista_listar_facturas_compra')
                                        ) %}
                 <a href="#" class="menu-toggle {{ 'active open' if compras_active else '' }}">
-                    Compras
+                    Compras {# Ícono eliminado #}
                 </a>
                 <ul class="submenu {{ 'open init-open' if compras_active else '' }}">
-                    <li><a href="{{ url_for('vista_registrar_compra') }}" class="{{ 'active' if request.endpoint == 'vista_registrar_compra' else '' }}">Registrar Compra</a></li>
-                    <li><a href="{{ url_for('vista_historial_compras') }}" class="{{ 'active' if request.endpoint == 'vista_historial_compras' else '' }}">Historial por Producto</a></li>
-                    <li><a href="{{ url_for('vista_listar_facturas_compra') }}" class="{{ 'active' if request.endpoint == 'vista_listar_facturas_compra' else '' }}">Listado de Facturas</a></li>
+                    <li><a href="{{ url_for('compras_bp.vista_registrar_compra') }}" class="{{ 'active' if request.endpoint == 'compras_bp.vista_registrar_compra' else '' }}">Registrar Compra</a></li>
+                    <li><a href="{{ url_for('compras_bp.vista_historial_compras') }}" class="{{ 'active' if request.endpoint == 'compras_bp.vista_historial_compras' else '' }}">Historial por Producto</a></li>
+                    <li><a href="{{ url_for('compras_bp.vista_listar_facturas_compra') }}" class="{{ 'active' if request.endpoint == 'compras_bp.vista_listar_facturas_compra' else '' }}">Listado de Facturas</a></li>
                 </ul>
             </li>
-            <li>
-                <a href="#" class="menu-toggle">Cotizaciones</a>
-                <ul class="submenu">
-                    <li><a href="#">Nueva Cotización</a></li>
-                    <li><a href="#">Historial</a></li>
-                </ul>
-            </li>
+
             <li><span>ADMINISTRACIÓN</span></li>
+            <li>
+                {# Sección de Configuración de Servicios #}
+                {% set config_servicios_active = request.endpoint.startswith('admin_servicios_bp.admin_dashboard_servicios') or
+                                                 request.endpoint.startswith('admin_servicios_bp.admin_vista_listar_tipos_servicio_base') or
+                                                 request.endpoint.startswith('admin_servicios_bp.admin_vista_crear_editar_tipo_servicio_base') or
+                                                 request.endpoint.startswith('admin_servicios_bp.admin_vista_listar_todas_variantes') or
+                                                 request.endpoint.startswith('admin_servicios_bp.admin_vista_listar_variantes_por_tipo') or
+                                                 request.endpoint.startswith('admin_servicios_bp.admin_vista_crear_editar_variante_config') or
+                                                 request.endpoint.startswith('admin_servicios_bp.admin_vista_detalle_variante_config') %}
+                <a href="{{ url_for('admin_servicios_bp.admin_dashboard_servicios') }}" class="menu-toggle {{ 'active open' if config_servicios_active else '' }}">
+                    Config. Servicios {# Ícono eliminado #}
+                </a>
+                <ul class="submenu {{ 'open init-open' if config_servicios_active else '' }}">
+                    <li><a href="{{ url_for('admin_servicios_bp.admin_vista_listar_tipos_servicio_base') }}" class="{{'active' if request.endpoint.startswith('admin_servicios_bp.admin_vista_listar_tipos_servicio_base') or request.endpoint.startswith('admin_servicios_bp.admin_vista_crear_editar_tipo_servicio_base') else ''}}">Tipos de Servicio</a></li>
+                    <li><a href="{{ url_for('admin_servicios_bp.admin_vista_listar_todas_variantes') }}" class="{{'active' if request.endpoint.startswith('admin_servicios_bp.admin_vista_listar_todas_variantes') or request.endpoint.startswith('admin_servicios_bp.admin_vista_listar_variantes_por_tipo') or request.endpoint.startswith('admin_servicios_bp.admin_vista_crear_editar_variante_config') or request.endpoint.startswith('admin_servicios_bp.admin_vista_detalle_variante_config') else ''}}">Variantes de Servicio</a></li>
+                </ul>
+            </li>
              <li>
-                <a href="#">Usuarios</a>
+                <a href="#">Usuarios</a> {# Ícono eliminado #}
              </li>
              <li>
-                <a href="#">Configuración</a>
+                <a href="#">Configuración General</a> {# Ícono eliminado #}
              </li>
         </ul>
         <div class="sidebar-footer">
-            <p>&copy; {% if SCRIPT_EXECUTION_TIMESTAMP %}{{ SCRIPT_EXECUTION_TIMESTAMP.strftime('%Y') }}{% else %}{{ '' }}{% endif %} Haru.</p>
+            <p>&copy; {{ now.year }} Haru.</p>
         </div>
     </aside>
 
     <main class="main-content" id="mainContent">
         <header class="content-header">
             <button class="sidebar-toggle-btn" id="sidebarToggleBtn" aria-label="Abrir menú">
-                <i class="fas fa-bars"></i>
+                <i class="fas fa-bars"></i> {# Ícono de hamburguesa se mantiene #}
             </button>
             <h1>{{ titulo_pagina or "Dashboard" }}</h1>
         </header>
@@ -115,72 +161,62 @@
     </main>
     <div class="overlay" id="overlay"></div>
 
-
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             const menuToggles = document.querySelectorAll('.sidebar-menu .menu-toggle');
             const sidebar = document.getElementById('sidebar');
             const sidebarToggleBtn = document.getElementById('sidebarToggleBtn');
             const sidebarCloseBtn = document.getElementById('sidebarCloseBtn');
-            const mainContent = document.getElementById('mainContent');
             const overlay = document.getElementById('overlay');
-
 
             menuToggles.forEach(toggle => {
                 const submenu = toggle.nextElementSibling;
                 if (submenu && submenu.tagName === 'UL') {
+                    // Asegurarse de que el submenu tenga suficiente espacio
+                    // white-space: normal; podría ser útil en el CSS para los <li><a> del submenu
+                    // para permitir que el texto se ajuste y scrollHeight lo calcule bien.
                     if (submenu.classList.contains('init-open')) {
                         submenu.style.maxHeight = submenu.scrollHeight + "px";
+                        if (!toggle.classList.contains('open')) {
+                            toggle.classList.add('open');
+                        }
                     } else {
-                        submenu.style.maxHeight = null; 
+                        submenu.style.maxHeight = null;
                     }
                     setTimeout(() => {
                         submenu.classList.add('enable-transition');
-                    }, 50); 
+                    }, 50);
                 }
 
                 toggle.addEventListener('click', function (event) {
-                    event.preventDefault();
+                    if (this.getAttribute('href') === '#') {
+                        event.preventDefault();
+                    }
+
                     const currentToggle = this;
                     const currentSubmenu = this.nextElementSibling;
                     if (!currentSubmenu || currentSubmenu.tagName !== 'UL') return;
-                    const isCurrentlyOpen = currentToggle.classList.contains('open');
-                    
-                    // No cerrar otros submenús automáticamente al abrir uno nuevo en móvil
-                    // Esta lógica se puede ajustar si se prefiere que solo uno esté abierto a la vez
-                    // document.querySelectorAll('.sidebar-menu .submenu.open').forEach(openSubmenu => {
-                    //     if (openSubmenu !== currentSubmenu) {
-                    //         openSubmenu.style.maxHeight = null;
-                    //         const otherToggle = openSubmenu.previousElementSibling;
-                    //         if (otherToggle && otherToggle.classList.contains('menu-toggle')) {
-                    //             otherToggle.classList.remove('open');
-                    //         }
-                    //         openSubmenu.classList.remove('open');
-                    //     }
-                    // });
 
-                    if (isCurrentlyOpen) { 
+                    const isCurrentlyOpen = currentToggle.classList.contains('open');
+
+                    if (isCurrentlyOpen) {
                         currentSubmenu.style.maxHeight = null;
                         currentToggle.classList.remove('open');
-                        currentSubmenu.classList.remove('open'); 
-                    } else { 
+                    } else {
                         currentToggle.classList.add('open');
-                        currentSubmenu.classList.add('open'); 
-                        currentSubmenu.style.maxHeight = currentSubmenu.scrollHeight + "px"; 
+                        currentSubmenu.style.maxHeight = currentSubmenu.scrollHeight + "px";
                     }
                 });
             });
 
-            // Funcionalidad para el botón de hamburguesa (abrir sidebar)
             if (sidebarToggleBtn) {
                 sidebarToggleBtn.addEventListener('click', function() {
                     sidebar.classList.add('open');
                     overlay.classList.add('active');
-                    document.body.style.overflow = 'hidden'; // Evitar scroll del body cuando el menú está abierto
+                    document.body.style.overflow = 'hidden';
                 });
             }
 
-            // Funcionalidad para el botón de cerrar en el sidebar
             if (sidebarCloseBtn) {
                 sidebarCloseBtn.addEventListener('click', function() {
                     sidebar.classList.remove('open');
@@ -188,8 +224,7 @@
                     document.body.style.overflow = '';
                 });
             }
-            
-            // Funcionalidad para cerrar el sidebar al hacer clic en el overlay
+
             if (overlay) {
                 overlay.addEventListener('click', function() {
                     sidebar.classList.remove('open');
@@ -197,7 +232,6 @@
                     document.body.style.overflow = '';
                 });
             }
-
         });
     </script>
     <style>
@@ -207,26 +241,26 @@
           background-color: var(--color-borde-sutil);
           margin: 8px 15px;
       }
-      .sidebar-toggle-btn { /* Estilo básico para el botón de hamburguesa */
-          display: none; /* Oculto por defecto, se mostrará en mobile con CSS */
+      .sidebar-toggle-btn {
+          display: none;
           background: none;
           border: none;
           color: var(--color-texto-principal);
-          font-size: 20px;
+          font-size: 20px; /* Ajustado para que sea consistente con el de cierre */
           cursor: pointer;
-          padding: 5px 10px;
+          padding: 5px 10px; /* Añadido padding para mejor área de toque */
       }
       .sidebar-close-btn {
-            display: none; /* Oculto por defecto, se mostrará en mobile con CSS */
+            display: none; /* Se mostrará con JS en móvil */
             background: none;
             border: none;
             color: var(--color-texto-sidebar-normal);
-            font-size: 18px;
+            font-size: 18px; /* Ajustado */
             cursor: pointer;
             padding: 0;
             position: absolute;
-            top: 25px;
-            right: 15px;
+            top: 25px; /* Ajustar según el padding del sidebar-header */
+            right: 15px; /* Ajustar según el padding del sidebar-header */
       }
       .overlay {
             display: none;
@@ -236,11 +270,29 @@
             width: 100%;
             height: 100%;
             background-color: rgba(0, 0, 0, 0.5);
-            z-index: 999; /* Asegurar que esté debajo del sidebar pero encima del contenido */
+            z-index: 999;
         }
        .overlay.active {
             display: block;
         }
+       /* Estilos para los elementos del menú principal sin iconos */
+       .sidebar-menu > li > a,
+       .sidebar-menu > li > .menu-toggle {
+           /* Si antes dependías del icono para el padding-left, ajusta aquí */
+           /* padding-left: 15px; (ejemplo, si antes era más por el icono) */
+       }
+       .sidebar-menu .menu-toggle i, /* Estos selectores ya no aplicarían a los iconos eliminados */
+       .sidebar-menu > li > a > i {
+           /* min-width: 20px; */ /* Ya no es necesario */
+           /* text-align: center; */ /* Ya no es necesario */
+           /* margin-right: 10px; */ /* Ya no es necesario */
+       }
+       /* Estilo para los elementos del submenú para asegurar que el texto se ajuste si es largo */
+       .submenu li a {
+            white-space: normal; /* Permite que el texto del submenú se ajuste a múltiples líneas */
+            word-break: break-word; /* Evita que palabras largas rompan el layout */
+            line-height: 1.4; /* Ajustar para mejor legibilidad si el texto se ajusta */
+       }
     </style>
 </body>
 </html>

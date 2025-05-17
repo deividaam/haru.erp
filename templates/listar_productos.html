@@ -1,35 +1,43 @@
 {% extends "base.html" %}
 
 {% block content %}
-    <fieldset class="form-section"> 
-        <legend><h4>Filtros de Búsqueda</h4></legend>
-        <form method="GET" action="{{ url_for('vista_listar_productos') }}" id="filterForm" class="filter-form-stacked-inside-fieldset">
+    <fieldset class="form-section">
+        <legend><h4>Filtros de Búsqueda de Productos Internos</h4></legend>
+        {# action apunta al endpoint correcto del blueprint #}
+        <form method="GET" action="{{ url_for('productos_bp.vista_listar_productos') }}" id="filterForm" class="filter-form-stacked-inside-fieldset">
             <div class="filter-row">
                 <div class="form-group search-group">
-                    <label for="q">Buscar Producto:</label>
+                    <label for="q">Buscar Producto Interno:</label>
                     <input type="search" name="q" id="q" value="{{ current_filters.q or '' }}" placeholder="Nombre, SKU, descripción...">
                 </div>
             </div>
 
             <div class="filter-row filter-grid">
                 <div class="form-group">
-                    <label for="categoria_id">Categoría:</label>
-                    <select name="categoria_id" id="categoria_id" class="filter-select">
+                    {# El name del select es id_categoria_principal_producto para coincidir con el backend #}
+                    <label for="id_categoria_principal_producto">Categoría Principal:</label>
+                    <select name="id_categoria_principal_producto" id="id_categoria_principal_producto" class="filter-select">
                         <option value="">Todas</option>
                         {% for cat in categorias %}
-                            <option value="{{ cat.id_categoria }}" {% if current_filters.categoria_id == cat.id_categoria %}selected{% endif %}>
+                            <option value="{{ cat.id_categoria }}" {% if current_filters.id_categoria_principal_producto == cat.id_categoria|string %}selected{% endif %}>
                                 {{ cat.nombre_categoria }}
                             </option>
                         {% endfor %}
                     </select>
                 </div>
                 <div class="form-group">
-                    <label for="subcategoria_id">Subcategoría:</label>
-                    <select name="subcategoria_id" id="subcategoria_id" class="filter-select">
+                    {# El name del select es id_subcategoria_especifica_producto para coincidir con el backend #}
+                    <label for="id_subcategoria_especifica_producto">Subcategoría Específica:</label>
+                    <select name="id_subcategoria_especifica_producto" id="id_subcategoria_especifica_producto" class="filter-select">
                         <option value="">Todas</option>
                         {% for subcat in subcategorias %}
-                            <option value="{{ subcat.id_subcategoria }}" {% if current_filters.subcategoria_id == subcat.id_subcategoria %}selected{% endif %}>
-                                {{ subcat.nombre_subcategoria }} ({{ subcat.categoria.nombre_categoria }})
+                            <option value="{{ subcat.id_subcategoria }}" {% if current_filters.id_subcategoria_especifica_producto == subcat.id_subcategoria|string %}selected{% endif %}>
+                                {{ subcat.nombre_subcategoria }}
+                                {% if subcat.categoria_contenedora %}
+                                    ({{ subcat.categoria_contenedora.nombre_categoria }})
+                                {% elif subcat.subcategoria_padre %}
+                                    (Sub de: {{ subcat.subcategoria_padre.nombre_subcategoria }})
+                                {% endif %}
                             </option>
                         {% endfor %}
                     </select>
@@ -64,21 +72,24 @@
             </div>
             <div class="filter-actions">
                 <button type="submit" class="button button-primary" id="manualFilterButton">Buscar / Filtrar Manualmente</button>
-                <a href="{{ url_for('vista_listar_productos') }}" class="button button-secondary">Limpiar Filtros</a>
+                <a href="{{ url_for('productos_bp.vista_listar_productos') }}" class="button button-secondary">Limpiar Filtros</a>
             </div>
         </form>
     </fieldset>
 
     <div class="table-responsive" style="margin-top: 25px;">
-        <table class="product-table">
+        <table class="product-table"> {# Usando la clase product-table que tenías #}
             <thead>
                 <tr>
+                    {# Macro para encabezados ordenables #}
                     {% macro sortable_th(column_key, display_name, default_width='auto', th_class='') %}
                         {% set sort_order = 'desc' if current_sort.by == column_key and current_sort.order == 'asc' else 'asc' %}
-                        {% set query_params = request_args.to_dict() if request_args else current_filters.copy() %} 
+                        {# request_args se pasa desde la vista de Python #}
+                        {% set query_params = request_args.to_dict() if request_args else current_filters.copy() %}
                         {% set _ = query_params.pop('sort_by', None) %}
                         {% set _ = query_params.pop('sort_order', None) %}
                         <th class="sortable {{ th_class }}" style="width: {{ default_width }}; min-width: {{ default_width }};">
+                            {# El JavaScript manejará el data-sort-by y data-sort-order para construir la URL #}
                             <a href="#" data-sort-by="{{ column_key }}" data-sort-order="{{ sort_order }}" class="sort-link">
                                 <span>{{ display_name }}</span>
                                 {% if current_sort.by == column_key %}
@@ -94,55 +105,53 @@
 
                     {{ sortable_th('id', 'ID', '60px', 'id-column') }}
                     {{ sortable_th('sku', 'SKU', '110px') }}
-                    {{ sortable_th('nombre', 'Nombre Producto', '200px') }} {# Ancho fijo para nombre #}
-                    {{ sortable_th('categoria', 'Categoría', '120px') }} 
-                    {{ sortable_th('subcategoria', 'Subcategoría', '120px') }} 
-                    <th style="width: 20%;">Desc. Completa</th> {# Ancho fijo para descripción #}
-                    {{ sortable_th('presentacion', 'Presentación', '120px') }}
-                    
-                    {# NUEVAS COLUMNAS DE PRECIOS #}
+                    {{ sortable_th('nombre', 'Nombre Producto', '200px') }}
+                    {{ sortable_th('categoria_principal', 'Categoría', '120px') }} {# Clave para ordenar por categoría principal #}
+                    {{ sortable_th('subcategoria_especifica', 'Subcategoría', '120px') }} {# Clave para ordenar por subcategoría #}
+                    <th style="width: 20%;">Desc. Completa</th>
+                    {{ sortable_th('presentacion_compra', 'Presentación', '120px') }} {# Clave para ordenar por presentación_compra #}
+
                     <th style="width: 150px;">Precio Mín. (Prov/Disp)</th>
                     <th style="width: 150px;">Precio Máx. (Prov/Disp)</th>
                     <th style="width: 90px; text-align:center;">Aum. Mensual Est.</th>
-                    
+
                     {{ sortable_th('activo', 'Activo', '70px') }}
                     <th style="width: 90px;">Acciones</th>
                 </tr>
             </thead>
-            <tbody id="productTableBody"> 
-                {% include '_tabla_productos_parcial.html' %} 
+            <tbody id="productTableBody">
+                {% include '_tabla_productos_parcial.html' %}
             </tbody>
         </table>
     </div>
     <div id="loadingIndicator" style="display:none; text-align:center; padding:20px;">Cargando productos...</div>
 
-    <p style="margin-top: 30px;"> 
-        <a href="{{ url_for('vista_cargar_productos') }}" class="button button-primary">Cargar más productos</a>
+    <p style="margin-top: 30px;">
+        <a href="{{ url_for('productos_bp.vista_cargar_productos') }}" class="button button-primary">Cargar más productos</a>
     </p>
 
     <style>
-        /* Estilos para .form-section y legend h4 (ya definidos en la plantilla) */
         .form-section {
             border: 1px solid var(--color-borde-sutil);
             padding: 20px 25px;
             margin-bottom: 25px;
             border-radius: var(--radio-borde-general);
-            background-color: #fdfdff; 
+            background-color: #fdfdff;
         }
         .form-section legend {
             font-weight: 600;
-            font-size: 1em; 
-            padding: 0 10px; 
+            font-size: 1em;
+            padding: 0 10px;
             color: var(--color-texto-principal);
-            margin-left: 10px; 
+            margin-left: 10px;
         }
         .form-section legend h4 {
-            font-size: 1.1em; 
+            font-size: 1.1em;
             font-weight: 600;
             color: var(--color-texto-principal);
-            margin: 0; 
-            padding: 0; 
-            line-height: 1; 
+            margin: 0;
+            padding: 0;
+            line-height: 1;
         }
         .filter-form-stacked-inside-fieldset { padding: 0; background-color: transparent; border: none; }
         .filter-row { margin-bottom: 15px; }
@@ -150,63 +159,42 @@
         .filter-form-stacked-inside-fieldset .form-group { margin-bottom: 0; }
         .filter-form-stacked-inside-fieldset .search-group input[type="search"] { width: 100%; }
         .filter-form-stacked-inside-fieldset label { font-size: 0.8em; font-weight: 500; }
-        .filter-form-stacked-inside-fieldset input[type="search"], 
+        .filter-form-stacked-inside-fieldset input[type="search"],
         .filter-form-stacked-inside-fieldset select { padding: 8px 10px; font-size: 0.9em; }
         .filter-actions { margin-top: 20px; text-align: right; }
         .filter-actions .button { margin-left: 10px; }
 
-        /* Estilos de la tabla */
-        .product-table { width: 100%; border-collapse: collapse; margin-top: 0px; font-size: 0.85em; } /* Reducido tamaño de fuente general */
-        .product-table th, .product-table td { padding: 8px 10px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--color-borde-sutil); } /* Alineación vertical top */
+        .product-table { width: 100%; border-collapse: collapse; margin-top: 0px; font-size: 0.85em; }
+        .product-table th, .product-table td { padding: 8px 10px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--color-borde-sutil); }
         .product-table th { font-weight: 600; font-size: 0.9em; white-space: nowrap; background-color: #f8f9fa; }
         .product-table tr:last-child td { border-bottom: none; }
         .product-table th.sortable a { text-decoration: none; color: inherit; display: flex; align-items: center; }
         .product-table th.sortable a span:first-child { flex-grow: 1; }
         .product-table th.sortable a:hover { color: var(--color-acento-primario); }
         .sort-arrow, .sort-arrow-placeholder { font-size: 0.9em; margin-left: 8px; width: 12px; display: inline-block; text-align: center; }
-        
-        .product-table td.description-cell { max-width: 200px; } /* Ajustado max-width */
-        .product-table td.description-cell div { 
-            max-height: 3.6em; /* Aproximadamente 3 líneas con line-height normal */
-            overflow: hidden; 
-            text-overflow: ellipsis; 
-            white-space: normal; /* Permitir múltiples líneas */
+
+        .product-table td.description-cell { max-width: 200px; }
+        .product-table td.description-cell div {
+            max-height: 3.6em;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: normal;
             line-height: 1.2em;
         }
         .product-table td.actions a { white-space: nowrap; }
 
-        /* Estilos para las nuevas celdas de información de precios */
-        .price-info-cell {
-            font-size: 0.9em;
-            line-height: 1.4;
-            white-space: nowrap; /* Evitar que se parta mucho */
-        }
-        .price-info-cell .price-value {
-            font-weight: 600;
-            color: var(--color-texto-principal);
-        }
-        .price-info-cell .provider-name {
-            font-size: 0.9em;
-            color: var(--color-texto-secundario);
-            display: inline-block; /* Para que no ocupe toda la línea si es corto */
-            margin-right: 5px;
-        }
-        .price-info-cell .availability-status {
-            font-size: 0.85em;
-            padding: 1px 4px;
-            border-radius: 3px;
-            color: #fff;
-        }
+        .price-info-cell { font-size: 0.9em; line-height: 1.4; white-space: nowrap; }
+        .price-info-cell .price-value { font-weight: 600; color: var(--color-texto-principal); }
+        .price-info-cell .provider-name { font-size: 0.9em; color: var(--color-texto-secundario); display: inline-block; margin-right: 5px; }
+        .price-info-cell .availability-status { font-size: 0.85em; padding: 1px 4px; border-radius: 3px; color: #fff; }
         .availability-status.status-alta { background-color: var(--color-exito); }
         .availability-status.status-media { background-color: var(--color-advertencia); color: #333;}
-        .availability-status.status-baja { background-color: var(--color-peligro-ligero); color: #333;}
+        .availability-status.status-baja { background-color: var(--color-peligro-ligero, #f 轻度危险色); color: #333;} /* Añadido fallback para peligro-ligero */
         .availability-status.status-agotado { background-color: var(--color-peligro); }
         .availability-status.status-na { background-color: #ccc; color: #555;}
-
     </style>
 
     <script>
-    // ... (Script existente sin cambios) ...
     document.addEventListener('DOMContentLoaded', function() {
         const filterForm = document.getElementById('filterForm');
         const searchInput = document.getElementById('q');
@@ -220,31 +208,30 @@
         function fetchAndUpdateTable() {
             loadingIndicator.style.display = 'block';
             const formData = new FormData(filterForm);
-            let sortBy = '{{ current_sort.by }}';
-            let sortOrder = '{{ current_sort.order }}';
-            
-            // Mantener el ordenamiento actual si se está filtrando
-            const activeSortLink = document.querySelector('th.sortable a.active-sort'); // Podrías añadir una clase 'active-sort' al link activo
-            if(activeSortLink){ // Si no, usa los del contexto
+
+            let sortBy = '{{ current_sort.by or "nombre" }}';
+            let sortOrder = '{{ current_sort.order or "asc" }}';
+
+            const activeSortLink = document.querySelector('th.sortable a.active-sort');
+            if(activeSortLink){
                 sortBy = activeSortLink.dataset.sortBy;
-                sortOrder = activeSortLink.dataset.sortOrder;
+                sortOrder = activeSortLink.dataset.sortOrder === 'asc' ? 'desc' : 'asc';
             } else {
-                 const urlParams = new URLSearchParams(window.location.search);
-                 sortBy = urlParams.get('sort_by') || sortBy;
-                 sortOrder = urlParams.get('sort_order') || sortOrder;
+                 const urlParamsForSort = new URLSearchParams(window.location.search);
+                 sortBy = urlParamsForSort.get('sort_by') || sortBy;
+                 sortOrder = urlParamsForSort.get('sort_order') || sortOrder;
             }
 
             formData.append('sort_by', sortBy);
             formData.append('sort_order', sortOrder);
 
             const params = new URLSearchParams(formData).toString();
-            
-            fetch(`{{ url_for('api_filtrar_productos') }}?${params}`)
+
+            fetch(`{{ url_for('productos_bp.api_filtrar_productos') }}?${params}`)
                 .then(response => response.text())
                 .then(html => {
                     productTableBody.innerHTML = html;
-                    // Re-adjuntar listeners a los nuevos links de ordenamiento si es necesario, o manejarlo con delegación de eventos.
-                    // Por ahora, la recarga de página maneja esto.
+                    updateSortLinkStates(sortBy, sortOrder);
                     loadingIndicator.style.display = 'none';
                 })
                 .catch(error => {
@@ -254,10 +241,45 @@
                 });
         }
 
-        searchInput.addEventListener('input', function() {
-            clearTimeout(debounceTimer);
-            debounceTimer = setTimeout(fetchAndUpdateTable, 500); 
-        });
+        function updateSortLinkStates(activeSortBy, activeSortOrder) {
+            sortLinks.forEach(link => {
+                const currentColumnKey = link.dataset.sortBy;
+                const sortArrowSpan = link.querySelector('.sort-arrow') || link.querySelector('.sort-arrow-placeholder');
+
+                link.classList.remove('active-sort');
+                if (sortArrowSpan) sortArrowSpan.innerHTML = '&nbsp;';
+
+                if (currentColumnKey === activeSortBy) {
+                    link.classList.add('active-sort');
+                    if (activeSortOrder === 'asc') {
+                        if (sortArrowSpan) sortArrowSpan.innerHTML = '&uarr;';
+                        link.dataset.sortOrder = 'desc';
+                    } else {
+                        if (sortArrowSpan) sortArrowSpan.innerHTML = '&darr;';
+                        link.dataset.sortOrder = 'asc';
+                    }
+                } else {
+                    link.dataset.sortOrder = 'asc';
+                }
+            });
+        }
+
+        // Inicializar estados de los links de ordenamiento
+        updateSortLinkStates('{{ current_sort.by or "nombre" }}', '{{ current_sort.order or "asc" }}');
+
+        if (searchInput) {
+            searchInput.addEventListener('input', function() {
+                clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(fetchAndUpdateTable, 500);
+            });
+            searchInput.addEventListener('keypress', function(e){
+                if(e.key === 'Enter'){
+                    e.preventDefault();
+                    clearTimeout(debounceTimer);
+                    fetchAndUpdateTable();
+                }
+            });
+        }
 
         filterSelects.forEach(select => {
             select.addEventListener('change', fetchAndUpdateTable);
@@ -266,40 +288,41 @@
         sortLinks.forEach(link => {
             link.addEventListener('click', function(e) {
                 e.preventDefault();
-                const sortBy = this.dataset.sortBy;
-                const sortOrder = this.dataset.sortOrder;
-                
-                // Actualizar la URL para que el backend reciba los parámetros de ordenamiento
-                const currentParams = new URLSearchParams(new FormData(filterForm)); // Obtener filtros actuales
-                currentParams.set('sort_by', sortBy);
-                currentParams.set('sort_order', sortOrder);
-                
-                // Eliminar parámetros de paginación si los hubiera para empezar desde la pág 1 con nuevo orden
-                currentParams.delete('page'); 
+                const sortByClicked = this.dataset.sortBy;
+                // El sortOrder que se enviará es el que está actualmente en data-sort-order
+                const sortOrderToSet = this.dataset.sortOrder;
 
-                window.location.search = currentParams.toString(); 
+                const currentParams = new URLSearchParams(new FormData(filterForm));
+                currentParams.set('sort_by', sortByClicked);
+                currentParams.set('sort_order', sortOrderToSet);
+                currentParams.delete('page');
+                window.location.href = `{{ url_for('productos_bp.vista_listar_productos') }}?${currentParams.toString()}`;
             });
         });
 
-        // Para el botón de "Buscar / Filtrar Manualmente"
         const manualFilterButton = document.getElementById('manualFilterButton');
         if(manualFilterButton){
             manualFilterButton.addEventListener('click', function(e){
-                e.preventDefault(); // Prevenir el submit tradicional del form
-                fetchAndUpdateTable(); // Llamar a la función de AJAX
-            });
-        }
-        
-        // Si quieres que el Enter en el campo de búsqueda también filtre sin recargar:
-        if(searchInput){
-            searchInput.addEventListener('keypress', function(e){
-                if(e.key === 'Enter'){
-                    e.preventDefault();
-                    fetchAndUpdateTable();
+                e.preventDefault();
+                // Al hacer clic en el botón de filtro manual, se actualiza la URL
+                const currentParams = new URLSearchParams(new FormData(filterForm));
+                // El ordenamiento se toma de los data-attributes de los links (que deberían estar actualizados)
+                // o de los parámetros actuales si no se ha hecho clic en ordenar
+                let sortBy = '{{ current_sort.by or "nombre" }}';
+                let sortOrder = '{{ current_sort.order or "asc" }}';
+                const activeSortLinkJS = document.querySelector('th.sortable a.active-sort'); // Re-seleccionar
+                 if(activeSortLinkJS){
+                    sortBy = activeSortLinkJS.dataset.sortBy;
+                    // El data-sort-order del link activo ya indica el *siguiente* orden a aplicar
+                    // Así que si el link activo dice 'desc', significa que el orden actual es 'asc'
+                    sortOrder = activeSortLinkJS.dataset.sortOrder === 'desc' ? 'asc' : 'desc';
                 }
+                currentParams.set('sort_by', sortBy);
+                currentParams.set('sort_order', sortOrder);
+                currentParams.delete('page');
+                window.location.href = `{{ url_for('productos_bp.vista_listar_productos') }}?${currentParams.toString()}`;
             });
         }
-
     });
     </script>
 {% endblock %}

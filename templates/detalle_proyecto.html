@@ -1,0 +1,196 @@
+{% extends "base.html" %}
+
+{% block content %}
+    {# El título de la página se establece en app.py y se muestra en el content-header de base.html #}
+    {# Ej: "Detalle Proyecto: Graduación Valeria 2024" #}
+
+    <div class="content-actions-bar" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
+        <a href="{{ url_for('vista_listar_proyectos') }}" class="button button-secondary">&laquo; Volver a Lista de Proyectos</a>
+        <div>
+            <a href="{{ url_for('vista_editar_proyecto', id_proyecto=proyecto.id_proyecto) }}" class="button button-primary" style="margin-right: 10px;">Editar Proyecto</a>
+            {# Placeholder para el botón de nueva cotización para ESTE proyecto #}
+            <a href="#" class="button" style="background-color: var(--color-acento-secundario); border-color: var(--color-acento-secundario);">+ Nueva Cotización</a>
+        </div>
+    </div>
+
+    {# Sección de Información General del Proyecto #}
+    <fieldset class="form-section view-section">
+        <legend><h4>Información General del Evento</h4></legend>
+        <div class="details-grid">
+            <div class="detail-item">
+                <span class="detail-label">Identificador Único del Evento:</span>
+                <span class="detail-value">{{ proyecto.identificador_evento }}</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Nombre del Evento:</span>
+                <span class="detail-value">{{ proyecto.nombre_evento }}</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Fecha del Evento:</span>
+                <span class="detail-value">{{ proyecto.fecha_evento.strftime('%d/%m/%Y') if proyecto.fecha_evento else '-' }}</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Número de Invitados (Estimado):</span>
+                <span class="detail-value">{{ proyecto.numero_invitados or '-' }}</span>
+            </div>
+        </div>
+    </fieldset>
+
+    {# Sección de Información del Cliente #}
+    <fieldset class="form-section view-section">
+        <legend><h4>Información del Cliente</h4></legend>
+        <div class="details-grid">
+            <div class="detail-item">
+                <span class="detail-label">Nombre del Cliente:</span>
+                <span class="detail-value">{{ proyecto.cliente_nombre or '-' }}</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Teléfono del Cliente:</span>
+                <span class="detail-value">{{ proyecto.cliente_telefono or '-' }}</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Email del Cliente:</span>
+                <span class="detail-value">{{ proyecto.cliente_email or '-' }}</span>
+            </div>
+        </div>
+    </fieldset>
+
+    {# Sección de Detalles de Ubicación y Logística #}
+    <fieldset class="form-section view-section">
+        <legend><h4>Detalles de Ubicación y Logística</h4></legend>
+        <div class="details-grid">
+            <div class="detail-item full-width"> {# full-width para que ocupe más si es largo #}
+                <span class="detail-label">Dirección del Evento:</span>
+                <span class="detail-value">{{ proyecto.direccion_evento or '-' }}</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Tipo de Ubicación:</span>
+                <span class="detail-value">{{ proyecto.tipo_ubicacion or 'Local' }}</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Costo Transporte Estimado:</span>
+                <span class="detail-value">${{ "%.2f"|format(proyecto.costo_transporte_estimado|float) if proyecto.costo_transporte_estimado is not none else '0.00' }}</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Costo Viáticos Estimado:</span>
+                <span class="detail-value">${{ "%.2f"|format(proyecto.costo_viaticos_estimado|float) if proyecto.costo_viaticos_estimado is not none else '0.00' }}</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Costo Hospedaje Estimado:</span>
+                <span class="detail-value">${{ "%.2f"|format(proyecto.costo_hospedaje_estimado|float) if proyecto.costo_hospedaje_estimado is not none else '0.00' }}</span>
+            </div>
+        </div>
+    </fieldset>
+    
+    {# Sección de Notas Adicionales #}
+    {% if proyecto.notas_proyecto %}
+    <fieldset class="form-section view-section">
+        <legend><h4>Notas Adicionales del Proyecto</h4></legend>
+        <div class="detail-item full-width">
+            {# <span class="detail-label">Notas:</span> #}
+            <p class="detail-value" style="white-space: pre-wrap;">{{ proyecto.notas_proyecto }}</p>
+        </div>
+    </fieldset>
+    {% endif %}
+
+    {# Sección de Cotizaciones Asociadas #}
+    <fieldset class="form-section">
+        <legend><h4>Cotizaciones para este Proyecto</h4></legend>
+        {% if proyecto.cotizaciones %}
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>ID Cotización</th>
+                            <th>Versión</th>
+                            <th>Fecha Emisión</th>
+                            <th>Estado</th>
+                            <th style="text-align: right;">Monto Total</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for cotizacion in proyecto.cotizaciones|sort(attribute='version', reverse=True) %}
+                            <tr>
+                                <td>{{ cotizacion.id_cotizacion }}</td>
+                                <td>v{{ cotizacion.version }}</td>
+                                <td>{{ cotizacion.fecha_emision.strftime('%d/%m/%Y') if cotizacion.fecha_emision else '-' }}</td>
+                                <td>
+                                    <span class="status-badge status-{{ cotizacion.estado|lower|replace(' ', '-') }}">{{ cotizacion.estado }}</span>
+                                </td>
+                                <td style="text-align: right;">${{ "%.2f"|format(cotizacion.monto_total_cotizado|float) if cotizacion.monto_total_cotizado is not none else '0.00' }}</td>
+                                <td class="actions">
+                                    <a href="#" class="button-edit-black" style="font-size: 0.8em; padding: 4px 8px;">Ver/Editar</a> {# Placeholder #}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p style="text-align: center; color: var(--color-texto-secundario);">Aún no hay cotizaciones para este proyecto.</p>
+        {% endif %}
+        <div style="margin-top: 15px; text-align: right;">
+             {# Botón para nueva cotización, podría ser el mismo que el de arriba #}
+            <a href="#" class="button" style="background-color: var(--color-acento-secundario); border-color: var(--color-acento-secundario);">+ Crear Nueva Cotización para este Proyecto</a>
+        </div>
+    </fieldset>
+
+<style>
+    .view-section { /* Estilo para los fieldsets que solo muestran información */
+        background-color: #fdfdff; /* Un poco diferente del card principal si es necesario */
+    }
+    .details-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); /* 2 o más columnas */
+        gap: 15px 25px;
+    }
+    .detail-item {
+        padding: 8px 0;
+        border-bottom: 1px dotted var(--color-borde-sutil);
+    }
+    .detail-item:last-child {
+        border-bottom: none;
+    }
+    .detail-item.full-width {
+        grid-column: 1 / -1; /* Ocupa todo el ancho disponible en el grid */
+    }
+    .detail-label {
+        font-weight: 500;
+        color: var(--color-texto-secundario);
+        display: block; /* Para que el valor aparezca debajo en móviles si es necesario */
+        margin-bottom: 3px;
+        font-size: 0.85em;
+    }
+    .detail-value {
+        color: var(--color-texto-principal);
+        font-size: 0.95em;
+    }
+    .content-actions-bar .button {
+        font-size: 0.85em; /* Botones un poco más pequeños en la barra de acciones */
+        padding: 8px 15px;
+    }
+    /* Estilos para badges de estado (ejemplo) */
+    .status-badge {
+        padding: 3px 8px;
+        border-radius: var(--radio-borde-general);
+        font-size: 0.8em;
+        font-weight: 500;
+        color: white;
+        text-transform: capitalize;
+    }
+    .status-borrador { background-color: #6c757d; } /* Gris */
+    .status-presentada { background-color: var(--color-info); } /* Azul */
+    .status-aceptada { background-color: var(--color-acento-secundario); } /* Verde */
+    .status-rechazada { background-color: var(--color-peligro); } /* Rojo */
+    .status-cancelada { background-color: #ffc107; color: #333; } /* Amarillo */
+
+    /* Asegurar que los fieldsets tengan un poco de espacio si se apilan */
+    .form-section + .form-section,
+    .view-section + .view-section,
+    .view-section + .form-section, /* Si mezclas fieldsets de vista y de tabla */
+    .form-section + .view-section {
+        margin-top: 25px;
+    }
+</style>
+{% endblock %}
