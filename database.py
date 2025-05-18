@@ -8,20 +8,14 @@ from dotenv import load_dotenv
 # Esto permite definir las credenciales de la BD fuera del código.
 load_dotenv()
 
-# --- Configuración de la Base de Datos con Variables Separadas ---
-# Intenta leer cada parte de la conexión desde variables de entorno.
-# Proporciona valores por defecto si no se encuentran (ajusta según tu configuración local).
+# Utiliza directamente la variable de entorno DATABASE_URL
+# Esta será la URL que obtuviste de Supabase.
+DATABASE_URL = os.getenv("DATABASE_URL")
 
-DB_USER = os.getenv("POSTGRES_USER", "postgres")
-DB_PASSWORD = os.getenv("POSTGRES_PASSWORD", "Minju125116532") # ¡CAMBIA ESTO EN .env O AQUÍ SI ES NECESARIO!
-DB_HOST = os.getenv("POSTGRES_HOST", "localhost")
-DB_PORT = os.getenv("POSTGRES_PORT", "5432")
-DB_NAME = os.getenv("POSTGRES_DB", "haru_erp_test") # El nombre de tu base de datos
+if not DATABASE_URL:
+    raise ValueError("No se encontró la variable de entorno DATABASE_URL. Asegúrate de que esté configurada.")
 
-# Construir la DATABASE_URL dinámicamente
-DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-
-print(f"Intentando conectar a la base de datos: postgresql://{DB_USER}:****@{DB_HOST}:{DB_PORT}/{DB_NAME}")
+print(f"Intentando conectar a la base de datos configurada en DATABASE_URL...")
 
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
