@@ -4,9 +4,6 @@ from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import desc, exc as sqlalchemy_exc
 from decimal import Decimal
 from datetime import date
-from dotenv import load_dotenv
-import os
-
 
 from . import proyectos_bp  # Importar el blueprint
 from database import SessionLocal
@@ -14,9 +11,6 @@ from models import Proyecto # Solo necesitamos Proyecto aquí, y Cotizacion para
 
 # --- RUTAS PARA PROYECTOS ---
 # El prefijo '/proyectos' ya está definido en el Blueprint.
-
-load_dotenv()
-
 
 @proyectos_bp.route('/', methods=['GET']) # Ruta base para /proyectos/
 def vista_listar_proyectos():
@@ -51,17 +45,17 @@ def vista_crear_proyecto():
             if not identificador_evento_form:
                 flash("El Identificador del Evento es obligatorio.", "danger")
                 # No cerrar db aquí, se cierra en finally
-                return render_template('crear_editar_proyecto.html', proyecto=proyecto_data_para_template, titulo_pagina="Nuevo Proyecto", es_nuevo=True, fecha_hoy=proyecto_data_para_template.get('fecha_hoy'), api_key=os.getenv('GOOGLE_MAPS_API_KEY'))
+                return render_template('crear_editar_proyecto.html', proyecto=proyecto_data_para_template, titulo_pagina="Nuevo Proyecto", es_nuevo=True, fecha_hoy=proyecto_data_para_template.get('fecha_hoy'))
 
             existente = db.query(Proyecto).filter(Proyecto.identificador_evento == identificador_evento_form).first()
             if existente:
                 flash(f"El Identificador del Evento '{identificador_evento_form}' ya existe.", "warning")
-                return render_template('crear_editar_proyecto.html', proyecto=proyecto_data_para_template, titulo_pagina="Nuevo Proyecto", es_nuevo=True, fecha_hoy=proyecto_data_para_template.get('fecha_hoy'), api_key=os.getenv('GOOGLE_MAPS_API_KEY'))
+                return render_template('crear_editar_proyecto.html', proyecto=proyecto_data_para_template, titulo_pagina="Nuevo Proyecto", es_nuevo=True, fecha_hoy=proyecto_data_para_template.get('fecha_hoy'))
 
             fecha_evento_str = request.form.get('fecha_evento')
             if not fecha_evento_str:
                  flash("La Fecha del Evento es obligatoria.", "danger")
-                 return render_template('crear_editar_proyecto.html', proyecto=proyecto_data_para_template, titulo_pagina="Nuevo Proyecto", es_nuevo=True, fecha_hoy=proyecto_data_para_template.get('fecha_hoy'), api_key=os.getenv('GOOGLE_MAPS_API_KEY'))
+                 return render_template('crear_editar_proyecto.html', proyecto=proyecto_data_para_template, titulo_pagina="Nuevo Proyecto", es_nuevo=True, fecha_hoy=proyecto_data_para_template.get('fecha_hoy'))
 
             fecha_evento_obj = date.fromisoformat(fecha_evento_str)
             numero_invitados_val = request.form.get('numero_invitados')
@@ -104,9 +98,9 @@ def vista_crear_proyecto():
             flash(f"Error al crear el proyecto: {str(e)}", "danger")
         finally:
             if db.is_active: db.close()
-        return render_template('crear_editar_proyecto.html', proyecto=proyecto_data_para_template, titulo_pagina="Nuevo Proyecto", es_nuevo=True, fecha_hoy=proyecto_data_para_template.get('fecha_hoy'), api_key=os.getenv('GOOGLE_MAPS_API_KEY'))
+        return render_template('crear_editar_proyecto.html', proyecto=proyecto_data_para_template, titulo_pagina="Nuevo Proyecto", es_nuevo=True, fecha_hoy=proyecto_data_para_template.get('fecha_hoy'))
 
-    return render_template('crear_editar_proyecto.html', proyecto=proyecto_data_para_template, titulo_pagina="Nuevo Proyecto", es_nuevo=True, api_key=os.getenv('GOOGLE_MAPS_API_KEY'))
+    return render_template('crear_editar_proyecto.html', proyecto=proyecto_data_para_template, titulo_pagina="Nuevo Proyecto", es_nuevo=True)
 
 @proyectos_bp.route('/<int:id_proyecto>/editar', methods=['GET', 'POST'])
 def vista_editar_proyecto(id_proyecto):
@@ -122,18 +116,18 @@ def vista_editar_proyecto(id_proyecto):
             identificador_evento_form = request.form.get('identificador_evento', '').strip()
             if not identificador_evento_form:
                 flash("El Identificador del Evento es obligatorio.", "danger")
-                return render_template('crear_editar_proyecto.html', proyecto=proyecto_a_editar, titulo_pagina=f"Editar Proyecto: {proyecto_a_editar.nombre_evento}", es_nuevo=False, id_proyecto=id_proyecto, api_key=os.getenv('GOOGLE_MAPS_API_KEY'))
+                return render_template('crear_editar_proyecto.html', proyecto=proyecto_a_editar, titulo_pagina=f"Editar Proyecto: {proyecto_a_editar.nombre_evento}", es_nuevo=False, id_proyecto=id_proyecto)
 
             if proyecto_a_editar.identificador_evento != identificador_evento_form:
                 existente = db.query(Proyecto).filter(Proyecto.identificador_evento == identificador_evento_form, Proyecto.id_proyecto != id_proyecto).first()
                 if existente:
                     flash(f"El Identificador del Evento '{identificador_evento_form}' ya existe para otro proyecto.", "warning")
-                    return render_template('crear_editar_proyecto.html', proyecto=request.form, titulo_pagina=f"Editar Proyecto: {proyecto_a_editar.nombre_evento}", es_nuevo=False, id_proyecto=id_proyecto, api_key=os.getenv('GOOGLE_MAPS_API_KEY'))
+                    return render_template('crear_editar_proyecto.html', proyecto=request.form, titulo_pagina=f"Editar Proyecto: {proyecto_a_editar.nombre_evento}", es_nuevo=False, id_proyecto=id_proyecto)
 
             fecha_evento_str = request.form.get('fecha_evento')
             if not fecha_evento_str:
                  flash("La Fecha del Evento es obligatoria.", "danger")
-                 return render_template('crear_editar_proyecto.html', proyecto=proyecto_a_editar, titulo_pagina=f"Editar Proyecto: {proyecto_a_editar.nombre_evento}", es_nuevo=False, id_proyecto=id_proyecto, api_key=os.getenv('GOOGLE_MAPS_API_KEY'))
+                 return render_template('crear_editar_proyecto.html', proyecto=proyecto_a_editar, titulo_pagina=f"Editar Proyecto: {proyecto_a_editar.nombre_evento}", es_nuevo=False, id_proyecto=id_proyecto)
 
             proyecto_a_editar.identificador_evento = identificador_evento_form
             proyecto_a_editar.nombre_evento = request.form.get('nombre_evento', '').strip()
@@ -165,10 +159,10 @@ def vista_editar_proyecto(id_proyecto):
             flash(f"Error al actualizar el proyecto: {str(e)}", "danger")
         finally:
             if db.is_active: db.close()
-        return render_template('crear_editar_proyecto.html', proyecto=request.form if request.form else proyecto_a_editar, titulo_pagina=f"Editar Proyecto: {proyecto_a_editar.nombre_evento}", es_nuevo=False, id_proyecto=id_proyecto, api_key=os.getenv('GOOGLE_MAPS_API_KEY'))
+        return render_template('crear_editar_proyecto.html', proyecto=request.form if request.form else proyecto_a_editar, titulo_pagina=f"Editar Proyecto: {proyecto_a_editar.nombre_evento}", es_nuevo=False, id_proyecto=id_proyecto)
 
     if db.is_active: db.close()
-    return render_template('crear_editar_proyecto.html', proyecto=proyecto_a_editar, titulo_pagina=f"Editar Proyecto: {proyecto_a_editar.nombre_evento}", es_nuevo=False, id_proyecto=id_proyect, api_key=os.getenv('GOOGLE_MAPS_API_KEY'))
+    return render_template('crear_editar_proyecto.html', proyecto=proyecto_a_editar, titulo_pagina=f"Editar Proyecto: {proyecto_a_editar.nombre_evento}", es_nuevo=False, id_proyecto=id_proyecto)
 
 @proyectos_bp.route('/<int:id_proyecto>', methods=['GET']) # Ruta para /proyectos/<id_proyecto>
 def vista_detalle_proyecto(id_proyecto):

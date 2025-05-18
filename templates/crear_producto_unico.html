@@ -12,40 +12,39 @@
             <small class="form-text text-muted">Ej: "Gomita Panditas Bolsa 1kg Sabor Limón", "Globo Látex #9 Rojo Paquete 50pz"</small>
         </div>
 
-        {# Selección de Categoría y Subcategoría #}
-        <div class="form-grid-2col">
+        {# --- Selección de Categoría Jerárquica --- #}
+        <div class="form-grid-3col">
             <div class="form-group">
-                <label for="id_categoria_principal_producto">Categoría Principal:</label>
-                <select name="id_categoria_principal_producto" id="id_categoria_principal_producto">
-                    <option value="">-- Selecciona una categoría principal (opcional si eliges subcategoría) --</option>
-                    {% for cat in categorias_para_select %}
-                        <option value="{{ cat.id_categoria }}"
-                                data-nombre-categoria="{{ cat.nombre_categoria }}"
-                                {% if request_form_data.id_categoria_principal_producto == cat.id_categoria|string %}selected{% endif %}>
-                            {{ cat.nombre_categoria }}
+                <label for="select_categoria_principal">Categoría Principal: <span class="required-indicator">*</span></label>
+                <select name="id_categoria_principal_producto" id="select_categoria_principal" required>
+                    <option value="">-- Selecciona Categoría Principal --</option>
+                    {% for cat_id, cat_data in categorias_jerarquia.items() %}
+                        <option value="{{ cat_id }}" {% if request_form_data.id_categoria_principal_producto == cat_id|string %}selected{% endif %}>
+                            {{ cat_data.nombre }}
                         </option>
                     {% endfor %}
                 </select>
             </div>
             <div class="form-group">
-                <label for="id_subcategoria_especifica_producto">Subcategoría Específica:</label>
-                <select name="id_subcategoria_especifica_producto" id="id_subcategoria_especifica_producto">
-                    <option value="">-- Selecciona una subcategoría (opcional / depende de principal) --</option>
-                    {% for subcat in subcategorias_para_select %}
-                         <option value="{{ subcat.id_subcategoria }}"
-                                 data-id-categoria-contenedora="{{ subcat.id_categoria_contenedora or '' }}"
-                                 data-id-subcat-padre="{{ subcat.id_subcategoria_padre or '' }}"
-                                 {% if request_form_data.id_subcategoria_especifica_producto == subcat.id_subcategoria|string %}selected{% endif %}>
-                             {{ subcat.nombre_subcategoria }}
-                             {% if subcat.categoria_contenedora %} ({{ subcat.categoria_contenedora.nombre_categoria }})
-                             {% elif subcat.subcategoria_padre %} (Sub de: {{ subcat.subcategoria_padre.nombre_subcategoria }})
-                             {% endif %}
-                         </option>
-                    {% endfor %}
+                <label for="select_subcategoria_nivel1">Subcategoría Nivel 1:</label>
+                <select name="id_subcategoria_nivel1" id="select_subcategoria_nivel1">
+                    <option value="">-- Selecciona S1 (si aplica) --</option>
+                    {# Las opciones se poblarán con JavaScript #}
                 </select>
-                 <small class="form-text text-muted">Un producto debe tener al menos una categoría principal o una subcategoría específica.</small>
+            </div>
+            <div class="form-group">
+                <label for="select_subcategoria_nivel2">Subcategoría Nivel 2 (Específica): <span class="required-indicator">*</span></label>
+                <select name="id_subcategoria_especifica_producto" id="select_subcategoria_nivel2" required>
+                    <option value="">-- Selecciona S2 (si aplica) --</option>
+                    {# Las opciones se poblarán con JavaScript #}
+                </select>
+                 <small class="form-text text-muted">Un producto debe tener una Subcategoría Nivel 2. Si no hay S1, selecciona "General" o similar si aplica.</small>
             </div>
         </div>
+         <input type="hidden" name="nombre_categoria_principal_seleccionada" id="nombre_categoria_principal_seleccionada">
+         <input type="hidden" name="nombre_subcategoria_nivel1_seleccionada" id="nombre_subcategoria_nivel1_seleccionada">
+         <input type="hidden" name="nombre_subcategoria_nivel2_seleccionada" id="nombre_subcategoria_nivel2_seleccionada">
+
 
         <div class="form-group">
             <label for="descripcion_adicional">Descripción Adicional (Notas Internas):</label>
@@ -58,7 +57,7 @@
         <legend><h4>Detalles de Compra e Inventario Base</h4></legend>
         <div class="form-grid-3col">
             <div class="form-group">
-                <label for="presentacion_compra">Presentación de Compra:</label>
+                <label for="presentacion_compra">Presentación de Compra Estandar:</label>
                 <input type="text" name="presentacion_compra" id="presentacion_compra" value="{{ request_form_data.presentacion_compra or '' }}">
                 <small>Ej: "Bolsa 1kg", "Caja 24pz", "Rollo 50m"</small>
             </div>
@@ -73,16 +72,29 @@
                 <small>Unidad fundamental. Ej: "g", "ml", "cm", "pieza".</small>
             </div>
         </div>
-         <div class="form-group">
-            <label for="dias_anticipacion_compra_proveedor">Días Anticipación Compra a Proveedor:</label>
-            <input type="number" name="dias_anticipacion_compra_proveedor" id="dias_anticipacion_compra_proveedor" value="{{ request_form_data.dias_anticipacion_compra_proveedor or '' }}" min="0">
+        <div class="form-grid-2col"> {# Movido EsIndivisible y DiasAnticipacion a un nuevo grid #}
+            <div class="form-group checkbox-group">
+                <input type="checkbox" name="es_indivisible" id="es_indivisible" class="form-checkbox" 
+                       {% if request_form_data.get('es_indivisible') == 'on' %}checked{% endif %}>
+                <label for="es_indivisible" class="checkbox-label">Es Indivisible</label>
+                <small class="form-text text-muted" style="margin-left:10px;">(Marcar si la unidad base no se puede fraccionar, ej: una pieza de globo)</small>
+            </div>
+            <div class="form-group">
+                <label for="dias_anticipacion_compra_proveedor">Días Anticipación Compra a Proveedor:</label>
+                <input type="number" name="dias_anticipacion_compra_proveedor" id="dias_anticipacion_compra_proveedor" value="{{ request_form_data.dias_anticipacion_compra_proveedor or '' }}" min="0">
+            </div>
         </div>
     </fieldset>
 
     {# Sección de Atributos Descriptivos Adicionales #}
+    {# Estos campos deberían ser dinámicos o al menos tener placeholders que sugieran qué llenar según la categoría #}
     <fieldset class="form-section">
-        <legend><h4>Atributos Descriptivos Adicionales</h4></legend>
+        <legend><h4>Atributos Descriptivos Adicionales (Varían por Categoría)</h4></legend>
         <div class="form-grid-3col">
+            <div class="form-group">
+                <label for="marca">Marca:</label>
+                <input type="text" name="marca" id="marca" value="{{ request_form_data.marca or '' }}">
+            </div>
             <div class="form-group">
                 <label for="sabor">Sabor:</label>
                 <input type="text" name="sabor" id="sabor" value="{{ request_form_data.sabor or '' }}">
@@ -92,75 +104,158 @@
                 <input type="text" name="color" id="color" value="{{ request_form_data.color or '' }}">
             </div>
             <div class="form-group">
-                <label for="tamano_pulgadas">Tamaño (Pulgadas):</label>
-                <input type="text" name="tamano_pulgadas" id="tamano_pulgadas" value="{{ request_form_data.tamano_pulgadas or '' }}">
-            </div>
-            <div class="form-group">
                 <label for="material">Material:</label>
                 <input type="text" name="material" id="material" value="{{ request_form_data.material or '' }}">
             </div>
             <div class="form-group">
+                <label for="tamano_pulgadas">Tamaño (ej. pulgadas, cm, #):</label> {# Etiqueta más genérica #}
+                <input type="text" name="tamano_pulgadas" id="tamano_pulgadas" value="{{ request_form_data.tamano_pulgadas or '' }}">
+            </div>
+            <div class="form-group">
                 <label for="dimensiones_capacidad">Dimensiones/Capacidad:</label>
                 <input type="text" name="dimensiones_capacidad" id="dimensiones_capacidad" value="{{ request_form_data.dimensiones_capacidad or '' }}">
+                 <small>Ej: "50x30x20 cm", "2 Litros", "Para 12 cupcakes"</small>
             </div>
              <div class="form-group">
                 <label for="tema_estilo">Tema/Estilo:</label>
                 <input type="text" name="tema_estilo" id="tema_estilo" value="{{ request_form_data.tema_estilo or '' }}">
             </div>
              <div class="form-group">
-                <label for="forma_tipo">Forma/Tipo:</label>
+                <label for="forma_tipo">Forma/Tipo Específico:</label>
                 <input type="text" name="forma_tipo" id="forma_tipo" value="{{ request_form_data.forma_tipo or '' }}">
+                 <small>Ej: "Redondo", "Cuadrado", "Oso", "Corazón"</small>
             </div>
             <div class="form-group">
+                <label for="modelo_sku_proveedor">Modelo/SKU del Proveedor:</label>
+                <input type="text" name="modelo_sku_proveedor" id="modelo_sku_proveedor" value="{{ request_form_data.modelo_sku_proveedor or '' }}">
+            </div>
+            <div class="form-group"> {# Campo movido de sección anterior #}
                 <label for="modalidad_servicio_directo">Modalidad (si es un servicio directo):</label>
                 <input type="text" name="modalidad_servicio_directo" id="modalidad_servicio_directo" value="{{ request_form_data.modalidad_servicio_directo or '' }}">
+                <small>Ej: "Por Hora", "Por Evento"</small>
             </div>
         </div>
     </fieldset>
 
     <div class="form-actions">
-        {# CORREGIDO el url_for aquí #}
         <a href="{{ url_for('productos_bp.vista_listar_productos') }}" class="button button-secondary">Cancelar</a>
         <input type="submit" value="Crear Producto Interno" class="button button-primary">
     </div>
 </form>
 
 <script>
+// Convertir la estructura jerárquica de categorías de Flask a un objeto JS
+const categoriasJerarquia = {{ categorias_jerarquia | tojson | safe }};
+// Ejemplo de categorias_jerarquia que se espera del backend:
+// {
+//     "cat_id_1": {
+//         "nombre": "Comestibles",
+//         "subcategorias_nivel1": {
+//             "s1_id_A": {
+//                 "nombre": "Dulces",
+//                 "subcategorias_nivel2": { "s2_id_X": "Gomitas", "s2_id_Y": "Chocolates" }
+//             },
+//             "s1_id_B": { "nombre": "Botanas", "subcategorias_nivel2": { /* ... */ } }
+//         }
+//     },
+//     "cat_id_2": { /* ... */ }
+// }
+
 document.addEventListener('DOMContentLoaded', function() {
-    const categoriaPrincipalSelect = document.getElementById('id_categoria_principal_producto');
-    const subcategoriaEspecificaSelect = document.getElementById('id_subcategoria_especifica_producto');
+    const selectCategoriaPrincipal = document.getElementById('select_categoria_principal');
+    const selectSubcategoriaNivel1 = document.getElementById('select_subcategoria_nivel1');
+    const selectSubcategoriaNivel2 = document.getElementById('select_subcategoria_nivel2');
 
-    const todasLasSubcategoriasOptions = Array.from(subcategoriaEspecificaSelect.options).filter(opt => opt.value !== "");
+    const hiddenNombreCatPrincipal = document.getElementById('nombre_categoria_principal_seleccionada');
+    const hiddenNombreS1 = document.getElementById('nombre_subcategoria_nivel1_seleccionada');
+    const hiddenNombreS2 = document.getElementById('nombre_subcategoria_nivel2_seleccionada');
 
-    function filtrarSubcategorias() {
-        const selectedCategoriaId = categoriaPrincipalSelect.value;
-        let valorActualSubcategoria = subcategoriaEspecificaSelect.value;
-
-        while (subcategoriaEspecificaSelect.options.length > 1) {
-            subcategoriaEspecificaSelect.remove(1);
-        }
-
-        if (selectedCategoriaId) {
-            todasLasSubcategoriasOptions.forEach(optionElement => {
-                if (optionElement.dataset.idCategoriaContenedora === selectedCategoriaId) {
-                    subcategoriaEspecificaSelect.add(optionElement.cloneNode(true));
-                }
-            });
-        } else {
-            todasLasSubcategoriasOptions.forEach(optionElement => {
-                subcategoriaEspecificaSelect.add(optionElement.cloneNode(true));
-            });
-        }
-        subcategoriaEspecificaSelect.value = valorActualSubcategoria;
-        if (subcategoriaEspecificaSelect.selectedIndex === -1 || subcategoriaEspecificaSelect.value === "") {
-             if (subcategoriaEspecificaSelect.options.length > 0) subcategoriaEspecificaSelect.options[0].selected = true;
-        }
+    function limpiarSelect(selectElement, placeholderText) {
+        selectElement.innerHTML = `<option value="">-- ${placeholderText} --</option>`;
     }
 
-    if (categoriaPrincipalSelect && subcategoriaEspecificaSelect) {
-        categoriaPrincipalSelect.addEventListener('change', filtrarSubcategorias);
-        filtrarSubcategorias();
+    function poblarSelect(selectElement, opciones, valorSeleccionado) {
+        // opciones es un objeto {id: nombre}
+        Object.entries(opciones).forEach(([id, nombre]) => {
+            const option = new Option(nombre, id);
+            if (valorSeleccionado && id === valorSeleccionado) {
+                option.selected = true;
+            }
+            selectElement.add(option);
+        });
     }
+    
+    function actualizarNombresOcultos() {
+        const catPrincipalOpt = selectCategoriaPrincipal.options[selectCategoriaPrincipal.selectedIndex];
+        hiddenNombreCatPrincipal.value = catPrincipalOpt ? catPrincipalOpt.text : '';
+
+        const s1Opt = selectSubcategoriaNivel1.options[selectSubcategoriaNivel1.selectedIndex];
+        hiddenNombreS1.value = (s1Opt && s1Opt.value) ? s1Opt.text : '';
+        
+        const s2Opt = selectSubcategoriaNivel2.options[selectSubcategoriaNivel2.selectedIndex];
+        hiddenNombreS2.value = (s2Opt && s2Opt.value) ? s2Opt.text : '';
+    }
+
+
+    selectCategoriaPrincipal.addEventListener('change', function() {
+        limpiarSelect(selectSubcategoriaNivel1, 'Selecciona S1 (si aplica)');
+        limpiarSelect(selectSubcategoriaNivel2, 'Selecciona S2 (si aplica)');
+        actualizarNombresOcultos();
+
+        const idCatPrincipalSeleccionada = this.value;
+        if (idCatPrincipalSeleccionada && categoriasJerarquia[idCatPrincipalSeleccionada]) {
+            const dataCatPrincipal = categoriasJerarquia[idCatPrincipalSeleccionada];
+            if (dataCatPrincipal.subcategorias_nivel1 && Object.keys(dataCatPrincipal.subcategorias_nivel1).length > 0) {
+                const opcionesS1 = {};
+                Object.entries(dataCatPrincipal.subcategorias_nivel1).forEach(([s1Id, s1Data]) => {
+                    opcionesS1[s1Id] = s1Data.nombre;
+                });
+                poblarSelect(selectSubcategoriaNivel1, opcionesS1, '{{ request_form_data.id_subcategoria_nivel1 or "" }}');
+                selectSubcategoriaNivel1.dispatchEvent(new Event('change')); // Para cargar S2 si hay valor preseleccionado
+            } else {
+                // Si no hay S1, podría haber S2 directamente bajo la principal (si el modelo lo permite)
+                // o simplemente no hay subniveles. Por ahora, asumimos que S2 depende de S1.
+                // Si una CatPrincipal puede no tener S1 pero sí S2, se necesitaría ajustar esta lógica.
+                // O, si no hay S1, el campo S2 no debería ser obligatorio o se debería permitir "General"
+                console.warn("Categoría principal seleccionada no tiene Subcategorías Nivel 1 definidas.");
+            }
+        }
+    });
+
+    selectSubcategoriaNivel1.addEventListener('change', function() {
+        limpiarSelect(selectSubcategoriaNivel2, 'Selecciona S2 (si aplica)');
+        actualizarNombresOcultos();
+
+        const idCatPrincipalSeleccionada = selectCategoriaPrincipal.value;
+        const idS1Seleccionada = this.value;
+
+        if (idCatPrincipalSeleccionada && idS1Seleccionada &&
+            categoriasJerarquia[idCatPrincipalSeleccionada] &&
+            categoriasJerarquia[idCatPrincipalSeleccionada].subcategorias_nivel1[idS1Seleccionada]) {
+            
+            const dataS1 = categoriasJerarquia[idCatPrincipalSeleccionada].subcategorias_nivel1[idS1Seleccionada];
+            if (dataS1.subcategorias_nivel2 && Object.keys(dataS1.subcategorias_nivel2).length > 0) {
+                poblarSelect(selectSubcategoriaNivel2, dataS1.subcategorias_nivel2, '{{ request_form_data.id_subcategoria_especifica_producto or "" }}');
+            } else {
+                 console.warn("Subcategoría Nivel 1 seleccionada no tiene Subcategorías Nivel 2 definidas.");
+            }
+        }
+         selectSubcategoriaNivel2.dispatchEvent(new Event('change')); // Para actualizar el nombre oculto de S2
+    });
+    
+    selectSubcategoriaNivel2.addEventListener('change', function() {
+        actualizarNombresOcultos();
+    });
+
+    // Disparar change en Categoria Principal al cargar para poblar S1 y S2 si hay valores preseleccionados
+    // (útil si el formulario se recarga después de un error de validación)
+    if (selectCategoriaPrincipal.value) {
+        selectCategoriaPrincipal.dispatchEvent(new Event('change'));
+    } else { // Si no hay CatPrincipal seleccionada, asegurar que los nombres ocultos estén vacíos.
+        actualizarNombresOcultos();
+    }
+
+
 });
 </script>
 
@@ -175,6 +270,24 @@ document.addEventListener('DOMContentLoaded', function() {
         color: var(--color-peligro);
         font-weight: bold;
         margin-left: 2px;
+    }
+    .checkbox-group {
+        display: flex;
+        align-items: center;
+        padding-top: 5px; 
+    }
+    .form-checkbox {
+        width: auto;
+        margin-right: 10px;
+        height: 18px;
+        width: 18px;
+        accent-color: var(--color-acento-primario);
+    }
+    .checkbox-label {
+        font-weight: normal !important;
+        margin-bottom: 0 !important;
+        font-size: 0.95em !important;
+        color: var(--color-texto-principal) !important;
     }
 </style>
 {% endblock %}
