@@ -48,10 +48,6 @@ def create_tables():
     except Exception as e:
         print(f"Error al crear las tablas: {e}")
         print("Detalles de la conexión usada:")
-        print(f"  Usuario: {DB_USER}")
-        print(f"  Host: {DB_HOST}")
-        print(f"  Puerto: {DB_PORT}")
-        print(f"  Base de datos: {DB_NAME}")
         print("Verifica que el servidor PostgreSQL esté corriendo, que la base de datos exista,")
         print("y que las credenciales y detalles de conexión sean correctos en tu archivo .env o en database.py.")
 
