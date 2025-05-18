@@ -4,58 +4,133 @@ from sqlalchemy.orm import Session, joinedload, selectinload, aliased, contains_
 from sqlalchemy import asc, desc, or_, and_, func as sqlfunc, inspect
 from decimal import Decimal
 
-from . import productos_bp # Importar el blueprint
-from database import SessionLocal # Asumiendo que database.py está en el directorio raíz
-from models import Producto, Categoria, Subcategoria # Asumiendo que models.py está en el raíz
-from utils_carga import ( # Asumiendo que utils_carga.py está en el raíz
+from . import productos_bp
+from database import SessionLocal 
+from models import Producto, Categoria, Subcategoria 
+from utils_carga import ( 
     parsear_y_validar_csv_productos, guardar_productos_en_bd, construir_descripcion_completa,
-    generar_siguiente_sku
+    generar_siguiente_sku, get_or_create_categoria_principal # Asegúrate de importar esta función
 )
 
-# Funciones auxiliares que estaban en app.py y son específicas de productos
-# (Si son muy genéricas, podrían ir a un archivo utils_productos.py, pero por ahora las dejamos aquí)
-# Asegúrate de que estas funciones ahora usen 'productos_bp.route' si fueran rutas,
-# o que sean llamadas correctamente por las rutas del blueprint.
+# Lista predefinida de las 7 Categorías Principales para los formularios
+PREDEFINED_MAIN_CATEGORIES_NAMES_FOR_FORM = [
+    "Comestibles", "Art. Fiesta", "Material Deco", "Display",
+    "Mobiliario", "Papelería", "Servicios"
+]
 
-# Estas funciones auxiliares NO son rutas, así que no necesitan el decorador del blueprint.
-# Simplemente se usan internamente por las rutas de este blueprint.
+def _build_categorias_jerarquia(db: Session):
+    """
+    Construye la estructura jerárquica de categorías.
+    Asegura que las PREDEFINED_MAIN_CATEGORIES_NAMES_FOR_FORM siempre estén presentes.
+    """
+    categorias_jerarquia_data = {}
+    
+    for nombre_cat_principal_predefinida in PREDEFINED_MAIN_CATEGORIES_NAMES_FOR_FORM:
+        # Intenta encontrar la categoría principal en la BD
+        cat_db_principal = db.query(Categoria)\
+                             .filter(Categoria.nombre_categoria == nombre_cat_principal_predefinida,
+                                     Categoria.id_categoria_padre == None)\
+                             .first()
+        
+        s1_dict = {}
+        # La clave para el diccionario de la plantilla será el ID si la categoría existe en la BD,
+        # o el nombre de la categoría predefinida si aún no existe (para que aparezca en el desplegable).
+        # El JavaScript en la plantilla y la lógica de guardado en el backend (usando get_or_create)
+        # manejarán si se envía un ID o un nombre.
+        cat_id_for_template = str(cat_db_principal.id_categoria) if cat_db_principal else nombre_cat_principal_predefinida
+
+        if cat_db_principal:
+            # Si la categoría principal existe en la BD, buscar sus S1
+            subcategorias_s1_db = db.query(Subcategoria).filter(
+                Subcategoria.id_categoria_contenedora == cat_db_principal.id_categoria, # S1 pertenece a esta Cat Principal
+                Subcategoria.id_subcategoria_padre == None # S1 no tiene padre S1 (es de primer nivel)
+            ).order_by(Subcategoria.nombre_subcategoria).all()
+            for s1 in subcategorias_s1_db:
+                s2_dict = {}
+                # Buscar S2 para esta S1
+                subcategorias_s2_db = db.query(Subcategoria).filter(
+                    Subcategoria.id_subcategoria_padre == s1.id_subcategoria # S2 es hija de esta S1
+                ).order_by(Subcategoria.nombre_subcategoria).all()
+                for s2 in subcategorias_s2_db:
+                    s2_dict[str(s2.id_subcategoria)] = s2.nombre_subcategoria
+                s1_dict[str(s1.id_subcategoria)] = {"nombre": s1.nombre_subcategoria, "subcategorias_nivel2": s2_dict}
+        
+        categorias_jerarquia_data[cat_id_for_template] = {
+            "nombre": nombre_cat_principal_predefinida, # Siempre usa el nombre predefinido para mostrar en el desplegable
+            "subcategorias_nivel1": s1_dict # Esta lista estará vacía si la cat principal no está en BD o no tiene S1
+        }
+    return categorias_jerarquia_data
+
+
 def get_producto_by_id_for_edit(db: Session, id_producto: int) -> Producto | None:
+    # Alias para las tablas Categoria y Subcategoria para evitar conflictos en joins complejos
     CatPrincAlias = aliased(Categoria, name="cat_princ_edit_alias")
-    SubcatEspAlias = aliased(Subcategoria, name="sub_esp_edit_alias")
-    CatDeSubcatAlias = aliased(Categoria, name="cat_de_sub_edit_alias")
+    SubcatEspAlias = aliased(Subcategoria, name="sub_esp_edit_alias") # Esta sería S2
+    CatDeSubcatAlias = aliased(Categoria, name="cat_de_sub_edit_alias") # Categoría contenedora de S1 (si S1 existe)
+    SubcatPadreS1Alias = aliased(Subcategoria, name="sub_padre_s1_alias") # Esta sería S1, padre de S2
 
+    # Cargar el producto con sus relaciones de categoría
+    # Usamos joinedload y contains_eager para cargar eficientemente las relaciones
     return db.query(Producto)\
         .outerjoin(CatPrincAlias, Producto.id_categoria_principal_producto == CatPrincAlias.id_categoria)\
         .outerjoin(SubcatEspAlias, Producto.id_subcategoria_especifica_producto == SubcatEspAlias.id_subcategoria)\
-        .outerjoin(CatDeSubcatAlias, SubcatEspAlias.id_categoria_contenedora == CatDeSubcatAlias.id_categoria)\
+        .outerjoin(SubcatPadreS1Alias, SubcatEspAlias.id_subcategoria_padre == SubcatPadreS1Alias.id_subcategoria) \
+        .outerjoin(CatDeSubcatAlias, SubcatPadreS1Alias.id_categoria_contenedora == CatDeSubcatAlias.id_categoria)\
         .options(
-            contains_eager(Producto.categoria_principal_producto, alias=CatPrincAlias),
-            contains_eager(Producto.subcategoria_especifica_producto, alias=SubcatEspAlias)
-                .contains_eager(Subcategoria.categoria_contenedora, alias=CatDeSubcatAlias)
+            contains_eager(Producto.categoria_principal_producto, alias=CatPrincAlias), # Carga la Cat Principal directa del producto
+            contains_eager(Producto.subcategoria_especifica_producto, alias=SubcatEspAlias) # Carga S2
+                .contains_eager(Subcategoria.subcategoria_padre_ref, alias=SubcatPadreS1Alias) # Carga S1 (padre de S2)
+                    .contains_eager(Subcategoria.categoria_contenedora, alias=CatDeSubcatAlias) # Carga la Cat Principal de S1
         )\
         .filter(Producto.id_producto == id_producto).first()
 
 def update_producto_db(db: Session, id_producto: int, datos_actualizacion: dict) -> Producto | None:
+    # Obtener el producto a editar con sus relaciones cargadas
     producto_db = get_producto_by_id_for_edit(db, id_producto)
     if not producto_db:
         return None
+
+    # Lista de campos que se pueden actualizar desde el formulario
     campos_actualizables = [
         "nombre_producto", "id_categoria_principal_producto", "id_subcategoria_especifica_producto",
         "descripcion_adicional", "presentacion_compra", "cantidad_en_presentacion_compra",
-        "unidad_medida_base", "sabor", "color", "tamano_pulgadas", "material",
+        "unidad_medida_base", "es_indivisible", "marca", "sabor", "color", "tamano_pulgadas", "material", 
         "dimensiones_capacidad", "tema_estilo", "modalidad_servicio_directo", "forma_tipo",
-        "dias_anticipacion_compra_proveedor", "activo"
+        "dias_anticipacion_compra_proveedor", "activo", "modelo_sku_proveedor"
     ]
     cambios_hechos = False
     for campo in campos_actualizables:
         if campo in datos_actualizacion:
             valor_actualizar = datos_actualizacion[campo]
-            if campo == "activo":
+            
+            # Conversión y validación de tipos de datos
+            if campo == "activo" or campo == "es_indivisible": 
                 valor_actualizar = True if valor_actualizar == 'on' or valor_actualizar is True else False
             elif campo in ["id_categoria_principal_producto", "id_subcategoria_especifica_producto", "dias_anticipacion_compra_proveedor"]:
-                if valor_actualizar == '' or valor_actualizar is None:
+                # Manejar el caso donde el valor podría ser un nombre temporal (ej. "Comestibles")
+                # o un ID numérico. La conversión a int solo si es numérico.
+                if isinstance(valor_actualizar, str) and not valor_actualizar.isdigit():
+                    # Si es un nombre (como los predefinidos que aún no están en BD),
+                    # la lógica de get_or_create en el guardado se encargará.
+                    # Aquí, para la actualización directa del ID, necesitaríamos el ID real.
+                    # Si se espera que el formulario envíe IDs reales para categorías existentes,
+                    # y nombres para nuevas, la lógica de guardado debe manejarlo.
+                    # Por ahora, si no es un dígito y no es vacío, lo dejamos como está para que
+                    # la lógica de guardado (si se adapta) o get_or_create lo maneje.
+                    # O, si el formulario SIEMPRE debe enviar IDs, esto sería un error.
+                    # Para update_producto_db, esperamos IDs.
+                    if valor_actualizar == '' or valor_actualizar is None:
+                        valor_actualizar = None
+                    else: # Si no es vacío y no es dígito, es un error para este campo de ID
+                        print(f"Advertencia: Valor no numérico para campo ID {campo}: {valor_actualizar}. Se intentará convertir, pero podría fallar.")
+                        try:
+                            valor_actualizar = int(valor_actualizar) # Esto fallará si es un nombre
+                        except ValueError:
+                             print(f"Error: No se pudo convertir '{valor_actualizar}' a int para {campo}. Se omite la actualización de este campo.")
+                             continue # Saltar este campo
+                elif valor_actualizar == '' or valor_actualizar is None:
                     valor_actualizar = None
-                else:
+                else: # Es un dígito o convertible a dígito
                     try:
                         valor_actualizar = int(valor_actualizar)
                     except ValueError:
@@ -70,15 +145,45 @@ def update_producto_db(db: Session, id_producto: int, datos_actualizacion: dict)
                     except:
                         print(f"Advertencia: Valor no decimal para {campo}: {valor_actualizar}. Se ignora.")
                         continue
+            
+            # Solo actualizar si el valor es diferente para evitar commits innecesarios
             if getattr(producto_db, campo) != valor_actualizar:
                 setattr(producto_db, campo, valor_actualizar)
                 cambios_hechos = True
+    
     if cambios_hechos:
-        datos_para_desc = {c.key: getattr(producto_db, c.key) for c in inspect(producto_db).mapper.column_attrs}
+        # Regenerar descripción completa si hubo cambios
+        datos_para_desc = {c.key: getattr(producto_db, c.key) for c in inspect(producto_db).mapper.column_attrs if hasattr(producto_db, c.key)}
+        
+        # Para la descripción, necesitamos los nombres de las categorías.
+        # Refrescar las relaciones si los IDs cambiaron antes de acceder a los nombres.
+        db.refresh(producto_db, ['categoria_principal_producto', 'subcategoria_especifica_producto'])
+        if producto_db.subcategoria_especifica_producto:
+            db.refresh(producto_db.subcategoria_especifica_producto, ['subcategoria_padre_ref'])
+
+
+        nombre_cat_p_desc = None
+        if producto_db.id_categoria_principal_producto:
+            # Si el ID es un nombre temporal (no debería pasar aquí si se guardó un ID)
+            # Pero si se permite guardar nombres temporales, esta lógica es necesaria.
+            # Asumiendo que id_categoria_principal_producto ahora es un ID real.
+            if producto_db.categoria_principal_producto:
+                nombre_cat_p_desc = producto_db.categoria_principal_producto.nombre_categoria
+        datos_para_desc['nombre_categoria_principal'] = nombre_cat_p_desc
+
+        nombre_s1_desc = None
+        nombre_s2_desc = None
+        if producto_db.subcategoria_especifica_producto: # S2
+            nombre_s2_desc = producto_db.subcategoria_especifica_producto.nombre_subcategoria
+            if producto_db.subcategoria_especifica_producto.subcategoria_padre_ref: # S1
+                 nombre_s1_desc = producto_db.subcategoria_especifica_producto.subcategoria_padre_ref.nombre_subcategoria
+        datos_para_desc['nombre_subcategoria_nivel1'] = nombre_s1_desc
+        datos_para_desc['nombre_subcategoria_especifica'] = nombre_s2_desc # Este es S2
+        
         producto_db.descripcion_completa_generada = construir_descripcion_completa(datos_para_desc)
     try:
         db.commit()
-        db.refresh(producto_db)
+        db.refresh(producto_db) # Refrescar el objeto después del commit
         return producto_db
     except Exception as e:
         db.rollback()
@@ -86,55 +191,76 @@ def update_producto_db(db: Session, id_producto: int, datos_actualizacion: dict)
         raise e
 
 def _construir_query_productos_filtrados(db_session: Session, args: dict):
-    # ... (Misma lógica que tenías en app.py, asegúrate que las referencias a modelos sean correctas)
+    # ... (código existente sin cambios) ...
     search_query = args.get('q', '').strip()
     categoria_principal_id_filter = args.get('id_categoria_principal_producto', type=int)
-    subcategoria_especifica_id_filter = args.get('id_subcategoria_especifica_producto', type=int)
+    subcategoria_especifica_id_filter = args.get('id_subcategoria_especifica_producto', type=int) # Este es S2
     sabor_filter = args.get('sabor', '').strip()
     color_filter = args.get('color', '').strip()
     material_filter = args.get('material', '').strip()
     sort_by_param = args.get('sort_by', 'nombre')
     sort_order_param = args.get('sort_order', 'asc')
 
-    CatPrincAlias = aliased(Categoria, name="cat_princ_alias_bp") # Cambiado el alias para evitar colisiones si se usa en otro lado
-    SubcatEspAlias = aliased(Subcategoria, name="sub_esp_alias_bp")
-    CatDeSubcatAlias = aliased(Categoria, name="cat_de_sub_alias_filter_bp")
+    CatPrincAlias = aliased(Categoria, name="cat_princ_alias_bp")
+    SubcatEspAlias = aliased(Subcategoria, name="sub_esp_alias_bp") # S2
+    SubcatPadreAlias = aliased(Subcategoria, name="sub_padre_alias_bp") # S1 (padre de S2)
+    CatDeS1Alias = aliased(Categoria, name="cat_de_s1_alias_filter_bp") # Cat Principal de S1
 
     query = db_session.query(Producto)\
         .outerjoin(CatPrincAlias, Producto.id_categoria_principal_producto == CatPrincAlias.id_categoria)\
         .outerjoin(SubcatEspAlias, Producto.id_subcategoria_especifica_producto == SubcatEspAlias.id_subcategoria)\
-        .outerjoin(CatDeSubcatAlias, SubcatEspAlias.id_categoria_contenedora == CatDeSubcatAlias.id_categoria)
+        .outerjoin(SubcatPadreAlias, SubcatEspAlias.id_subcategoria_padre == SubcatPadreAlias.id_subcategoria)\
+        .outerjoin(CatDeS1Alias, SubcatPadreAlias.id_categoria_contenedora == CatDeS1Alias.id_categoria)
 
     query = query.options(
-        contains_eager(Producto.categoria_principal_producto, alias=CatPrincAlias),
-        contains_eager(Producto.subcategoria_especifica_producto, alias=SubcatEspAlias)
-            .contains_eager(Subcategoria.categoria_contenedora, alias=CatDeSubcatAlias)
+        contains_eager(Producto.categoria_principal_producto, alias=CatPrincAlias), # Cat Principal directa
+        contains_eager(Producto.subcategoria_especifica_producto, alias=SubcatEspAlias) # S2
+            .contains_eager(Subcategoria.subcategoria_padre_ref, alias=SubcatPadreAlias) # S1
+                .contains_eager(Subcategoria.categoria_contenedora, alias=CatDeS1Alias) # Cat Principal de S1
     )
+    
     sortable_columns = {
-        "id": Producto.id_producto, "sku": Producto.sku, "nombre": Producto.nombre_producto,
-        "categoria_principal": sqlfunc.coalesce(CatPrincAlias.nombre_categoria, CatDeSubcatAlias.nombre_categoria),
-        "subcategoria_especifica": SubcatEspAlias.nombre_subcategoria,
-        "presentacion_compra": Producto.presentacion_compra, "activo": Producto.activo
+        "id": Producto.id_producto, 
+        "sku": Producto.sku, 
+        "nombre": Producto.nombre_producto,
+        "categoria_principal": sqlfunc.coalesce(CatPrincAlias.nombre_categoria, CatDeS1Alias.nombre_categoria),
+        "subcategoria_nivel1": SubcatPadreAlias.nombre_subcategoria, 
+        "subcategoria_nivel2": SubcatEspAlias.nombre_subcategoria, 
+        "presentacion_compra": Producto.presentacion_compra, 
+        "activo": Producto.activo
     }
     column_to_sort_expression = sortable_columns.get(sort_by_param, Producto.nombre_producto)
+
     if search_query:
         search_term = f"%{search_query}%"
         query = query.filter(or_(Producto.nombre_producto.ilike(search_term), Producto.sku.ilike(search_term), Producto.descripcion_completa_generada.ilike(search_term)))
+    
     if categoria_principal_id_filter:
-        query = query.filter(or_(Producto.id_categoria_principal_producto == categoria_principal_id_filter, SubcatEspAlias.id_categoria_contenedora == categoria_principal_id_filter))
-    if subcategoria_especifica_id_filter:
+        query = query.filter(or_(
+            Producto.id_categoria_principal_producto == categoria_principal_id_filter, # Coincide con la CatP directa
+            CatDeS1Alias.id_categoria == categoria_principal_id_filter # O coincide con la CatP de la S1
+        ))
+    
+    # Si se filtra por subcategoria_especifica_id_filter, se asume que es el ID de la S2
+    if subcategoria_especifica_id_filter: 
         query = query.filter(Producto.id_subcategoria_especifica_producto == subcategoria_especifica_id_filter)
+    
+    # Aquí podrías añadir un filtro para SubcategoriaNivel1 si lo implementas en el frontend
+    # id_subcategoria_nivel1_filter = args.get('id_subcategoria_nivel1', type=int)
+    # if id_subcategoria_nivel1_filter:
+    #     query = query.filter(SubcatPadreAlias.id_subcategoria == id_subcategoria_nivel1_filter)
+
     if sabor_filter: query = query.filter(Producto.sabor.ilike(f"%{sabor_filter}%"))
     if color_filter: query = query.filter(Producto.color.ilike(f"%{color_filter}%"))
     if material_filter: query = query.filter(Producto.material.ilike(f"%{material_filter}%"))
+    
     order_final_expression = desc(column_to_sort_expression) if sort_order_param == 'desc' else asc(column_to_sort_expression)
     query = query.order_by(order_final_expression, Producto.id_producto)
+    
     return query, sort_by_param, sort_order_param
 
 def obtener_info_precios_producto(db: Session, id_producto: int) -> dict:
-    # ... (Misma lógica que tenías en app.py, asegúrate que las referencias a modelos sean correctas)
-    # Nota: Esta función usa DetalleCompra, EncabezadoCompra, Proveedor. Asegúrate que estén importados.
-    from models import DetalleCompra, EncabezadoCompra, Proveedor # Añadir si no están ya
+    from models import DetalleCompra, EncabezadoCompra, Proveedor 
     info = {
         "precio_min": None, "proveedor_min": None, "disponibilidad_min": None,
         "precio_max": None, "proveedor_max": None, "disponibilidad_max": None
@@ -167,14 +293,9 @@ def obtener_info_precios_producto(db: Session, id_producto: int) -> dict:
     info["disponibilidad_max"] = max_entry.ultima_disponibilidad or "N/A"
     return info
 
+PORCENTAJE_AUMENTO_MENSUAL_EST = 0.005 
 
-# Rutas del Blueprint de Productos
-# El prefijo '/productos' ya está definido en el Blueprint en __init__.py
-# Así que aquí las rutas son relativas a ese prefijo.
-
-PORCENTAJE_AUMENTO_MENSUAL_EST = 0.005 # Definir la constante si se usa aquí
-
-@productos_bp.route('/', methods=['GET']) # Antes era /productos
+@productos_bp.route('/', methods=['GET'])
 def vista_listar_productos():
     db_session = SessionLocal()
     try:
@@ -187,7 +308,8 @@ def vista_listar_productos():
             productos_enriquecidos.append(prod)
 
         categorias_db = db_session.query(Categoria).filter(Categoria.id_categoria_padre == None).order_by(Categoria.nombre_categoria).all()
-        subcategorias_db = db_session.query(Subcategoria).order_by(Subcategoria.nombre_subcategoria).all()
+        subcategorias_db_para_filtro = db_session.query(Subcategoria).order_by(Subcategoria.nombre_subcategoria).all()
+        
         sabores_db = [s[0] for s in db_session.query(Producto.sabor).distinct().filter(Producto.sabor != None, Producto.sabor != '').order_by(Producto.sabor).all()]
         colores_db = [c[0] for c in db_session.query(Producto.color).distinct().filter(Producto.color != None, Producto.color != '').order_by(Producto.color).all()]
         materiales_db = [m[0] for m in db_session.query(Producto.material).distinct().filter(Producto.material != None, Producto.material != '').order_by(Producto.material).all()]
@@ -201,14 +323,15 @@ def vista_listar_productos():
             'color': request.args.get('color', '').strip(),
             'material': request.args.get('material', '').strip()
         }
-        sortable_columns_keys = ["id", "sku", "nombre", "categoria_principal", "subcategoria_especifica", "presentacion_compra", "activo"]
+        sortable_columns_keys = ["id", "sku", "nombre", "categoria_principal", "subcategoria_nivel1", "subcategoria_nivel2", "presentacion_compra", "activo"]
 
         return render_template('listar_productos.html',
                                productos=productos_enriquecidos,
                                titulo_pagina="Listado de Productos Internos",
                                current_sort=current_sort,
                                sortable_column_keys=sortable_columns_keys,
-                               categorias=categorias_db, subcategorias=subcategorias_db,
+                               categorias=categorias_db, 
+                               subcategorias=subcategorias_db_para_filtro,
                                sabores=sabores_db, colores=colores_db, materiales=materiales_db,
                                current_filters=current_filters, request_args=request.args,
                                aumento_mensual_est=PORCENTAJE_AUMENTO_MENSUAL_EST)
@@ -222,7 +345,7 @@ def vista_listar_productos():
     finally:
         db_session.close()
 
-@productos_bp.route('/api/filtrar', methods=['GET']) # Antes /productos/api/filtrar
+@productos_bp.route('/api/filtrar', methods=['GET'])
 def api_filtrar_productos():
     db_session = SessionLocal()
     try:
@@ -234,7 +357,7 @@ def api_filtrar_productos():
             prod.info_precios = info_precios
             productos_enriquecidos_api.append(prod)
         current_sort = {'by': sort_by_param, 'order': sort_order_param}
-        sortable_columns_keys = ["id", "sku", "nombre", "categoria_principal", "subcategoria_especifica", "presentacion_compra", "activo"]
+        sortable_columns_keys = ["id", "sku", "nombre", "categoria_principal", "subcategoria_nivel1", "subcategoria_nivel2", "presentacion_compra", "activo"]
         return render_template('_tabla_productos_parcial.html',
                                productos=productos_enriquecidos_api,
                                current_sort=current_sort, sortable_column_keys=sortable_columns_keys,
@@ -245,7 +368,7 @@ def api_filtrar_productos():
     finally:
         db_session.close()
 
-@productos_bp.route('/api/buscar_por_descripcion', methods=['GET']) # Antes /productos/api/buscar_por_descripcion
+@productos_bp.route('/api/buscar_por_descripcion', methods=['GET'])
 def api_buscar_productos_por_descripcion():
     db = SessionLocal()
     try:
@@ -277,174 +400,117 @@ def api_buscar_productos_por_descripcion():
     finally:
         db.close()
 
-@productos_bp.route('/<int:id_producto>/editar', methods=['GET', 'POST']) # Antes /productos/<int:id_producto>/editar
-def vista_editar_producto(id_producto):
-    db = SessionLocal()
-    producto_a_editar = get_producto_by_id_for_edit(db, id_producto)
-    form_data_repopulate = {}
-    if not producto_a_editar:
-        flash(f"Producto Interno con ID {id_producto} no encontrado.", "danger")
-        db.close()
-        return redirect(url_for('productos_bp.vista_listar_productos')) # Actualizar url_for
-
-    if request.method == 'POST':
-        form_data_repopulate = request.form.to_dict()
-        try:
-            datos_formulario = {
-                "nombre_producto": request.form.get('nombre_producto'),
-                "id_categoria_principal_producto": request.form.get('id_categoria_principal_producto'),
-                "id_subcategoria_especifica_producto": request.form.get('id_subcategoria_especifica_producto'),
-                "descripcion_adicional": request.form.get('descripcion_adicional'),
-                "presentacion_compra": request.form.get('presentacion_compra'),
-                "cantidad_en_presentacion_compra": request.form.get('cantidad_en_presentacion_compra'),
-                "unidad_medida_base": request.form.get('unidad_medida_base'),
-                "sabor": request.form.get('sabor'), "color": request.form.get('color'),
-                "tamano_pulgadas": request.form.get('tamano_pulgadas'), "material": request.form.get('material'),
-                "dimensiones_capacidad": request.form.get('dimensiones_capacidad'), "tema_estilo": request.form.get('tema_estilo'),
-                "modalidad_servicio_directo": request.form.get('modalidad_servicio_directo'), "forma_tipo": request.form.get('forma_tipo'),
-                "dias_anticipacion_compra_proveedor": request.form.get('dias_anticipacion_compra_proveedor'),
-                "activo": request.form.get('activo')
-            }
-            datos_actualizacion = {k: v for k, v in datos_formulario.items() if v is not None and (isinstance(v, bool) or str(v).strip() != '')}
-            if 'activo' not in datos_actualizacion: datos_actualizacion['activo'] = False
-            elif datos_actualizacion['activo'] == 'on': datos_actualizacion['activo'] = True
-            update_producto_db(db, id_producto, datos_actualizacion)
-            flash(f"Producto Interno '{producto_a_editar.nombre_producto}' actualizado exitosamente.", "success")
-            return redirect(url_for('productos_bp.vista_listar_productos')) # Actualizar url_for
-        except ValueError as ve:
-             if db.is_active: db.rollback()
-             flash(f"Error en los datos del formulario al editar: {str(ve)}", "danger")
-        except Exception as e:
-            if db.is_active: db.rollback()
-            flash(f"Error al actualizar el producto interno: {str(e)}", "danger")
-
-    categorias_db_form = db.query(Categoria).filter(Categoria.id_categoria_padre == None).order_by(Categoria.nombre_categoria).all()
-    subcategorias_db_form = db.query(Subcategoria).order_by(Subcategoria.nombre_subcategoria).all()
-    db.close()
-    return render_template('editar_producto.html',
-                           titulo_pagina=f"Editar Producto Interno: {producto_a_editar.nombre_producto}",
-                           producto=producto_a_editar, request_form_data_repopulate=form_data_repopulate,
-                           categorias_para_select=categorias_db_form, subcategorias_para_select=subcategorias_db_form)
-
-@productos_bp.route('/crear', methods=['GET', 'POST']) # Antes /productos/crear
+@productos_bp.route('/crear', methods=['GET', 'POST'])
 def vista_crear_producto_unico():
     db = SessionLocal()
+    request_form_data_repopulate = {} 
+    categorias_jerarquia_data = {} 
+
     try:
-        categorias_para_select = db.query(Categoria).filter(Categoria.id_categoria_padre == None).order_by(Categoria.nombre_categoria).all()
-        subcategorias_para_select = db.query(Subcategoria).order_by(Subcategoria.nombre_subcategoria).all()
-        request_form_data_repopulate = {}
+        # Construir la jerarquía de categorías para los desplegables SIEMPRE
+        categorias_jerarquia_data = _build_categorias_jerarquia(db)
+
         if request.method == 'POST':
             request_form_data_repopulate = request.form.to_dict()
-            # ... (lógica de creación de producto que tenías, asegurando que url_for se actualice si es necesario) ...
+            
             nombre_producto = request.form.get('nombre_producto', '').strip()
-            # (resto de la lógica de validación y creación)
-            # ...
-            # Ejemplo de redirección al final:
-            # return redirect(url_for('productos_bp.vista_listar_productos'))
-            # ... (código de creación de producto copiado y adaptado de app.py)
-            nombre_producto = request.form.get('nombre_producto', '').strip()
+            id_categoria_principal_form_val = request.form.get('id_categoria_principal_producto')
+            id_subcategoria_nivel2_str = request.form.get('id_subcategoria_especifica_producto')
+
             errores_validacion = []
-
-            id_categoria_str = request.form.get('id_categoria_principal_producto')
-            id_categoria_form = None
-            if id_categoria_str and id_categoria_str.isdigit():
-                id_categoria_form = int(id_categoria_str)
-            elif id_categoria_str and id_categoria_str != "":
-                errores_validacion.append("Valor inválido para ID de Categoría Principal.")
-
-            id_subcategoria_str = request.form.get('id_subcategoria_especifica_producto')
-            id_subcategoria_form = None
-            if id_subcategoria_str and id_subcategoria_str.isdigit():
-                id_subcategoria_form = int(id_subcategoria_str)
-            elif id_subcategoria_str and id_subcategoria_str != "":
-                 errores_validacion.append("Valor inválido para ID de Subcategoría Específica.")
-
             if not nombre_producto:
                 errores_validacion.append("Nombre del producto es obligatorio.")
-            if not id_categoria_form and not id_subcategoria_form:
-                errores_validacion.append("Debe seleccionar una Categoría Principal o una Subcategoría Específica.")
-            
-            categoria_obj = None
-            if id_categoria_form:
-                categoria_obj = db.query(Categoria).get(id_categoria_form)
-                if not categoria_obj:
-                    errores_validacion.append("Categoría principal seleccionada no es válida.")
-            
-            subcategoria_obj = None
-            if id_subcategoria_form:
-                subcategoria_obj = db.query(Subcategoria).get(id_subcategoria_form)
-                if not subcategoria_obj:
-                     errores_validacion.append("Subcategoría específica seleccionada no es válida.")
+            if not id_categoria_principal_form_val:
+                errores_validacion.append("Categoría Principal es obligatoria.")
+            if not id_subcategoria_nivel2_str:
+                errores_validacion.append("Subcategoría Nivel 2 (Específica) es obligatoria.")
+
+            cat_p_obj_para_sku = None
+            id_cat_principal_real = None
+            nombre_cat_principal_seleccionada = request.form.get('nombre_categoria_principal_seleccionada')
+
+            if nombre_cat_principal_seleccionada: # Nombre de la categoría principal del campo oculto
+                cat_p_obj_para_sku = get_or_create_categoria_principal(db, nombre_cat_principal_seleccionada)
+                if cat_p_obj_para_sku:
+                    id_cat_principal_real = cat_p_obj_para_sku.id_categoria
+                else: # No debería pasar si get_or_create funciona bien y siempre devuelve un objeto o None
+                    errores_validacion.append(f"No se pudo obtener o crear la Categoría Principal '{nombre_cat_principal_seleccionada}'.")
+            elif id_categoria_principal_form_val and id_categoria_principal_form_val.isdigit(): # Si se envió un ID
+                cat_p_obj_para_sku = db.query(Categoria).get(int(id_categoria_principal_form_val))
+                if cat_p_obj_para_sku:
+                    id_cat_principal_real = cat_p_obj_para_sku.id_categoria
+                    nombre_cat_principal_seleccionada = cat_p_obj_para_sku.nombre_categoria # Asegurar que tengamos el nombre
+                else:
+                    errores_validacion.append("Categoría Principal (por ID) no encontrada.")
+            else: # Si no hay nombre ni ID válido
+                 errores_validacion.append("Selección de Categoría Principal inválida.")
+
+
+            id_s2_obj = None
+            if id_subcategoria_nivel2_str and id_subcategoria_nivel2_str.isdigit():
+                id_s2_obj = db.query(Subcategoria).get(int(id_subcategoria_nivel2_str))
+                if not id_s2_obj:
+                    errores_validacion.append("Subcategoría Nivel 2 seleccionada no es válida.")
+            elif id_subcategoria_nivel2_str:
+                 errores_validacion.append("ID de Subcategoría Nivel 2 inválido.")
             
             if errores_validacion:
                 for error in errores_validacion:
                     flash(error, "danger")
-                # No cerrar db aquí, se cierra en finally
-                return render_template('crear_producto_unico.html',
-                                       titulo_pagina="Crear Nuevo Producto Interno",
-                                       categorias_para_select=categorias_para_select,
-                                       subcategorias_para_select=subcategorias_para_select,
-                                       request_form_data=request_form_data_repopulate)
-
-            categoria_para_sku = None
-            if categoria_obj and categoria_obj.prefijo_sku:
-                categoria_para_sku = categoria_obj
-            elif subcategoria_obj:
-                current_cat_ancestor = subcategoria_obj.categoria_contenedora
-                while current_cat_ancestor:
-                    if current_cat_ancestor.prefijo_sku:
-                        categoria_para_sku = current_cat_ancestor
-                        break
-                    if hasattr(current_cat_ancestor, 'categoria_padre'):
-                        current_cat_ancestor = current_cat_ancestor.categoria_padre
-                    else: 
-                        current_cat_ancestor = None
-            if not categoria_para_sku or not categoria_para_sku.prefijo_sku:
-                flash("No se pudo determinar una categoría con prefijo SKU.", "danger")
-                return render_template('crear_producto_unico.html', titulo_pagina="Crear Nuevo Producto Interno", categorias_para_select=categorias_para_select, subcategorias_para_select=subcategorias_para_select, request_form_data=request_form_data_repopulate)
-
-            nuevo_sku = generar_siguiente_sku(db, categoria_para_sku)
-            if not nuevo_sku: 
-                flash("No se pudo generar SKU. Verifica la configuración de contadores para la categoría relevante.", "danger")
-                return render_template('crear_producto_unico.html', titulo_pagina="Crear Nuevo Producto Interno", categorias_para_select=categorias_para_select, subcategorias_para_select=subcategorias_para_select, request_form_data=request_form_data_repopulate)
-
-            producto_existente_sku = db.query(Producto).filter(Producto.sku == nuevo_sku).first()
-            if producto_existente_sku:
-                flash(f"El SKU generado '{nuevo_sku}' ya existe. Intenta de nuevo o revisa los contadores.", "danger")
-                return render_template('crear_producto_unico.html', titulo_pagina="Crear Nuevo Producto Interno", categorias_para_select=categorias_para_select, subcategorias_para_select=subcategorias_para_select, request_form_data=request_form_data_repopulate)
-
-            datos_producto = {
-                "nombre_producto": nombre_producto, "sku": nuevo_sku,
-                "id_categoria_principal_producto": id_categoria_form,
-                "id_subcategoria_especifica_producto": id_subcategoria_form,
-                "descripcion_adicional": request.form.get('descripcion_adicional'),
-                "presentacion_compra": request.form.get('presentacion_compra'),
-                "cantidad_en_presentacion_compra": Decimal(request.form.get('cantidad_en_presentacion_compra')) if request.form.get('cantidad_en_presentacion_compra') else None,
-                "unidad_medida_base": request.form.get('unidad_medida_base'),
-                "sabor": request.form.get('sabor'), "color": request.form.get('color'),
-                "tamano_pulgadas": request.form.get('tamano_pulgadas'), "material": request.form.get('material'),
-                "dimensiones_capacidad": request.form.get('dimensiones_capacidad'), "tema_estilo": request.form.get('tema_estilo'),
-                "modalidad_servicio_directo": request.form.get('modalidad_servicio_directo'), "forma_tipo": request.form.get('forma_tipo'),
-                "dias_anticipacion_compra_proveedor": int(request.form.get('dias_anticipacion_compra_proveedor')) if request.form.get('dias_anticipacion_compra_proveedor') else None,
-                "activo": True
-            }
-            datos_producto_limpios = {k: v for k, v in datos_producto.items() if v is not None and str(v).strip() != ''}
-            if datos_producto_limpios.get("nombre_producto"):
-                 datos_producto_limpios["descripcion_completa_generada"] = construir_descripcion_completa(datos_producto_limpios)
             else:
-                 datos_producto_limpios["descripcion_completa_generada"] = "Descripción no disponible"
-
-            nuevo_producto_obj = Producto(**datos_producto_limpios)
-            db.add(nuevo_producto_obj)
-            db.commit()
-            flash(f"Producto Interno '{nuevo_producto_obj.nombre_producto}' (SKU: {nuevo_producto_obj.sku}) creado.", "success")
-            return redirect(url_for('productos_bp.vista_listar_productos'))
-
-
+                if not cat_p_obj_para_sku or not cat_p_obj_para_sku.prefijo_sku:
+                    flash(f"La categoría '{nombre_cat_principal_seleccionada}' no tiene un prefijo SKU configurado.", "danger")
+                else:
+                    nuevo_sku = generar_siguiente_sku(db, cat_p_obj_para_sku)
+                    if not nuevo_sku: 
+                        flash("No se pudo generar SKU. Verifica la configuración de contadores.", "danger")
+                    else:
+                        producto_existente_sku = db.query(Producto).filter(Producto.sku == nuevo_sku).first()
+                        if producto_existente_sku:
+                            flash(f"El SKU generado '{nuevo_sku}' ya existe.", "danger")
+                        else:
+                            datos_producto = {
+                                "nombre_producto": nombre_producto, "sku": nuevo_sku,
+                                "id_categoria_principal_producto": id_cat_principal_real,
+                                "id_subcategoria_especifica_producto": id_s2_obj.id_subcategoria if id_s2_obj else None,
+                                "descripcion_adicional": request.form.get('descripcion_adicional'),
+                                "presentacion_compra": request.form.get('presentacion_compra'),
+                                "cantidad_en_presentacion_compra": Decimal(request.form.get('cantidad_en_presentacion_compra')) if request.form.get('cantidad_en_presentacion_compra') else None,
+                                "unidad_medida_base": request.form.get('unidad_medida_base'),
+                                "es_indivisible": 'es_indivisible' in request.form,
+                                "marca": request.form.get('marca'),
+                                "sabor": request.form.get('sabor'), "color": request.form.get('color'),
+                                "tamano_pulgadas": request.form.get('tamano_pulgadas'), "material": request.form.get('material'),
+                                "dimensiones_capacidad": request.form.get('dimensiones_capacidad'), "tema_estilo": request.form.get('tema_estilo'),
+                                "modalidad_servicio_directo": request.form.get('modalidad_servicio_directo'), 
+                                "forma_tipo": request.form.get('forma_tipo'),
+                                "dias_anticipacion_compra_proveedor": int(request.form.get('dias_anticipacion_compra_proveedor')) if request.form.get('dias_anticipacion_compra_proveedor') else None,
+                                "modelo_sku_proveedor": request.form.get('modelo_sku_proveedor'),
+                                "activo": True 
+                            }
+                            datos_producto_limpios = {k: v for k, v in datos_producto.items() if v is not None and (isinstance(v, bool) or str(v).strip() != '')}
+                            
+                            datos_producto_limpios['nombre_categoria_principal'] = nombre_cat_principal_seleccionada
+                            datos_producto_limpios['nombre_subcategoria_nivel1'] = request.form.get('nombre_subcategoria_nivel1_seleccionada')
+                            datos_producto_limpios['nombre_subcategoria_especifica'] = request.form.get('nombre_subcategoria_nivel2_seleccionada')
+                            
+                            datos_producto_limpios["descripcion_completa_generada"] = construir_descripcion_completa(datos_producto_limpios)
+                            
+                            nuevo_producto_obj = Producto(**datos_producto_limpios)
+                            db.add(nuevo_producto_obj)
+                            db.commit()
+                            flash(f"Producto Interno '{nuevo_producto_obj.nombre_producto}' (SKU: {nuevo_producto_obj.sku}) creado.", "success")
+                            return redirect(url_for('productos_bp.vista_listar_productos'))
+            # Si hubo errores de validación o de SKU, se re-renderiza
+            return render_template('crear_producto_unico.html',
+                                   titulo_pagina="Crear Nuevo Producto Interno",
+                                   categorias_jerarquia=categorias_jerarquia_data,
+                                   request_form_data=request_form_data_repopulate)
+        
+        # Para el método GET
         return render_template('crear_producto_unico.html',
                                titulo_pagina="Crear Nuevo Producto Interno",
-                               categorias_para_select=categorias_para_select,
-                               subcategorias_para_select=subcategorias_para_select,
+                               categorias_jerarquia=categorias_jerarquia_data,
                                request_form_data=request_form_data_repopulate)
     except ValueError as ve:
         if db.is_active: db.rollback()
@@ -452,36 +518,51 @@ def vista_crear_producto_unico():
     except Exception as e:
         if db.is_active: db.rollback()
         flash(f"Error general al crear el producto: {e}", "danger")
+        import traceback
+        traceback.print_exc()
     finally:
         if db.is_active: db.close()
-    # Este return es por si hay una excepción antes del return del GET o POST
-    # y la sesión de db ya se cerró en el finally.
-    # Es mejor obtener los datos para el template fuera del try/except/finally principal si es posible,
-    # o reabrir una sesión si es necesario para el renderizado de error.
-    db_temp_for_render = SessionLocal()
-    cats_render = db_temp_for_render.query(Categoria).filter(Categoria.id_categoria_padre == None).order_by(Categoria.nombre_categoria).all()
-    subcats_render = db_temp_for_render.query(Subcategoria).order_by(Subcategoria.nombre_subcategoria).all()
-    db_temp_for_render.close()
+    
+    # Fallback render si hay una excepción no manejada antes del return del GET/POST
+    # o si el POST tuvo errores y no se hizo redirect.
+    # Asegurarse de que categorias_jerarquia_data esté definida incluso aquí.
+    # Si la construcción inicial de categorias_jerarquia_data falló, podría estar vacía.
+    # Una mejor práctica sería manejar la construcción de categorias_jerarquia_data
+    # en un bloque try/except separado si es propensa a fallar,
+    # pero para este error UndefinedError, asegurar que se pase es el objetivo principal.
+    if not categorias_jerarquia_data: # Si la construcción inicial falló por alguna razón
+        db_temp_fallback = SessionLocal()
+        try:
+            categorias_jerarquia_data = _build_categorias_jerarquia(db_temp_fallback)
+        except Exception as e_fb_query:
+            print(f"Error al construir categorias_jerarquia_data en fallback: {e_fb_query}")
+            categorias_jerarquia_data = {} 
+        finally:
+            db_temp_fallback.close()
+
     return render_template('crear_producto_unico.html',
-                           titulo_pagina="Crear Nuevo Producto Interno",
-                           categorias_para_select=cats_render,
-                           subcategorias_para_select=subcats_render,
-                           request_form_data=request.form.to_dict() if request.method == 'POST' else {})
+                           titulo_pagina="Crear Nuevo Producto Interno (Revisar Errores)",
+                           categorias_jerarquia=categorias_jerarquia_data,
+                           request_form_data=request_form_data_repopulate)
 
 
-@productos_bp.route('/cargar', methods=['GET', 'POST']) # Antes /productos/cargar
+@productos_bp.route('/cargar', methods=['GET', 'POST'])
 def vista_cargar_productos():
+    # ... (sin cambios)
     if request.method == 'POST':
-        # ... (lógica de carga de CSV que tenías, asegurando que url_for se actualice)
         if 'archivo_csv' not in request.files:
             flash('No se encontró la parte del archivo en la petición.', 'danger')
-            return redirect(request.url) # request.url podría necesitar ser url_for('productos_bp.vista_cargar_productos')
+            return redirect(request.url) 
         file = request.files['archivo_csv']
         if file.filename == '':
             flash('Ningún archivo seleccionado.', 'warning')
             return redirect(url_for('productos_bp.vista_cargar_productos'))
-        if file and utils_carga.allowed_file(file.filename): # Asumiendo que allowed_file está en utils_carga
-            resultado_parseo = parsear_y_validar_csv_productos(file.stream)
+        
+        if file and file.filename.rsplit('.', 1)[1].lower() == 'csv':
+            db_session_for_parse = SessionLocal()
+            resultado_parseo = parsear_y_validar_csv_productos(db_session_for_parse, file.stream)
+            db_session_for_parse.close() 
+
             session['productos_para_confirmar'] = resultado_parseo.get("productos_listos", [])
             session['errores_parseo'] = resultado_parseo.get("errores", [])
             if not resultado_parseo.get("productos_listos") and not resultado_parseo.get("errores"):
@@ -496,8 +577,9 @@ def vista_cargar_productos():
     session.pop('errores_parseo', None)
     return render_template('cargar_productos.html', titulo_pagina="Cargar Productos Internos desde CSV")
 
-@productos_bp.route('/confirmar-carga', methods=['GET', 'POST']) # Antes /productos/confirmar-carga
+@productos_bp.route('/confirmar-carga', methods=['GET', 'POST'])
 def vista_confirmar_carga_productos():
+    # ... (sin cambios)
     productos_para_confirmar = session.get('productos_para_confirmar', [])
     errores_parseo = session.get('errores_parseo', [])
     if not productos_para_confirmar and not errores_parseo:

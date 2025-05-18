@@ -4,57 +4,75 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from dotenv import load_dotenv
 
-load_dotenv() # Carga variables desde .env para desarrollo local
+# Cargar variables de entorno desde el archivo .env (si existe)
+# Esto permite definir las credenciales de la BD fuera del código.
+load_dotenv()
 
-# Utiliza directamente la variable de entorno DATABASE_URL
-# Esta será la URL que obtuviste de Supabase.
-DATABASE_URL = os.getenv("DATABASE_URL")
+# --- Configuración de la Base de Datos con Variables Separadas ---
+# Intenta leer cada parte de la conexión desde variables de entorno.
+# Proporciona valores por defecto si no se encuentran (ajusta según tu configuración local).
 
-if not DATABASE_URL:
-    raise ValueError("No se encontró la variable de entorno DATABASE_URL. Asegúrate de que esté configurada.")
+DB_USER = os.getenv("POSTGRES_USER", "postgres")
+DB_PASSWORD = os.getenv("POSTGRES_PASSWORD", "Minju125116532") # ¡CAMBIA ESTO EN .env O AQUÍ SI ES NECESARIO!
+DB_HOST = os.getenv("POSTGRES_HOST", "localhost")
+DB_PORT = os.getenv("POSTGRES_PORT", "5432")
+DB_NAME = os.getenv("POSTGRES_DB", "haru_erp_test") # El nombre de tu base de datos
 
-print(f"Intentando conectar a la base de datos configurada en DATABASE_URL...")
+# Construir la DATABASE_URL dinámicamente
+DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+
+print(f"Intentando conectar a la base de datos: postgresql://{DB_USER}:****@{DB_HOST}:{DB_PORT}/{DB_NAME}")
 
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 def get_db_session():
+    """Generador para obtener una sesión de base de datos."""
     db = SessionLocal()
     try:
         yield db
     finally:
         db.close()
 
+# Importa Base de models.py para crear las tablas
+# Asegúrate de que models.py esté en el mismo directorio o en el PYTHONPATH
 try:
     from models import Base
 except ImportError:
     print("Advertencia: No se pudo importar 'Base' desde 'models'. Asegúrate de que models.py exista y esté accesible.")
-    Base = None
+    Base = None # Para evitar errores si se llama create_tables sin Base
 
 def create_tables():
+    """Crea todas las tablas en la base de datos si no existen."""
     if Base is None:
-        print("Error: No se pueden crear tablas porque 'Base' de SQLAlchemy no está definida.")
+        print("Error: No se pueden crear tablas porque 'Base' de SQLAlchemy no está definida (models.py no se importó correctamente).")
         return
+        
     try:
         Base.metadata.create_all(bind=engine)
-        print("Tablas creadas exitosamente (si no existían) en la base de datos configurada.")
+        print("Tablas creadas exitosamente (si no existían).")
     except Exception as e:
         print(f"Error al crear las tablas: {e}")
-        print("Verifica que la DATABASE_URL sea correcta y que la base de datos Supabase esté accesible.")
+        print("Detalles de la conexión usada:")
+        print(f"  Usuario: {DB_USER}")
+        print(f"  Host: {DB_HOST}")
+        print(f"  Puerto: {DB_PORT}")
+        print(f"  Base de datos: {DB_NAME}")
+        print("Verifica que el servidor PostgreSQL esté corriendo, que la base de datos exista,")
+        print("y que las credenciales y detalles de conexión sean correctos en tu archivo .env o en database.py.")
+
 
 if __name__ == "__main__":
-    print("Intentando crear tablas desde database.py (esto no se ejecutará en Render)...")
-    # No es ideal llamar a create_tables() directamente aquí para producción.
-    # Es mejor manejarlo con un script de build o un comando de Flask.
-    # create_tables() # Comentado para evitar ejecución automática no deseada
+    # Esto se ejecutará si corres database.py directamente
+    # Útil para crear las tablas la primera vez o para probar la conexión.
+    print("Intentando crear tablas desde database.py...")
+    create_tables()
     
     # Prueba de conexión simple
-    if DATABASE_URL:
-        try:
-            connection = engine.connect()
-            print("¡Conexión a la base de datos (Supabase) exitosa!")
-            connection.close()
-        except Exception as e:
-            print(f"Falló la prueba de conexión a la base de datos (Supabase): {e}")
-    else:
-        print("DATABASE_URL no está configurada. No se puede probar la conexión.")
+    try:
+        connection = engine.connect()
+        print("¡Conexión a la base de datos exitosa!")
+        connection.close()
+    except Exception as e:
+        print(f"Falló la prueba de conexión a la base de datos: {e}")
+

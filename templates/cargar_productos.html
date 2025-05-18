@@ -3,7 +3,7 @@
 {% block content %}
     <fieldset class="form-section">
         <legend><h4>Instrucciones para el Archivo CSV de Productos Internos</h4></legend>
-        <p>Asegúrate de que tu archivo CSV tenga las siguientes columnas. Los nombres de las columnas deben coincidir exactamente con los especificados abajo. El SKU se generará automáticamente basado en la categoría.</p>
+        <p>Asegúrate de que tu archivo CSV tenga las siguientes columnas. Los nombres de las columnas deben coincidir exactamente con los especificados abajo. El SKU se generará automáticamente basado en la categoría principal.</p>
         <p>Estos son los productos que compras y gestionas en tu inventario, no los servicios finales que ofreces al cliente.</p>
         
         <h5>Columnas Obligatorias en el CSV:</h5>
@@ -11,53 +11,42 @@
             <ul class="lista-columnas-csv">
                 <li><strong>NombreProducto</strong> (Texto) - Nombre descriptivo completo de tu producto interno. Ej: "Gomita Panditas Bolsa 1kg Sabor Limón", "Globo Látex #9 Rojo Paquete 50pz".</li>
                 <li><strong>UnidadMedidaBase</strong> (Texto) - La unidad fundamental para medir y controlar este producto. Ej: "g" (gramos), "ml" (mililitros), "cm" (centímetros), "pieza". <em>¡Este campo es crucial para los cálculos de consumo en cotizaciones!</em></li>
+                <li><strong>CategoriaPrincipal</strong> (Texto) - Nombre exacto de la Categoría Principal (Nivel 0) a la que pertenece el producto. Ej: "Comestibles", "Art. Fiesta".</li>
+                <li><strong>SubcategoriaNivel1</strong> (Texto) - Nombre exacto de la Subcategoría de Nivel 1. Debe ser hija de la CategoriaPrincipal especificada. Ej: "Dulces" (bajo Comestibles), "Globos Látex" (bajo Art. Fiesta).</li>
+                <li><strong>SubcategoriaNivel2</strong> (Texto) - Nombre exacto de la Subcategoría de Nivel 2 (la más específica). Debe ser hija de la SubcategoriaNivel1 especificada. Ej: "Gomitas" (bajo Dulces), "Redondo Liso #9" (bajo Globos Látex).</li>
+                <li><strong>PresentacionCompraEstandar</strong> (Texto) - Cómo compras usualmente este producto. Ej: "Bolsa 1kg", "Paquete 50pz", "Caja", "Rollo".</li>
+                <li><strong>CantidadEnPresentacionCompraEstandar</strong> (Numérico) - Cuántas UnidadesMedidaBase contiene la PresentacionCompraEstandar. Ej: Si UnidadMedidaBase="g" y PresentacionCompraEstandar="Bolsa 1kg", este valor es 1000. Si UnidadMedidaBase="pieza" y PresentacionCompraEstandar="Paquete 50pz", este valor es 50.</li>
+                <li><strong>DiasAnticipacionCompra</strong> (Numérico) - Días que necesitas para resurtir este producto con tu proveedor.</li>
             </ul>
         </div>
 
-        <h5>Columnas de Categorización (Al menos una es recomendada):</h5>
+        <h5>Columnas Opcionales Recomendadas en el CSV (varían por categoría):</h5>
         <div class="lista-columnas-csv-contenedor">
             <ul class="lista-columnas-csv">
-                <li><strong>CategoriaPrincipal</strong> (Texto, Opcional si se especifica SubcategoriaEspecifica) - Nombre de la categoría principal a la que pertenece el producto (debe existir o se creará si tiene prefijo SKU en `MAPEO_CATEGORIA_PREFIJO_SKU`). Ej: "Dulces/Golosinas", "Globos".</li>
-                <li><strong>SubcategoriaEspecifica</strong> (Texto, Opcional si se especifica CategoriaPrincipal) - Nombre de la subcategoría más específica. Si se usa, también se debe especificar `CategoriaPrincipal` si la subcategoría es hija directa de una categoría, o la `SubcategoriaPadre` si es anidada. Ej: "Gomitas a Granel", "Látex Redondos".</li>
-                <li><strong>SubcategoriaPadre</strong> (Texto, Opcional) - Si `SubcategoriaEspecifica` es hija de otra subcategoría, indica el nombre de esa subcategoría padre. Permite crear jerarquías. Ej: si `SubcategoriaEspecifica` es "A Granel" y `SubcategoriaPadre` es "Gomitas".</li>
-            </ul>
-        </div>
-        
-        <h5>Columnas de Detalles de Compra e Inventario (Opcionales, pero recomendadas):</h5>
-        <div class="lista-columnas-csv-contenedor">
-            <ul class="lista-columnas-csv">
-                <li><strong>PresentacionCompra</strong> (Texto) - Cómo compras este producto a tu proveedor. Ej: "Bolsa 1kg", "Caja 24pz", "Rollo 50m".</li>
-                <li><strong>CantidadEnPresentacionCompra</strong> (Numérico) - Cantidad que viene en la `PresentacionCompra`, expresada en términos de `UnidadMedidaBase`. Ej: Si `PresentacionCompra`="Bolsa 1kg" y `UnidadMedidaBase`="g", este valor sería 1000. Si `PresentacionCompra`="Caja 24pz" y `UnidadMedidaBase`="pieza", este valor sería 24.</li>
-                <li><strong>DiasAnticipacionCompraProveedor</strong> (Número) - Días de anticipación para reabastecer este producto.</li>
-            </ul>
-        </div>
-
-        <h5>Columnas Descriptivas Adicionales (Opcionales):</h5>
-        <div class="lista-columnas-csv-contenedor" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 0px 20px;">
-            <ul class="lista-columnas-csv">
-                <li><strong>DescripcionAdicional</strong> (Texto) - Notas internas o detalles adicionales sobre el producto.</li>
-                <li><strong>Sabor</strong> (Texto)</li>
-                <li><strong>Color</strong> (Texto)</li>
-                <li><strong>TamanoPulgadas</strong> (Texto) - Ej: "9", "12", "18+" (para globos).</li>
-            </ul>
-            <ul class="lista-columnas-csv">
-                <li><strong>Material</strong> (Texto)</li>
-                <li><strong>DimensionesCapacidad</strong> (Texto) - Ej: "2 Litros", "3 niveles", "50x30cm".</li>
-                <li><strong>TemaEstilo</strong> (Texto)</li>
-                <li><strong>FormaTipo</strong> (Texto)</li>
-                <li><strong>ModalidadServicioDirecto</strong> (Texto) - Si este producto interno es en sí mismo un servicio simple que vendes directamente (raro si usas el sistema de servicios configurables).</li>
+                <li><strong>EsIndivisible</strong> (Texto: "SI" o "NO") - Indica si la UnidadMedidaBase no se puede fraccionar. Ej: "SI" para una pieza de globo, "NO" para gramos de dulce.</li>
+                <li><strong>Marca</strong> (Texto) - Marca del producto.</li>
+                <li><strong>Sabor</strong> (Texto) - Sabor, si aplica (ej. para Comestibles).</li>
+                <li><strong>Color</strong> (Texto) - Color del producto, si aplica.</li>
+                <li><strong>Material</strong> (Texto) - Material principal del producto, si aplica.</li>
+                <li><strong>Tamano</strong> (Texto) - Tamaño descriptivo. Ej: "#9", "12 pulgadas", "50cm x 70cm". (Antes "TamanoPulgadas").</li>
+                <li><strong>DimensionesCapacidad</strong> (Texto) - Dimensiones físicas o capacidad. Ej: "50x30x20 cm", "2 Litros", "Para 12 cupcakes".</li>
+                <li><strong>TemaEstilo</strong> (Texto) - Tema o estilo asociado, si aplica.</li>
+                <li><strong>FormaTipo</strong> (Texto) - Forma o tipo específico. Ej: "Redondo", "Oso", "Corazón".</li>
+                <li><strong>ModeloSKUProveedor</strong> (Texto) - Código o SKU que usa tu proveedor para este ítem.</li>
+                <li><strong>DescripcionAdicionalInterna</strong> (Texto) - Notas internas sobre el producto.</li>
+                {# <li><strong>ModalidadServicioDirecto</strong> (Texto) - Si el producto es en sí un servicio directo (ej. "Por Hora", "Por Evento"). Raro para productos internos, más para servicios.</li> #}
             </ul>
         </div>
         <p style="margin-top: 15px;">
             <em>
-                <strong>Importante:</strong> Las columnas deben estar presentes en tu archivo CSV con estos nombres exactos.
-                Para los campos opcionales, puedes dejar las celdas vacías si no aplican.
-                La lógica de carga intentará crear categorías/subcategorías si no existen, basándose en los nombres proporcionados.
+                <strong>Importante:</strong> Los nombres de las categorías y subcategorías en el CSV deben existir previamente en el sistema o se intentarán crear.
+                Si se crean nuevas, asegúrate de que la jerarquía sea lógica.
+                Para campos opcionales, puedes dejar las celdas vacías.
             </em>
         </p>
     </fieldset>
     
-    {# El formulario de carga de archivo se mantiene igual que antes #}
+    {# El formulario de carga de archivo se mantiene igual #}
     <form method="POST" enctype="multipart/form-data" class="form-cargar-csv" style="margin-top: 35px;">
         <div class="form-group">
             <label for="archivo_csv" id="drop-area" class="file-upload-drop-area">
@@ -65,7 +54,7 @@
                     <svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather feather-upload-cloud"><path d="M16 16l-4-4-4 4M12 12v9"></path><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"></path><path d="M16 16l-4-4-4 4"></path></svg>
                 </div>
                 <div class="drop-area-text">
-                    <p>Arrastra y suelta tu archivo CSV de productos internos aquí</p>
+                    <p>Arrastra y suelta tu archivo CSV de productos aquí</p>
                     <p class="text-o">- o -</p>
                 </div>
                 <span class="file-upload-button">Seleccionar archivo CSV</span>
@@ -74,73 +63,74 @@
             <input type="file" name="archivo_csv" id="archivo_csv" accept=".csv" required class="file-upload-input">
         </div>
         <div class="form-actions">
-            <input type="submit" value="Cargar y Previsualizar Productos Internos" class="button">
+            {# El endpoint de Flask debe ser 'productos_bp.vista_cargar_productos' #}
+            <input type="submit" value="Cargar y Previsualizar Productos" class="button">
         </div>
     </form>
 
     <script>
-        // El script de drag-and-drop se mantiene igual que antes
-        const dropArea = document.getElementById('drop-area');
-        const fileInput = document.getElementById('archivo_csv');
-        const fileNameDisplay = document.getElementById('file-name-display');
+    // JavaScript para el área de drop (sin cambios respecto a tu versión anterior)
+    const dropArea = document.getElementById('drop-area');
+    const fileInput = document.getElementById('archivo_csv');
+    const fileNameDisplay = document.getElementById('file-name-display');
 
-        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-            dropArea.addEventListener(eventName, preventDefaults, false);
-            document.body.addEventListener(eventName, preventDefaults, false); // Prevenir que el navegador abra el archivo
-        });
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        dropArea.addEventListener(eventName, preventDefaults, false);
+        document.body.addEventListener(eventName, preventDefaults, false); // Prevenir que el navegador abra el archivo
+    });
 
-        function preventDefaults(e) {
-            e.preventDefault();
-            e.stopPropagation();
+    function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropArea.addEventListener(eventName, highlight, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropArea.addEventListener(eventName, unhighlight, false);
+    });
+
+    function highlight() {
+        dropArea.classList.add('highlight');
+    }
+
+    function unhighlight() {
+        dropArea.classList.remove('highlight');
+    }
+
+    dropArea.addEventListener('drop', handleDrop, false);
+
+    function handleDrop(e) {
+        let dt = e.dataTransfer;
+        let files = dt.files;
+
+        if (files.length > 0) {
+            fileInput.files = files; // Asignar los archivos al input file
+            // Disparar el evento 'change' en el input file para actualizar el nombre mostrado
+            const event = new Event('change', { bubbles: true });
+            fileInput.dispatchEvent(event);
         }
+    }
 
-        ['dragenter', 'dragover'].forEach(eventName => {
-            dropArea.addEventListener(eventName, highlight, false);
-        });
-
-        ['dragleave', 'drop'].forEach(eventName => {
-            dropArea.addEventListener(eventName, unhighlight, false);
-        });
-
-        function highlight() {
-            dropArea.classList.add('highlight');
+    fileInput.addEventListener('change', function(e){
+        var fileName = e.target.files[0] ? e.target.files[0].name : 'Ningún archivo seleccionado';
+        fileNameDisplay.textContent = fileName;
+        if (e.target.files[0]) {
+            dropArea.classList.add('file-selected');
+        } else {
+            dropArea.classList.remove('file-selected');
         }
-
-        function unhighlight() {
-            dropArea.classList.remove('highlight');
-        }
-
-        dropArea.addEventListener('drop', handleDrop, false);
-
-        function handleDrop(e) {
-            let dt = e.dataTransfer;
-            let files = dt.files;
-            if (files.length > 0) {
-                fileInput.files = files; 
-                // Disparar el evento 'change' en el input para que se actualice el nombre del archivo
-                const event = new Event('change', { bubbles: true });
-                fileInput.dispatchEvent(event);
-            }
-        }
-
-        fileInput.addEventListener('change', function(e){
-            var fileName = e.target.files[0] ? e.target.files[0].name : 'Ningún archivo seleccionado';
-            fileNameDisplay.textContent = fileName;
-            if (e.target.files[0]) {
-                dropArea.classList.add('file-selected');
-            } else {
-                dropArea.classList.remove('file-selected');
-            }
-        });
+    });
     </script>
     <style>
-        /* Estilos para .form-section y legend h4 (ya definidos en tu style.css global o en base.html) */
-        /* Los estilos de .lista-columnas-csv y .file-upload-drop-area se mantienen como estaban */
+        /* Estilos para .form-section y legend h4 (idealmente en style.css global) */
         .form-section {
             border: 1px solid var(--color-borde-sutil);
             padding: 20px 25px;
             margin-bottom: 25px;
-            border-radius: var(--radio-borde-grande); /* Usando la variable correcta */
+            border-radius: var(--radio-borde-grande);
             background-color: #fdfdff; 
         }
         .form-section legend {
@@ -158,7 +148,9 @@
             padding: 0; 
             line-height: 1; 
         }
-        .form-section h5 {
+
+        /* Estilos para el contenido de las instrucciones */
+        .form-section h5 { 
             font-size: 1.05em;
             font-weight: 600;
             color: var(--color-texto-principal);
@@ -167,54 +159,47 @@
             border-bottom: 1px solid var(--color-borde-sutil);
             padding-bottom: 5px;
         }
-        .form-section p {
+        .form-section p { 
             margin-bottom: 12px; 
             line-height: 1.65;
             color: var(--color-texto-secundario);
-            font-size: 0.98em;
+            font-size: 0.98em; 
         }
-        .form-section p em {
+        .form-section p em { 
             font-size: 0.95em;
             color: var(--color-texto-principal);
             font-weight: 500; 
         }
+        
         .lista-columnas-csv-contenedor { 
-            /* display: flex; */ /* Comentado para permitir que el grid interno funcione mejor */
-            /* flex-wrap: wrap;  */
+            display: flex;
+            flex-wrap: wrap; 
             gap: 0px 30px; 
             margin-top: 5px;
             margin-bottom: 5px;
         }
         .lista-columnas-csv {
-            list-style-type: none; 
-            padding-left: 0; 
+            list-style-type: disc; /* Cambiado a disc para mejor visibilidad */ 
+            padding-left: 20px; /* Añadido padding para los bullets */
             font-size: 0.9em; 
             line-height: 1.8; 
             color: #333;
-            /* min-width: 220px; */ /* Puede ser problemático con el grid */
-            margin-bottom: 10px; /* Espacio entre listas si están en columna */
+            /* min-width: 220px; */ /* Puede no ser necesario */
         }
         .lista-columnas-csv li {
-            margin-bottom: 2px; 
+            margin-bottom: 4px; /* Un poco más de espacio */
         }
         .lista-columnas-csv li strong {
-            font-weight: 500; 
+            font-weight: 600; /* Más énfasis */
             color: var(--color-texto-principal);
         }
-        
-        .file-upload-drop-area { 
-            padding: 45px 30px; 
-            /* ... otros estilos del drop area se mantienen ... */
-            display: block; 
-            border: 2px dashed var(--color-borde-input); 
-            border-radius: var(--radio-borde-grande);
-            text-align: center; 
-            cursor: pointer; 
-            transition: border-color 0.2s ease, background-color 0.2s ease; 
-            background-color: #fdfdff;
+        .lista-columnas-csv li em {
+            font-size: 0.9em;
+            color: var(--color-texto-secundario);
         }
-        .file-upload-drop-area.highlight { border-color: var(--color-acento-primario); background-color: #e9f5ff; }
-        .file-upload-drop-area.file-selected { border-style: solid; border-color: var(--color-acento-secundario); background-color: #e6ffed; }
+        
+        /* Estilos del formulario de carga (drop area) - sin cambios respecto a tu versión anterior */
+        .file-upload-drop-area { padding: 45px 30px; }
         .drop-area-icon { margin-bottom: 15px; }
         .drop-area-icon svg { width: 56px; height: 56px; stroke: var(--color-texto-secundario); opacity: 0.5; }
         .drop-area-text { color: var(--color-texto-secundario); font-size: 1.15em; margin-bottom: 22px; }
