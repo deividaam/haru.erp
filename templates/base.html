@@ -8,7 +8,6 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    {# FontAwesome ya no es necesario si quitamos todos los iconos, pero lo dejo por si lo usas en otro lado #}
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
 <body>
@@ -16,19 +15,15 @@
         <div class="sidebar-header">
             <a href="{{ url_for('index') }}" class="logo">haru. ERP</a>
             <button class="sidebar-close-btn" id="sidebarCloseBtn" aria-label="Cerrar menú">
-                <i class="fas fa-times"></i> {# Ícono de cierre se mantiene #}
+                <i class="fas fa-times"></i>
             </button>
         </div>
-        <ul class="sidebar-menu">
+        <ul class="sidebar-menu" id="sidebarMenu"> {# ID añadido para ResizeObserver #}
             <li><span>MENÚ</span></li>
             <li>
-                {# Sección de Proyectos #}
-                {% set proyectos_active = request.endpoint.startswith('proyectos_bp.vista_listar_proyectos') or
-                                          request.endpoint.startswith('proyectos_bp.vista_crear_proyecto') or
-                                          request.endpoint.startswith('proyectos_bp.vista_editar_proyecto') or
-                                          request.endpoint.startswith('proyectos_bp.vista_detalle_proyecto') %}
+                {% set proyectos_active = request.endpoint.startswith('proyectos_bp.') %}
                 <a href="#" class="menu-toggle {{ 'active open' if proyectos_active else '' }}">
-                    Proyectos {# Ícono eliminado #}
+                    Proyectos
                 </a>
                 <ul class="submenu {{ 'open init-open' if proyectos_active else '' }}">
                     <li><a href="{{ url_for('proyectos_bp.vista_crear_proyecto') }}" class="{{ 'active' if request.endpoint == 'proyectos_bp.vista_crear_proyecto' else '' }}">Nuevo Proyecto</a></li>
@@ -36,16 +31,20 @@
                 </ul>
             </li>
             <li>
-                {# Sección de Cotizaciones #}
-                {% set cotizaciones_active = request.endpoint.startswith('cotizaciones_bp.vista_listar_cotizaciones') or
-                                             request.endpoint.startswith('cotizaciones_bp.vista_crear_cotizacion_paso1_proyecto') or
-                                             request.endpoint.startswith('cotizaciones_bp.vista_crear_cotizacion_paso2_configurar') or
-                                             request.endpoint.startswith('cotizaciones_bp.vista_ver_cotizacion') %}
+                {# Sección de Cotizaciones - ACTUALIZADA #}
+                {% set cotizaciones_active = request.endpoint.startswith('cotizaciones_bp.') %}
                 <a href="#" class="menu-toggle {{ 'active open' if cotizaciones_active else '' }}">
-                     Cotizaciones {# Ícono eliminado #}
+                     Cotizaciones
                 </a>
                 <ul class="submenu {{ 'open init-open' if cotizaciones_active else '' }}">
-                    <li><a href="{{ url_for('cotizaciones_bp.vista_crear_cotizacion_paso1_proyecto') }}" class="{{ 'active' if request.endpoint == 'cotizaciones_bp.vista_crear_cotizacion_paso1_proyecto' else '' }}">Nueva Cotización</a></li>
+                    {# NUEVA OPCIÓN DE MENÚ AÑADIDA AQUÍ #}
+                    <li>
+                        <a href="{{ url_for('cotizaciones_bp.vista_crear_evento_cotizacion_integral') }}" 
+                           class="{{ 'active' if request.endpoint == 'cotizaciones_bp.vista_crear_evento_cotizacion_integral' else '' }}">
+                           Crear Evento y Cotización
+                        </a>
+                    </li>
+                    <li><a href="{{ url_for('cotizaciones_bp.vista_crear_cotizacion_paso1_proyecto') }}" class="{{ 'active' if request.endpoint == 'cotizaciones_bp.vista_crear_cotizacion_paso1_proyecto' else '' }}">Nueva Cotización (Desde Proyecto)</a></li>
                     <li><a href="{{ url_for('cotizaciones_bp.vista_listar_cotizaciones') }}" class="{{ 'active' if request.endpoint == 'cotizaciones_bp.vista_listar_cotizaciones' else '' }}">Listado de Cotizaciones</a></li>
                 </ul>
             </li>
@@ -53,54 +52,33 @@
             <li class="submenu-separator"><hr></li>
 
             <li>
-                {# Sección de Productos Internos #}
-                {% set productos_internos_active = (
-                                        request.endpoint.startswith('productos_bp.vista_listar_productos') or
-                                        request.endpoint.startswith('productos_bp.vista_cargar_productos') or
-                                        request.endpoint.startswith('productos_bp.vista_confirmar_carga_productos') or
-                                        request.endpoint.startswith('productos_bp.vista_editar_producto') or
-                                        request.endpoint.startswith('productos_bp.vista_crear_producto_unico')
-                                        ) %}
+                {% set productos_internos_active = request.endpoint.startswith('productos_bp.') %}
                 <a href="#" class="menu-toggle {{ 'active open' if productos_internos_active else '' }}">
-                    Productos Internos {# Ícono eliminado #}
+                    Productos Internos
                 </a>
                 <ul class="submenu {{ 'open init-open' if productos_internos_active else '' }}">
-                    <li><a href="{{ url_for('productos_bp.vista_crear_producto_unico') }}" class="{{ 'active' if request.endpoint == 'productos_bp.vista_crear_producto_unico' else '' }}">Crear Producto Interno</a></li>
-                    {# Texto del submenú acortado #}
-                    <li><a href="{{ url_for('productos_bp.vista_cargar_productos') }}" class="{{ 'active' if request.endpoint == 'productos_bp.vista_cargar_productos' or request.endpoint == 'productos_bp.vista_confirmar_carga_productos' else '' }}">Carga Masiva</a></li>
+                    <li><a href="{{ url_for('productos_bp.vista_crear_producto_unico') }}" class="{{ 'active' if request.endpoint == 'productos_bp.vista_crear_producto_unico' else '' }}">Crear Producto</a></li>
+                    <li><a href="{{ url_for('productos_bp.vista_cargar_productos') }}" class="{{ 'active' if request.endpoint.startswith('productos_bp.vista_cargar_productos') or request.endpoint.startswith('productos_bp.vista_confirmar_carga_productos') else '' }}">Carga Masiva</a></li>
                     <li><a href="{{ url_for('productos_bp.vista_listar_productos') }}" class="{{ 'active' if request.endpoint == 'productos_bp.vista_listar_productos' else '' }}">Listado de Productos</a></li>
                 </ul>
             </li>
             <li>
-                {# Sección de Proveedores #}
-                {% set proveedores_active = (
-                                          request.endpoint.startswith('proveedores_bp.vista_listar_proveedores') or
-                                          request.endpoint.startswith('proveedores_bp.vista_crear_proveedor') or
-                                          request.endpoint.startswith('proveedores_bp.vista_editar_proveedor') or
-                                          request.endpoint.startswith('proveedores_bp.vista_cargar_precios_manual') or
-                                          request.endpoint.startswith('proveedores_bp.vista_cargar_precios_csv') or
-                                          request.endpoint.startswith('proveedores_bp.vista_confirmar_carga_precios_csv')
-                                          ) %}
+                {% set proveedores_active = request.endpoint.startswith('proveedores_bp.') %}
                 <a href="#" class="menu-toggle {{ 'active open' if proveedores_active else '' }}">
-                    Proveedores {# Ícono eliminado #}
+                    Proveedores
                 </a>
                  <ul class="submenu {{ 'open init-open' if proveedores_active else '' }}">
                     <li><a href="{{ url_for('proveedores_bp.vista_crear_proveedor') }}" class="{{ 'active' if request.endpoint == 'proveedores_bp.vista_crear_proveedor' else '' }}">Añadir Proveedor</a></li>
                     <li><a href="{{ url_for('proveedores_bp.vista_listar_proveedores') }}" class="{{ 'active' if request.endpoint == 'proveedores_bp.vista_listar_proveedores' else '' }}">Listado de Proveedores</a></li>
                     <li class="submenu-separator"><hr></li>
                     <li><a href="{{ url_for('proveedores_bp.vista_cargar_precios_manual') }}" class="{{ 'active' if request.endpoint == 'proveedores_bp.vista_cargar_precios_manual' else '' }}">Cargar Precios (Manual)</a></li>
-                    <li><a href="{{ url_for('proveedores_bp.vista_cargar_precios_csv') }}" class="{{ 'active' if request.endpoint == 'proveedores_bp.vista_cargar_precios_csv' or request.endpoint == 'proveedores_bp.vista_confirmar_carga_precios_csv' else '' }}">Cargar Precios (CSV)</a></li>
+                    <li><a href="{{ url_for('proveedores_bp.vista_cargar_precios_csv') }}" class="{{ 'active' if request.endpoint.startswith('proveedores_bp.vista_cargar_precios_csv') or request.endpoint.startswith('proveedores_bp.vista_confirmar_carga_precios_csv') else '' }}">Cargar Precios (CSV)</a></li>
                 </ul>
             </li>
             <li>
-                {# Sección de Compras #}
-                {% set compras_active = (
-                                       request.endpoint.startswith('compras_bp.vista_historial_compras') or
-                                       request.endpoint.startswith('compras_bp.vista_registrar_compra') or
-                                       request.endpoint.startswith('compras_bp.vista_listar_facturas_compra')
-                                       ) %}
+                {% set compras_active = request.endpoint.startswith('compras_bp.') %}
                 <a href="#" class="menu-toggle {{ 'active open' if compras_active else '' }}">
-                    Compras {# Ícono eliminado #}
+                    Compras
                 </a>
                 <ul class="submenu {{ 'open init-open' if compras_active else '' }}">
                     <li><a href="{{ url_for('compras_bp.vista_registrar_compra') }}" class="{{ 'active' if request.endpoint == 'compras_bp.vista_registrar_compra' else '' }}">Registrar Compra</a></li>
@@ -108,19 +86,25 @@
                     <li><a href="{{ url_for('compras_bp.vista_listar_facturas_compra') }}" class="{{ 'active' if request.endpoint == 'compras_bp.vista_listar_facturas_compra' else '' }}">Listado de Facturas</a></li>
                 </ul>
             </li>
+            
+            <li> {# Nueva Sección de Inventario #}
+                {% set inventario_active = request.endpoint.startswith('inventario_bp.') %}
+                <a href="#" class="menu-toggle {{ 'active open' if inventario_active else '' }}">
+                    Inventario
+                </a>
+                <ul class="submenu {{ 'open init-open' if inventario_active else '' }}">
+                    <li><a href="{{ url_for('inventario_bp.vista_listar_existencias') }}" class="{{ 'active' if request.endpoint == 'inventario_bp.vista_listar_existencias' else '' }}">Existencias</a></li>
+                    <li><a href="{{ url_for('inventario_bp.vista_historial_movimientos') }}" class="{{ 'active' if request.endpoint == 'inventario_bp.vista_historial_movimientos' else '' }}">Historial Movimientos</a></li>
+                    <li><a href="{{ url_for('inventario_bp.vista_crear_ajuste_inventario') }}" class="{{ 'active' if request.endpoint == 'inventario_bp.vista_crear_ajuste_inventario' else '' }}">Ajuste Manual</a></li>
+                    <li><a href="{{ url_for('inventario_bp.vista_gestionar_almacenes') }}" class="{{ 'active' if request.endpoint.startswith('inventario_bp.vista_gestionar_almacenes') or request.endpoint.startswith('inventario_bp.vista_editar_almacen') else '' }}">Gestionar Almacenes</a></li>
+                </ul>
+            </li>
 
             <li><span>ADMINISTRACIÓN</span></li>
             <li>
-                {# Sección de Configuración de Servicios #}
-                {% set config_servicios_active = request.endpoint.startswith('admin_servicios_bp.admin_dashboard_servicios') or
-                                                 request.endpoint.startswith('admin_servicios_bp.admin_vista_listar_tipos_servicio_base') or
-                                                 request.endpoint.startswith('admin_servicios_bp.admin_vista_crear_editar_tipo_servicio_base') or
-                                                 request.endpoint.startswith('admin_servicios_bp.admin_vista_listar_todas_variantes') or
-                                                 request.endpoint.startswith('admin_servicios_bp.admin_vista_listar_variantes_por_tipo') or
-                                                 request.endpoint.startswith('admin_servicios_bp.admin_vista_crear_editar_variante_config') or
-                                                 request.endpoint.startswith('admin_servicios_bp.admin_vista_detalle_variante_config') %}
+                {% set config_servicios_active = request.endpoint.startswith('admin_servicios_bp.') %}
                 <a href="{{ url_for('admin_servicios_bp.admin_dashboard_servicios') }}" class="menu-toggle {{ 'active open' if config_servicios_active else '' }}">
-                    Config. Servicios {# Ícono eliminado #}
+                    Config. Servicios
                 </a>
                 <ul class="submenu {{ 'open init-open' if config_servicios_active else '' }}">
                     <li><a href="{{ url_for('admin_servicios_bp.admin_vista_listar_tipos_servicio_base') }}" class="{{'active' if request.endpoint.startswith('admin_servicios_bp.admin_vista_listar_tipos_servicio_base') or request.endpoint.startswith('admin_servicios_bp.admin_vista_crear_editar_tipo_servicio_base') else ''}}">Tipos de Servicio</a></li>
@@ -128,10 +112,10 @@
                 </ul>
             </li>
              <li>
-                <a href="#">Usuarios</a> {# Ícono eliminado #}
+                <a href="#">Usuarios</a>
              </li>
              <li>
-                <a href="#">Configuración General</a> {# Ícono eliminado #}
+                <a href="#">Configuración General</a>
              </li>
         </ul>
         <div class="sidebar-footer">
@@ -142,7 +126,7 @@
     <main class="main-content" id="mainContent">
         <header class="content-header">
             <button class="sidebar-toggle-btn" id="sidebarToggleBtn" aria-label="Abrir menú">
-                <i class="fas fa-bars"></i> {# Ícono de hamburguesa se mantiene #}
+                <i class="fas fa-bars"></i>
             </button>
             <h1>{{ titulo_pagina or "Dashboard" }}</h1>
         </header>
@@ -165,76 +149,151 @@
         document.addEventListener('DOMContentLoaded', function () {
             const menuToggles = document.querySelectorAll('.sidebar-menu .menu-toggle');
             const sidebar = document.getElementById('sidebar');
+            const sidebarMenu = document.getElementById('sidebarMenu'); 
             const sidebarToggleBtn = document.getElementById('sidebarToggleBtn');
             const sidebarCloseBtn = document.getElementById('sidebarCloseBtn');
             const overlay = document.getElementById('overlay');
 
+            function forceReflow(element) {
+                void element.offsetHeight;
+            }
+
+            function adjustSingleSubmenuHeight(submenuElement, isOpen) {
+                const wasTransitionEnabled = submenuElement.classList.contains('enable-transition');
+                if (wasTransitionEnabled) {
+                    submenuElement.classList.remove('enable-transition');
+                }
+
+                if (isOpen) {
+                    submenuElement.style.maxHeight = 'auto'; 
+                    forceReflow(submenuElement); 
+                    const scrollHeight = submenuElement.scrollHeight;
+                    submenuElement.style.maxHeight = scrollHeight + "px";
+                } else {
+                    submenuElement.style.maxHeight = null;
+                }
+
+                if (wasTransitionEnabled) {
+                    requestAnimationFrame(() => {
+                        submenuElement.classList.add('enable-transition');
+                    });
+                }
+            }
+            
             menuToggles.forEach(toggle => {
                 const submenu = toggle.nextElementSibling;
                 if (submenu && submenu.tagName === 'UL') {
-                    // Asegurarse de que el submenu tenga suficiente espacio
-                    // white-space: normal; podría ser útil en el CSS para los <li><a> del submenu
-                    // para permitir que el texto se ajuste y scrollHeight lo calcule bien.
                     if (submenu.classList.contains('init-open')) {
-                        submenu.style.maxHeight = submenu.scrollHeight + "px";
                         if (!toggle.classList.contains('open')) {
                             toggle.classList.add('open');
                         }
+                        // Initial height for already open submenus, will be refined by window.load
+                        // Set without transition first
+                        const initialTransition = submenu.classList.contains('enable-transition');
+                        if(initialTransition) submenu.classList.remove('enable-transition');
+                        submenu.style.maxHeight = submenu.scrollHeight + "px";
+                        if(initialTransition) requestAnimationFrame(() => submenu.classList.add('enable-transition'));
+
                     } else {
-                        submenu.style.maxHeight = null;
+                        submenu.style.maxHeight = null; 
                     }
-                    setTimeout(() => {
-                        submenu.classList.add('enable-transition');
-                    }, 50);
+                    // Enable transitions after initial setup, if not already enabled by init-open logic
+                    if (!submenu.classList.contains('enable-transition')) {
+                        setTimeout(() => {
+                            submenu.classList.add('enable-transition');
+                        }, 50);
+                    }
                 }
 
                 toggle.addEventListener('click', function (event) {
                     if (this.getAttribute('href') === '#') {
                         event.preventDefault();
                     }
-
                     const currentToggle = this;
                     const currentSubmenu = this.nextElementSibling;
                     if (!currentSubmenu || currentSubmenu.tagName !== 'UL') return;
+                    
+                    const isOpen = !currentToggle.classList.contains('open'); 
+                    currentToggle.classList.toggle('open');
+                    
+                    adjustSingleSubmenuHeight(currentSubmenu, isOpen);
 
-                    const isCurrentlyOpen = currentToggle.classList.contains('open');
-
-                    if (isCurrentlyOpen) {
-                        currentSubmenu.style.maxHeight = null;
-                        currentToggle.classList.remove('open');
-                    } else {
-                        currentToggle.classList.add('open');
-                        currentSubmenu.style.maxHeight = currentSubmenu.scrollHeight + "px";
-                    }
+                    // After a submenu is opened/closed, re-adjust ALL currently open submenus.
+                    // Use requestAnimationFrame to ensure this happens after the current event loop.
+                    requestAnimationFrame(() => {
+                        document.querySelectorAll('.sidebar-menu .menu-toggle.open').forEach(openToggle => {
+                            const openSubmenu = openToggle.nextElementSibling;
+                            if (openSubmenu && openSubmenu.tagName === 'UL') {
+                                adjustSingleSubmenuHeight(openSubmenu, true);
+                            }
+                        });
+                    });
                 });
             });
 
+            // Sidebar open/close for mobile
             if (sidebarToggleBtn) {
                 sidebarToggleBtn.addEventListener('click', function() {
                     sidebar.classList.add('open');
                     overlay.classList.add('active');
-                    document.body.style.overflow = 'hidden';
+                    document.body.style.overflow = 'hidden'; 
                 });
             }
-
             if (sidebarCloseBtn) {
                 sidebarCloseBtn.addEventListener('click', function() {
                     sidebar.classList.remove('open');
                     overlay.classList.remove('active');
-                    document.body.style.overflow = '';
+                    document.body.style.overflow = ''; 
                 });
             }
-
             if (overlay) {
                 overlay.addEventListener('click', function() {
                     sidebar.classList.remove('open');
                     overlay.classList.remove('active');
-                    document.body.style.overflow = '';
+                    document.body.style.overflow = ''; 
+                });
+            }
+
+            // ResizeObserver to detect when the main menu's scrollbar appears/disappears
+            if (sidebarMenu && typeof ResizeObserver !== 'undefined') {
+                const resizeObserver = new ResizeObserver(entries => {
+                    requestAnimationFrame(() => { 
+                        document.querySelectorAll('.sidebar-menu .menu-toggle.open').forEach(toggle => {
+                            const submenu = toggle.nextElementSibling;
+                            if (submenu && submenu.tagName === 'UL') {
+                                adjustSingleSubmenuHeight(submenu, true);
+                            }
+                        });
+                    });
+                });
+                resizeObserver.observe(sidebarMenu);
+            } else {
+                // Fallback for older browsers: re-adjust on window resize
+                window.addEventListener('resize', () => {
+                    requestAnimationFrame(() => {
+                        document.querySelectorAll('.sidebar-menu .menu-toggle.open').forEach(toggle => {
+                            const submenu = toggle.nextElementSibling;
+                            if (submenu && submenu.tagName === 'UL') {
+                                adjustSingleSubmenuHeight(submenu, true);
+                            }
+                        });
+                    });
                 });
             }
         });
+
+        window.addEventListener('load', function() {
+            document.querySelectorAll('.sidebar-menu .menu-toggle.open').forEach(toggle => {
+                const submenu = toggle.nextElementSibling;
+                if (submenu && submenu.tagName === 'UL') {
+                    // Use the main adjustment function for consistency
+                    adjustSingleSubmenuHeight(submenu, true);
+                }
+            });
+        });
     </script>
     <style>
+      /* Estilos del base.html original */
       .submenu-separator hr {
           border: 0;
           height: 1px;
@@ -246,21 +305,21 @@
           background: none;
           border: none;
           color: var(--color-texto-principal);
-          font-size: 20px; /* Ajustado para que sea consistente con el de cierre */
+          font-size: 20px;
           cursor: pointer;
-          padding: 5px 10px; /* Añadido padding para mejor área de toque */
+          padding: 5px 10px;
       }
       .sidebar-close-btn {
-            display: none; /* Se mostrará con JS en móvil */
+            display: none;
             background: none;
             border: none;
             color: var(--color-texto-sidebar-normal);
-            font-size: 18px; /* Ajustado */
+            font-size: 18px;
             cursor: pointer;
             padding: 0;
             position: absolute;
-            top: 25px; /* Ajustar según el padding del sidebar-header */
-            right: 15px; /* Ajustar según el padding del sidebar-header */
+            top: 25px;
+            right: 15px;
       }
       .overlay {
             display: none;
@@ -275,24 +334,42 @@
        .overlay.active {
             display: block;
         }
-       /* Estilos para los elementos del menú principal sin iconos */
-       .sidebar-menu > li > a,
-       .sidebar-menu > li > .menu-toggle {
-           /* Si antes dependías del icono para el padding-left, ajusta aquí */
-           /* padding-left: 15px; (ejemplo, si antes era más por el icono) */
-       }
-       .sidebar-menu .menu-toggle i, /* Estos selectores ya no aplicarían a los iconos eliminados */
-       .sidebar-menu > li > a > i {
-           /* min-width: 20px; */ /* Ya no es necesario */
-           /* text-align: center; */ /* Ya no es necesario */
-           /* margin-right: 10px; */ /* Ya no es necesario */
-       }
-       /* Estilo para los elementos del submenú para asegurar que el texto se ajuste si es largo */
        .submenu li a {
-            white-space: normal; /* Permite que el texto del submenú se ajuste a múltiples líneas */
-            word-break: break-word; /* Evita que palabras largas rompan el layout */
-            line-height: 1.4; /* Ajustar para mejor legibilidad si el texto se ajusta */
+            white-space: normal;
+            word-break: break-word;
+            line-height: 1.4;
        }
+
+       /* --- AJUSTES PARA EL SCROLL DEL SIDEBAR MENU --- */
+       .sidebar {
+           display: flex;
+           flex-direction: column;
+           height: 100vh; 
+       }
+       .sidebar-menu {
+           flex-grow: 1; 
+           overflow-y: auto; 
+           overflow-x: hidden; 
+           padding-bottom: 20px; 
+            &::-webkit-scrollbar {
+                width: 8px;
+            }
+            &::-webkit-scrollbar-track {
+                background: var(--color-fondo-sidebar);
+                border-radius: 10px;
+            }
+            &::-webkit-scrollbar-thumb {
+                background-color: var(--color-borde-sutil);
+                border-radius: 10px;
+                border: 2px solid var(--color-fondo-sidebar);
+            }
+            &::-webkit-scrollbar-thumb:hover {
+                background-color: #999;
+            }
+            scrollbar-width: thin;
+            scrollbar-color: var(--color-borde-sutil) var(--color-fondo-sidebar);
+       }
+       /* --- FIN AJUSTES SCROLL --- */
     </style>
 </body>
 </html>

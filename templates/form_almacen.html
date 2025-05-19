@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block content %}
+    {# El título de la página se define en la ruta de Flask #}
+    {# Por ejemplo: "Editar Almacén: Principal" #}
+
+    <form method="POST" class="styled-form" id="formEditarAlmacen">
+        <fieldset class="form-section">
+            <legend><h4>Datos del Almacén</h4></legend>
+
+            <div class="form-group">
+                <label for="nombre_almacen">Nombre del Almacén: <span class="required-indicator">*</span></label>
+                <input type="text" name="nombre_almacen" id="nombre_almacen" 
+                       value="{{ almacen.nombre_almacen if almacen else '' }}" required>
+            </div>
+
+            <div class="form-group">
+                <label for="descripcion">Descripción (Opcional):</label>
+                <textarea name="descripcion" id="descripcion" rows="3">{{ almacen.descripcion if almacen else '' }}</textarea>
+            </div>
+
+            <div class="form-group checkbox-group" style="padding: 10px 0; margin-top:10px;">
+                <input type="checkbox" name="activo" id="activo" class="form-checkbox" 
+                       {% if almacen and almacen.activo %}checked{% elif not almacen and es_nuevo %}checked{% endif %}>
+                <label for="activo" class="checkbox-label">Almacén Activo</label>
+            </div>
+        </fieldset>
+
+        <div class="form-actions">
+            <a href="{{ url_for('inventario_bp.vista_gestionar_almacenes') }}" class="button button-secondary">Cancelar</a>
+            <input type="submit" value="{{ 'Guardar Cambios' if almacen and not es_nuevo else 'Crear Almacén' }}" class="button button-primary">
+        </div>
+    </form>
+
+<style>
+    /* Estilos generales del formulario ya definidos en style.css */
+    .required-indicator { color: var(--color-peligro); font-weight: bold; margin-left: 2px; }
+    .checkbox-group { display: flex; align-items: center; }
+    .form-checkbox { width: auto; margin-right: 10px; height: 18px; width: 18px; accent-color: var(--color-acento-primario); }
+    .checkbox-label { font-weight: normal !important; margin-bottom: 0 !important; font-size: 0.95em !important; color: var(--color-texto-principal) !important; }
+</style>
+{% endblock %}
