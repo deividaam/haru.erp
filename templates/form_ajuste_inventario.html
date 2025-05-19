@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <form method="POST" class="styled-form" id="formAjusteInventario">
+        <fieldset class="form-section">
+            <legend><h4>Registrar Ajuste Manual de Inventario</h4></legend>
+
+            <div class="form-group">
+                <label for="id_producto">Producto a Ajustar: <span class="required-indicator">*</span></label>
+                {# Se recomienda un input con autocompletar si la lista de productos es muy larga #}
+                {# Por ahora, un select simple. Puedes usar el API de búsqueda de productos que creamos. #}
+                <input type="text" id="producto_busqueda_ajuste" placeholder="Buscar producto por nombre o SKU..." class="input-busqueda-producto-grande" autocomplete="off">
+                <input type="hidden" name="id_producto" id="id_producto_ajuste_hidden" value="{{ form_data.id_producto or '' }}">
+                <div id="producto_resultados_ajuste" class="autocomplete-results"></div>
+                <div id="info_producto_seleccionado_ajuste" class="selected-product-info-box-compact" style="display:none; margin-top:5px;">
+                    Producto Seleccionado: <strong id="nombre_prod_sel_ajuste"></strong> (SKU: <span id="sku_prod_sel_ajuste"></span>)
+                    <br>Unidad Base: <strong id="unidad_prod_sel_ajuste"></strong>
+                </div>
+            </div>
+
+            <div class="form-grid-2col">
+                <div class="form-group">
+                    <label for="id_almacen_destino">Almacén del Ajuste: <span class="required-indicator">*</span></label>
+                    <select name="id_almacen_destino" id="id_almacen_destino" required>
+                        <option value="">-- Selecciona un almacén --</option>
+                        {% for almacen_op in almacenes %}
+                            <option value="{{ almacen_op.id_almacen }}" {% if form_data.id_almacen_destino == almacen_op.id_almacen|string %}selected{% endif %}>
+                                {{ almacen_op.nombre_almacen }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="tipo_ajuste">Tipo de Ajuste: <span class="required-indicator">*</span></label>
+                    <select name="tipo_ajuste" id="tipo_ajuste" required>
+                        <option value="">-- Selecciona tipo --</option>
+                        <option value="AJUSTE_POSITIVO_CONTEO" {% if form_data.tipo_ajuste == "AJUSTE_POSITIVO_CONTEO" %}selected{% endif %}>Positivo por Conteo Físico</option>
+                        <option value="AJUSTE_NEGATIVO_CONTEO" {% if form_data.tipo_ajuste == "AJUSTE_NEGATIVO_CONTEO" %}selected{% endif %}>Negativo por Conteo Físico</option>
+                        <option value="AJUSTE_NEGATIVO_MERMA" {% if form_data.tipo_ajuste == "AJUSTE_NEGATIVO_MERMA" %}selected{% endif %}>Negativo por Merma</option>
+                        <option value="AJUSTE_NEGATIVO_DANO" {% if form_data.tipo_ajuste == "AJUSTE_NEGATIVO_DANO" %}selected{% endif %}>Negativo por Daño</option>
+                        <option value="AJUSTE_POSITIVO_DEVOLUCION" {% if form_data.tipo_ajuste == "AJUSTE_POSITIVO_DEVOLUCION" %}selected{% endif %}>Positivo por Devolución (Ej. Evento)</option>
+                        <option value="AJUSTE_NEGATIVO_OTRO" {% if form_data.tipo_ajuste == "AJUSTE_NEGATIVO_OTRO" %}selected{% endif %}>Negativo por Otro Motivo</option>
+                        <option value="AJUSTE_POSITIVO_OTRO" {% if form_data.tipo_ajuste == "AJUSTE_POSITIVO_OTRO" %}selected{% endif %}>Positivo por Otro Motivo</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="cantidad">Cantidad del Ajuste (en Unidad Base del Producto): <span class="required-indicator">*</span></label>
+                <input type="number" step="any" name="cantidad" id="cantidad" value="{{ form_data.cantidad or '' }}" required min="0.001">
+                <small>La cantidad siempre es positiva. El "Tipo de Ajuste" indica si suma o resta del inventario.</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="notas">Motivo/Notas del Ajuste:</label>
+                <textarea name="notas" id="notas" rows="3">{{ form_data.notas or '' }}</textarea>
+            </div>
+            
+            {# Podrías añadir un campo para el usuario responsable si tienes un sistema de usuarios #}
+            {# <input type="hidden" name="nombre_usuario_responsable" value="{{ current_user.nombre_completo }}"> #}
+
+        </fieldset>
+
+        <div class="form-actions">
+            <a href="{{ url_for('inventario_bp.vista_listar_existencias') }}" class="button button-secondary">Cancelar</a>
+            <input type="submit" value="Registrar Ajuste" class="button button-primary">
+        </div>
+    </form>
+
+<style>
+    /* Estilos para autocompletar y selected-product-info-box-compact (copiados de otros forms) */
+    .form-group { position: relative; }
+    .autocomplete-results {
+        position: absolute; top: 100%; left: 0; right: 0; background-color: white;
+        border: 1px solid var(--color-borde-input); border-top: none;
+        max-height: 180px; overflow-y: auto; z-index: 1000;
+        border-radius: 0 0 var(--radio-borde-general) var(--radio-borde-general);
+        box-shadow: 0 3px 5px rgba(0,0,0,0.08);
+    }
+    .autocomplete-item, .autocomplete-item-none { padding: 8px 12px; cursor: pointer; font-size: 0.88em; }
+    .autocomplete-item:hover { background-color: #f0f0f0; }
+    .selected-product-info-box-compact {
+        margin-top: 5px; padding: 8px 12px; background-color: #eef3f7;
+        border: 1px solid #d1dce5; border-radius: var(--radio-borde-general);
+        font-size: 0.85em; color: var(--color-texto-secundario);
+    }
+    .selected-product-info-box-compact strong { color: var(--color-texto-principal); font-weight: 500;}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInputAjuste = document.getElementById('producto_busqueda_ajuste');
+    const resultsContainerAjuste = document.getElementById('producto_resultados_ajuste');
+    const hiddenIdProductoAjuste = document.getElementById('id_producto_ajuste_hidden');
+    const infoDivAjuste = document.getElementById('info_producto_seleccionado_ajuste');
+    const nombreProdSelAjusteSpan = document.getElementById('nombre_prod_sel_ajuste');
+    const skuProdSelAjusteSpan = document.getElementById('sku_prod_sel_ajuste');
+    const unidadProdSelAjusteSpan = document.getElementById('unidad_prod_sel_ajuste');
+    let searchDebounceTimerAjuste;
+
+    if (searchInputAjuste) {
+        // Si hay un valor pre-cargado en el hidden input (ej. al repopular por error),
+        // intentar cargar la info del producto.
+        if (hiddenIdProductoAjuste.value) {
+            fetch(`{{ url_for('productos_bp.api_buscar_productos_por_descripcion') }}?id_exacto=${hiddenIdProductoAjuste.value}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data && data.length > 0) {
+                        const producto = data[0];
+                        searchInputAjuste.value = producto.nombre;
+                        if(nombreProdSelAjusteSpan) nombreProdSelAjusteSpan.textContent = producto.nombre;
+                        if(skuProdSelAjusteSpan) skuProdSelAjusteSpan.textContent = producto.sku || 'N/A';
+                        if(unidadProdSelAjusteSpan) unidadProdSelAjusteSpan.textContent = producto.unidad_medida_base || 'N/A';
+                        if(infoDivAjuste) infoDivAjuste.style.display = 'block';
+                    }
+                });
+        }
+
+
+        searchInputAjuste.addEventListener('input', function() {
+            const searchTerm = this.value;
+            clearTimeout(searchDebounceTimerAjuste);
+            hiddenIdProductoAjuste.value = '';
+            if(infoDivAjuste) infoDivAjuste.style.display = 'none';
+
+            if (searchTerm.length < 2) {
+                if(resultsContainerAjuste) {
+                    resultsContainerAjuste.innerHTML = '';
+                    resultsContainerAjuste.style.display = 'none';
+                }
+                return;
+            }
+            searchDebounceTimerAjuste = setTimeout(() => {
+                fetch(`{{ url_for('productos_bp.api_buscar_productos_por_descripcion') }}?term=${encodeURIComponent(searchTerm)}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if(!resultsContainerAjuste) return;
+                        resultsContainerAjuste.innerHTML = '';
+                        if (data.length > 0) {
+                            data.forEach(producto => {
+                                const item = document.createElement('div');
+                                item.classList.add('autocomplete-item');
+                                item.textContent = producto.descripcion; // API devuelve 'descripcion' que es la completa
+                                item.dataset.id = producto.id;
+                                item.dataset.nombre = producto.nombre;
+                                item.dataset.sku = producto.sku || '';
+                                item.dataset.unidadBase = producto.unidad_medida_base || '';
+
+                                item.addEventListener('click', function() {
+                                    searchInputAjuste.value = this.dataset.nombre;
+                                    hiddenIdProductoAjuste.value = this.dataset.id;
+                                    
+                                    if(nombreProdSelAjusteSpan) nombreProdSelAjusteSpan.textContent = this.dataset.nombre;
+                                    if(skuProdSelAjusteSpan) skuProdSelAjusteSpan.textContent = this.dataset.sku || 'N/A';
+                                    if(unidadProdSelAjusteSpan) unidadProdSelAjusteSpan.textContent = this.dataset.unidadBase || 'N/A';
+                                    if(infoDivAjuste) infoDivAjuste.style.display = 'block';
+                                    
+                                    resultsContainerAjuste.innerHTML = '';
+                                    resultsContainerAjuste.style.display = 'none';
+                                });
+                                resultsContainerAjuste.appendChild(item);
+                            });
+                            resultsContainerAjuste.style.display = 'block';
+                        } else {
+                            resultsContainerAjuste.innerHTML = '<div class="autocomplete-item-none">No se encontraron productos.</div>';
+                            resultsContainerAjuste.style.display = 'block';
+                        }
+                    })
+                    .catch(error => console.error('Error al buscar productos para ajuste:', error));
+            }, 300);
+        });
+        document.addEventListener('click', function(event) {
+            if (resultsContainerAjuste && !resultsContainerAjuste.contains(event.target) && event.target !== searchInputAjuste) {
+                resultsContainerAjuste.style.display = 'none';
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <div class="content-actions-bar" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h4>Historial de Movimientos de Inventario</h4>
+        <a href="{{ url_for('inventario_bp.vista_listar_existencias') }}" class="button button-secondary">&laquo; Volver a Existencias</a>
+    </div>
+
+    <form method="GET" action="{{ url_for('inventario_bp.vista_historial_movimientos') }}" class="filter-form-stacked-inside-fieldset" style="margin-bottom: 25px;">
+        <fieldset class="form-section" style="padding-bottom: 15px;">
+            <legend><h5>Filtrar Movimientos</h5></legend>
+            <div class="filter-row filter-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                <div class="form-group">
+                    <label for="id_producto">Producto:</label>
+                    <select name="id_producto" id="id_producto">
+                        <option value="">Todos</option>
+                        {% for prod_filtro in productos_filtro %}
+                            <option value="{{ prod_filtro.id_producto }}" {% if current_filters.id_producto == prod_filtro.id_producto %}selected{% endif %}>
+                                {{ prod_filtro.nombre_producto }} ({{ prod_filtro.sku or 'N/A'}})
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="id_almacen">Almacén (Origen/Destino):</label>
+                    <select name="id_almacen" id="id_almacen">
+                        <option value="">Todos</option>
+                        {% for alm_filtro in almacenes_filtro %}
+                            <option value="{{ alm_filtro.id_almacen }}" {% if current_filters.id_almacen == alm_filtro.id_almacen %}selected{% endif %}>
+                                {{ alm_filtro.nombre_almacen }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="tipo_movimiento">Tipo de Movimiento:</label>
+                    <select name="tipo_movimiento" id="tipo_movimiento">
+                        <option value="">Todos</option>
+                        {% for tipo_mov in tipos_movimiento_filtro %}
+                            <option value="{{ tipo_mov }}" {% if current_filters.tipo_movimiento == tipo_mov %}selected{% endif %}>
+                                {{ tipo_mov.replace("_", " ")|title }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="fecha_desde">Fecha Desde:</label>
+                    <input type="date" name="fecha_desde" id="fecha_desde" value="{{ current_filters.fecha_desde or '' }}">
+                </div>
+                <div class="form-group">
+                    <label for="fecha_hasta">Fecha Hasta:</label>
+                    <input type="date" name="fecha_hasta" id="fecha_hasta" value="{{ current_filters.fecha_hasta or '' }}">
+                </div>
+            </div>
+            <div class="filter-actions" style="border-top: none; padding-top: 10px;">
+                <button type="submit" class="button">Filtrar Movimientos</button>
+                <a href="{{ url_for('inventario_bp.vista_historial_movimientos') }}" class="button button-secondary">Limpiar Filtros</a>
+            </div>
+        </fieldset>
+    </form>
+
+    {% if movimientos %}
+        <div class="table-responsive">
+            <table class="data-table stylish-table">
+                <thead>
+                    <tr>
+                        <th>ID Mov.</th>
+                        <th>Fecha</th>
+                        <th>Producto (SKU)</th>
+                        <th>Tipo Movimiento</th>
+                        <th style="text-align: right;">Cantidad</th>
+                        <th>U.M.</th>
+                        <th>Almacén Origen</th>
+                        <th>Almacén Destino</th>
+                        <th>Ref. Doc.</th>
+                        <th>Usuario</th>
+                        <th>Notas</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for mov in movimientos %}
+                        <tr>
+                            <td>{{ mov.id_movimiento }}</td>
+                            <td>{{ mov.fecha_movimiento.strftime('%d/%m/%Y %H:%M') }}</td>
+                            <td>
+                                {{ mov.producto.nombre_producto }}
+                                <small style="display:block; color:var(--color-texto-secundario);">(SKU: {{ mov.producto.sku or 'N/A' }})</small>
+                            </td>
+                            <td>{{ mov.tipo_movimiento.replace("_", " ")|title }}</td>
+                            <td style="text-align: right; color: {{ 'var(--color-acento-secundario)' if 'ENTRADA' in mov.tipo_movimiento.upper() or 'POSITIVO' in mov.tipo_movimiento.upper() else ('var(--color-peligro)' if 'SALIDA' in mov.tipo_movimiento.upper() or 'NEGATIVO' in mov.tipo_movimiento.upper() else 'inherit') }};">
+                                {{ "%.3f"|format(mov.cantidad|float) }}
+                            </td>
+                            <td>{{ mov.producto.unidad_medida_base }}</td>
+                            <td>{{ mov.almacen_origen_rel.nombre_almacen if mov.almacen_origen_rel else '-' }}</td>
+                            <td>{{ mov.almacen_destino_rel.nombre_almacen if mov.almacen_destino_rel else '-' }}</td>
+                            <td>
+                                {% if mov.tipo_documento_referencia and mov.id_documento_referencia %}
+                                    {{ mov.tipo_documento_referencia.replace("_", " ")|title }} #{{ mov.id_documento_referencia }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            <td>{{ mov.nombre_usuario_responsable or '-' }}</td>
+                            <td title="{{ mov.notas or '' }}" style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                {{ mov.notas or '-' }}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+         <div class="empty-state-container" style="padding: 30px; text-align:center;">
+            <p>No hay movimientos de inventario para mostrar con los filtros actuales.</p>
+        </div>
+    {% endif %}
+{% endblock %}

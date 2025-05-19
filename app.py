@@ -61,6 +61,9 @@ app.register_blueprint(ordenes_compra_bp)
 from mod_api import api_bp
 app.register_blueprint(api_bp)
 
+from mod_inventario import inventario_bp 
+app.register_blueprint(inventario_bp)
+
 # CAMPOS_OBLIGATORIOS_FORM_POR_CATEGORIA y TODAS_LAS_CATEGORIAS_NOMBRES_PRODUCTOS_INTERNOS
 # (Se mantienen si son globales)
 CAMPOS_OBLIGATORIOS_FORM_POR_CATEGORIA = {

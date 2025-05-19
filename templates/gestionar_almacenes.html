@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <div class="content-actions-bar" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h4>Gestión de Almacenes</h4>
+        <a href="{{ url_for('inventario_bp.vista_listar_existencias') }}" class="button button-secondary">&laquo; Volver a Existencias</a>
+    </div>
+
+    <div class="form-grid-2col" style="align-items: flex-start;">
+        <div class="card" style="margin-bottom: 0;"> {# Quitar margen inferior si está en grid #}
+            <h5 style="margin-top:0; margin-bottom:15px; font-weight:600;">Crear Nuevo Almacén</h5>
+            <form method="POST" action="{{ url_for('inventario_bp.vista_gestionar_almacenes') }}" class="styled-form" style="margin-top:0;">
+                <div class="form-group">
+                    <label for="nombre_almacen">Nombre del Almacén: <span class="required-indicator">*</span></label>
+                    <input type="text" name="nombre_almacen" id="nombre_almacen" value="{{ form_data.nombre_almacen or '' }}" required>
+                </div>
+                <div class="form-group">
+                    <label for="descripcion">Descripción (Opcional):</label>
+                    <textarea name="descripcion" id="descripcion" rows="2">{{ form_data.descripcion or '' }}</textarea>
+                </div>
+                <div class="form-actions" style="border-top:none; padding-top:5px; margin-top:15px; text-align:left;">
+                    <input type="submit" value="Crear Almacén" class="button button-primary">
+                </div>
+            </form>
+        </div>
+
+        <div class="card" style="margin-bottom: 0;">
+            <h5 style="margin-top:0; margin-bottom:15px; font-weight:600;">Almacenes Existentes</h5>
+            {% if almacenes %}
+                <div class="table-responsive" style="margin-top:0;">
+                    <table class="data-table stylish-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Nombre</th>
+                                <th>Descripción</th>
+                                <th style="text-align:center;">Activo</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for almacen in almacenes %}
+                                <tr>
+                                    <td>{{ almacen.id_almacen }}</td>
+                                    <td>{{ almacen.nombre_almacen }}</td>
+                                    <td style="white-space:normal; min-width:150px;">{{ almacen.descripcion or '-' }}</td>
+                                    <td style="text-align:center;">{{ 'Sí' if almacen.activo else 'No' }}</td>
+                                    <td class="actions">
+                                        <a href="{{ url_for('inventario_bp.vista_editar_almacen', id_almacen=almacen.id_almacen) }}" class="button-edit-black button-small-padding">Editar</a>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p>No hay almacenes registrados.</p>
+            {% endif %}
+        </div>
+    </div>
+<style>
+    .button-small-padding { /* Reutilizado de listar_existencias */
+        font-size: 0.8em !important;
+        padding: 5px 10px !important;
+        height: auto !important;
+        line-height: 1.4 !important;
+    }
+</style>
+{% endblock %}

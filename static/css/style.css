@@ -100,7 +100,6 @@ body {
     padding: 12px 15px; 
     text-decoration: none !important;
     border-radius: var(--radio-borde-general);
-    margin: 0 5px 10px 5px;
     font-weight: 500; 
     font-size: 0.9rem; 
     transition: background-color 0.15s ease, color 0.15s ease;
