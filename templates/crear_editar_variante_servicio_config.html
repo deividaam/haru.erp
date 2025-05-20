@@ -43,65 +43,10 @@
                 </div>
             </div>
 
-            {# El input para "Nombre Completo de la Variante" y su previsualización han sido eliminados.
-               Se generará completamente en el backend.
-            #}
-            {#
-            <div class="form-group" style="margin-top: 10px;">
-                <label>Nombre de Variante (Generado Automáticamente):</label>
-                <input type="text" id="nombre_variante_preview" value="{{ variante_config_form_data.get('nombre_variante', '(Se generará al guardar)') }}" readonly class="form-control-disabled-visual">
-                <small class="form-text text-muted">Se formará como: [Tipo Servicio] - [Nivel Paquete] - [Nivel Perfil]</small>
-            </div>
-            #}
-
-            {# CAMPOS TEMPORALMENTE OCULTADOS #}
-            {#
-            <div class="form-grid-2col">
-                <div class="form-group">
-                    <label for="codigo_identificador_variante">Código Identificador (Opcional):</label>
-                    <input type="text" name="codigo_identificador_variante" id="codigo_identificador_variante"
-                           value="{{ variante_config_form_data.get('codigo_identificador_variante', '') }}">
-                    <small class="form-text text-muted">Se generará después basado en opciones (ej. "MD-CLA-SAL-001").</small>
-                </div>
-                <div class="form-group">
-                    <label for="precio_base_sugerido">Precio Base Sugerido (Opcional):</label>
-                    <input type="number" step="0.01" name="precio_base_sugerido" id="precio_base_sugerido"
-                           value="{{ variante_config_form_data.get('precio_base_sugerido', '') }}"
-                           min="0">
-                    <small>Precio si se vende como un paquete cerrado, antes de personalizaciones.</small>
-                </div>
-            </div>
-            #}
-
             <div class="form-group">
                 <label for="descripcion_publica">Descripción Pública (para el cliente, Opcional):</label>
                 <textarea name="descripcion_publica" id="descripcion_publica" rows="3">{{ variante_config_form_data.get('descripcion_publica', '') }}</textarea>
             </div>
-
-            {# SECCIÓN DE CANTIDAD BASE TEMPORALMENTE OCULTADA #}
-            {#
-            <h5 style="margin-top: 20px; margin-bottom: 10px; font-weight:500;">Configuración de Cantidad Base del Servicio:</h5>
-            <div class="form-grid-2col">
-                <div class="form-group">
-                    <label for="cantidad_base_por_invitado">Cantidad Base por Invitado (Opcional):</label>
-                    <input type="number" step="any" name="cantidad_base_por_invitado" id="cantidad_base_por_invitado"
-                           value="{{ variante_config_form_data.get('cantidad_base_por_invitado', '') }}">
-                    <small>Ej: 0.075 (para 75g de dulces por invitado).</small>
-                </div>
-                <div class="form-group">
-                    <label for="unidad_medida_servicio_por_invitado">Unidad (para Cant. por Invitado):</label>
-                    <input type="text" name="unidad_medida_servicio_por_invitado" id="unidad_medida_servicio_por_invitado"
-                           value="{{ variante_config_form_data.get('unidad_medida_servicio_por_invitado', '') }}">
-                    <small>Ej: "kg", "porciones", "unidades".</small>
-                </div>
-            </div>
-            <div class="form-group">
-                <label for="cantidad_base_fija_servicio">Cantidad Base Fija del Servicio (Opcional):</label>
-                <input type="number" step="any" name="cantidad_base_fija_servicio" id="cantidad_base_fija_servicio"
-                       value="{{ variante_config_form_data.get('cantidad_base_fija_servicio', '') }}">
-                <small>Usar si la cantidad del servicio no depende de invitados (ej. 1 arreglo floral).</small>
-            </div>
-            #}
 
             <div class="form-group checkbox-group" style="padding: 10px 0; margin-top:10px;">
                 <input type="checkbox" name="activo" id="activo" class="form-checkbox"
@@ -128,8 +73,11 @@
                                     {% endif %})
                                 </small>
                                 <div class="actions-config">
-                                    <a href="{{ url_for('admin_servicios_bp.admin_vista_editar_grupo_componente', id_grupo_config=grupo.id_grupo_config) }}" class="button-edit-black-small">Editar Grupo</a>
-                                    <a href="{{ url_for('admin_servicios_bp.admin_vista_gestionar_opciones_componente', id_variante_config=variante_config_obj.id_variante_config, id_grupo_config=grupo.id_grupo_config) }}" class="button-secondary-small">Gestionar Opciones</a>
+                                    {# CORREGIDO: Usando el endpoint sugerido por el error para Editar Grupo #}
+                                    <a href="{{ url_for('admin_servicios_bp.admin_vista_crear_editar_grupo_componente', id_variante_config=variante_config_obj.id_variante_config, id_grupo_config=grupo.id_grupo_config) }}" 
+                                       class="button button-secondary button-small-action">Editar Grupo</a>
+                                    <a href="{{ url_for('admin_servicios_bp.admin_vista_gestionar_opciones_componente', id_variante_config=variante_config_obj.id_variante_config, id_grupo_config=grupo.id_grupo_config, origin='crear_editar_variante') }}" 
+                                       class="button button-primary button-small-action">Gestionar Opciones</a>
                                 </div>
                             </li>
                         {% endfor %}
@@ -138,7 +86,9 @@
                     <p>Aún no se han definido grupos de componentes para esta variante.</p>
                 {% endif %}
             </div>
-            <a href="{{ url_for('admin_servicios_bp.admin_vista_crear_grupo_componente', id_variante_config=variante_config_obj.id_variante_config) }}" class="button button-secondary">
+            {# Este enlace para "Añadir Nuevo Grupo" ya usaba el endpoint que Flask sugiere que podría ser el correcto para editar también.
+               Asumimos que esta ruta maneja la creación cuando id_grupo_config no está presente. #}
+            <a href="{{ url_for('admin_servicios_bp.admin_vista_crear_editar_grupo_componente', id_variante_config=variante_config_obj.id_variante_config) }}" class="button button-primary">
                 <i class="fas fa-plus-circle" style="margin-right: 5px;"></i> Añadir Nuevo Grupo de Componentes
             </a>
         </fieldset>
@@ -157,7 +107,6 @@
     </form>
 
 <style>
-    /* ... (Estilos existentes) ... */
     .form-control-disabled-visual {
         background-color: #e9ecef;
         color: #495057;
@@ -165,51 +114,49 @@
         opacity: 0.7;
         cursor: default;
     }
+    .form-text.text-muted { font-size: 0.8em; color: #6c757d; display: block; margin-top: 4px; }
+    .required-indicator { color: var(--color-peligro); font-weight: bold; margin-left: 2px; }
+    .checkbox-group { display: flex; align-items: center; }
+    .form-checkbox { width: auto; margin-right: 10px; height: 18px; width: 18px; accent-color: var(--color-acento-primario); }
+    .checkbox-label { font-weight: normal !important; margin-bottom: 0 !important; }
+    .subtle-text { font-size: 0.9em; color: var(--color-texto-secundario); }
+
+    .list-styled {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+    .list-item-config {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 0; 
+        border-bottom: 1px solid var(--color-borde-sutil);
+    }
+    .list-item-config:last-child {
+        border-bottom: none;
+    }
+    .text-muted-config {
+        font-size: 0.85em;
+        color: var(--color-texto-secundario);
+        margin-left: 10px;
+    }
+    .actions-config {
+        display: flex;
+        align-items: center;
+        gap: 10px; 
+    }
+
+    .button-small-action {
+        font-size: 0.8em !important; 
+        padding: 5px 10px !important; 
+        height: auto !important; 
+        line-height: 1.4 !important;
+        text-decoration: none !important;
+    }
 </style>
 
 <script>
 // El script para actualizar nombre_variante_preview ya no es necesario si se elimina el campo de preview.
-// Si decides mantener la preview, el script anterior era correcto.
-// Por ahora, lo comento/elimino ya que el campo de preview se ha comentado en el HTML.
-/*
-document.addEventListener('DOMContentLoaded', function() {
-    const tipoServicioSelect = document.getElementById('id_tipo_servicio_base');
-    const nivelPaqueteInput = document.getElementById('nivel_paquete');
-    const nivelPerfilInput = document.getElementById('nivel_perfil');
-    const nombreVariantePreview = document.getElementById('nombre_variante_preview');
-
-    function actualizarNombrePreview() {
-        if (!nombreVariantePreview) return;
-
-        const tipoServicioOption = tipoServicioSelect.options[tipoServicioSelect.selectedIndex];
-        const tipoServicioNombre = (tipoServicioOption && tipoServicioOption.dataset.nombreTipoBase) ? tipoServicioOption.dataset.nombreTipoBase : '';
-        const paquete = nivelPaqueteInput ? nivelPaqueteInput.value.trim() : '';
-        const perfil = nivelPerfilInput ? nivelPerfilInput.value.trim() : '';
-
-        let previewText = "";
-        if (tipoServicioNombre) {
-            previewText += tipoServicioNombre;
-        }
-        if (paquete) {
-            previewText += (previewText ? " - " : "") + paquete;
-        }
-        if (perfil) {
-            previewText += (previewText ? " - " : "") + perfil;
-        }
-
-        nombreVariantePreview.value = previewText || '(Se generará al guardar)';
-    }
-
-    if (tipoServicioSelect) tipoServicioSelect.addEventListener('change', actualizarNombrePreview);
-    if (nivelPaqueteInput) nivelPaqueteInput.addEventListener('input', actualizarNombrePreview);
-    if (nivelPerfilInput) nivelPerfilInput.addEventListener('input', actualizarNombrePreview);
-
-    // Actualizar al cargar la página por si hay valores prellenados (ej. al editar)
-    // y el campo de preview todavía existe.
-    if (nombreVariantePreview) {
-        actualizarNombrePreview();
-    }
-});
-*/
 </script>
 {% endblock %}

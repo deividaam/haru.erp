@@ -1,14 +1,9 @@
 {% extends "base.html" %}
 
 {% block content %}
-    {# El título de la página se establece en app.py.
-       Ej: "Detalle Variante: Premium Mixta (Mesa de Dulces)" #}
-
     <div class="content-actions-bar" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
-        {# CORREGIDO el url_for aquí #}
         <a href="{{ url_for('admin_servicios_bp.admin_vista_listar_variantes_por_tipo', id_tipo_servicio_base=variante_config.id_tipo_servicio_base) }}" class="button button-secondary">&laquo; Volver a Variantes de "{{ variante_config.tipo_servicio_base_ref.nombre }}"</a>
         <div>
-            {# CORREGIDO el url_for aquí #}
             <a href="{{ url_for('admin_servicios_bp.admin_vista_crear_editar_variante_config', id_variante_config=variante_config.id_variante_config) }}" class="button button-primary">
                 <i class="fas fa-edit" style="margin-right: 5px;"></i> Editar esta Variante
             </a>
@@ -25,278 +20,113 @@
                 <span class="detail-value">{{ variante_config.tipo_servicio_base_ref.nombre }}</span>
             </div>
             <div class="detail-item">
-                <span class="detail-label">Nombre Completo de la Variante:</span>
+                <span class="detail-label">Nombre Completo Variante:</span>
                 <span class="detail-value">{{ variante_config.nombre_variante }}</span>
             </div>
-            {% if variante_config.nivel_paquete %}
-            <div class="detail-item">
+             <div class="detail-item">
                 <span class="detail-label">Nivel de Paquete:</span>
-                <span class="detail-value">{{ variante_config.nivel_paquete }}</span>
+                <span class="detail-value">{{ variante_config.nivel_paquete or '-' }}</span>
             </div>
-            {% endif %}
-            {% if variante_config.nivel_perfil %}
             <div class="detail-item">
                 <span class="detail-label">Nivel de Perfil:</span>
-                <span class="detail-value">{{ variante_config.nivel_perfil }}</span>
+                <span class="detail-value">{{ variante_config.nivel_perfil or '-' }}</span>
             </div>
-            {% endif %}
-            <div class="detail-item">
-                <span class="detail-label">Código Identificador:</span>
-                <span class="detail-value">{{ variante_config.codigo_identificador_variante or '-' }}</span>
+            <div class="detail-item full-width">
+                <span class="detail-label">Descripción Pública:</span>
+                <span class="detail-value" style="white-space: pre-wrap;">{{ variante_config.descripcion_publica or '-' }}</span>
             </div>
             <div class="detail-item">
                 <span class="detail-label">Precio Base Sugerido:</span>
-                <span class="detail-value">{{ "${:,.2f}".format(variante_config.precio_base_sugerido|float) if variante_config.precio_base_sugerido is not none else '-' }}</span>
-            </div>
-            <div class="detail-item full-span-col">
-                <span class="detail-label">Descripción Pública:</span>
-                <p class="detail-value" style="white-space: pre-wrap; margin-top: 3px;">{{ variante_config.descripcion_publica or '-' }}</p>
-            </div>
-
-            <div class="detail-item-divider full-span-col">Configuración de Cantidad Base del Servicio</div>
-
-            <div class="detail-item">
-                <span class="detail-label">Cantidad Base por Invitado:</span>
-                <span class="detail-value">
-                    {{ variante_config.cantidad_base_por_invitado if variante_config.cantidad_base_por_invitado is not none else '-' }}
-                    {{ variante_config.unidad_medida_servicio_por_invitado or '' }}
-                </span>
+                <span class="detail-value">${{ "%.2f"|format(variante_config.precio_base_sugerido|float) if variante_config.precio_base_sugerido is not none else 'N/A' }}</span>
             </div>
             <div class="detail-item">
-                <span class="detail-label">Cantidad Base Fija del Servicio:</span>
-                <span class="detail-value">{{ variante_config.cantidad_base_fija_servicio if variante_config.cantidad_base_fija_servicio is not none else '-' }}</span>
-            </div>
-             <div class="detail-item">
                 <span class="detail-label">Estado:</span>
-                <span class="detail-value">
-                    {% if variante_config.activo %}
-                        <span class="status-badge status-activo" style="background-color: var(--color-exito);">Activa</span>
-                    {% else %}
-                        <span class="status-badge status-inactivo" style="background-color: var(--color-peligro);">Inactiva</span>
-                    {% endif %}
-                </span>
+                <span class="detail-value">{% if variante_config.activo %}Activa{% else %}Inactiva{% endif %}</span>
             </div>
         </div>
     </fieldset>
 
-    {# --- Sección 2: Grupos de Componentes y sus Opciones --- #}
+    {# --- Sección 2: Grupos de Componentes Configurables --- #}
     <fieldset class="form-section">
-        <legend><h4>Configuración de Grupos y Opciones de Componentes</h4></legend>
-
+        <legend><h4>Grupos de Componentes Configurables</h4></legend>
         {% if variante_config.grupos_componentes %}
-            {% for grupo in variante_config.grupos_componentes|sort(attribute='orden_display') %}
-                <div class="grupo-componente-card">
-                    <div class="grupo-header">
-                        <h5 class="grupo-nombre">{{ grupo.nombre_grupo }}</h5>
-                        <div class="grupo-info">
-                            <span>Elegir: <strong>{{ grupo.cantidad_opciones_seleccionables }}</strong> opc.</span>
-                            {% if grupo.porcentaje_del_total_servicio is not none %}
-                                <span>| Porcentaje del servicio: <strong>{{ (grupo.porcentaje_del_total_servicio * 100)|round(1) }}%</strong></span>
-                            {% endif %}
-                        </div>
-                        <div class="grupo-actions">
-                             {# CORREGIDO el url_for aquí #}
-                             <a href="{{ url_for('admin_servicios_bp.admin_vista_editar_grupo_componente', id_grupo_config=grupo.id_grupo_config) }}" class="button-edit-black-small">Editar Grupo</a>
-                             {# CORREGIDO el url_for aquí #}
-                             <a href="{{ url_for('admin_servicios_bp.admin_vista_gestionar_opciones_componente', id_variante_config=variante_config.id_variante_config, id_grupo_config=grupo.id_grupo_config) }}" class="button-secondary-small">Gestionar Opciones</a>
+            <ul class="list-group-detalle">
+                {% for grupo in variante_config.grupos_componentes|sort(attribute='orden_display') %}
+                <li class="list-group-item-detalle">
+                    <div class="grupo-header-detalle">
+                        <span class="grupo-nombre-detalle">{{ grupo.nombre_grupo }}</span>
+                        <small class="text-muted-detalle">(Elegir {{ grupo.cantidad_opciones_seleccionables }} opc.)</small>
+                        <div class="grupo-actions-detalle">
+                             {# AÑADIDO origin='detalle_variante' y clases de botón #}
+                            <a href="{{ url_for('admin_servicios_bp.admin_vista_gestionar_opciones_componente', id_variante_config=variante_config.id_variante_config, id_grupo_config=grupo.id_grupo_config, origin='detalle_variante') }}" 
+                               class="button button-primary button-small-action">Gestionar Opciones</a>
                         </div>
                     </div>
-
                     {% if grupo.opciones_componente_disponibles %}
                         <ul class="lista-opciones-componente">
-                            {% for opcion in grupo.opciones_componente_disponibles|sort(attribute='nombre_display_cliente') %}
-                                <li class="opcion-item {% if not opcion.activo %}opcion-inactiva{% endif %}">
-                                    <div class="opcion-nombre">
-                                        {{ opcion.nombre_display_cliente }}
-                                        {% if not opcion.activo %}<span class="badge-inactivo">(Inactiva)</span>{% endif %}
-                                    </div>
-                                    <div class="opcion-detalle">
-                                        Producto Interno:
-                                        {# ***** CORRECCIÓN AQUÍ ***** #}
-                                        {% if opcion.id_producto_interno and opcion.producto_interno_ref %}
-                                            <a href="{{ url_for('productos_bp.vista_editar_producto', id_producto=opcion.id_producto_interno) }}" target="_blank" title="Ver producto interno">
-                                                {{ opcion.producto_interno_ref.nombre_producto }} (SKU: {{ opcion.producto_interno_ref.sku or 'N/A' }})
-                                            </a>
-                                        {% elif opcion.producto_interno_ref %}
-                                            {{ opcion.producto_interno_ref.nombre_producto }} (SKU: {{ opcion.producto_interno_ref.sku or 'N/A' }}) - (Sin ID para enlace)
-                                        {% else %}
-                                            No vinculado
-                                        {% endif %}
-                                        {# ***** FIN DE CORRECCIÓN ***** #}
-                                    </div>
-                                    <div class="opcion-detalle">
-                                        Consumo Base: {{ opcion.cantidad_consumo_base|float }} {{ opcion.unidad_consumo_base }}
-                                    </div>
-                                    {% if opcion.costo_adicional_opcion > 0 %}
-                                        <div class="opcion-detalle">Costo Adicional: ${{ "{:,.2f}".format(opcion.costo_adicional_opcion|float) }}</div>
+                        {% for opcion in grupo.opciones_componente_disponibles|sort(attribute='nombre_display_cliente') %}
+                            <li class="opcion-item {% if not opcion.activo %}opcion-inactiva{% endif %}">
+                                <div class="opcion-nombre">{{ opcion.nombre_display_cliente }} {% if not opcion.activo %}(Inactiva){% endif %}</div>
+                                <div class="opcion-detalle">
+                                    Cant. Base: {{ opcion.cantidad_consumo_base|float }} {{ opcion.unidad_consumo_base }}
+                                    {% if opcion.costo_adicional_opcion and opcion.costo_adicional_opcion > 0 %}
+                                        | Costo Adic: ${{ "%.2f"|format(opcion.costo_adicional_opcion|float) }}
                                     {% endif %}
-                                     {% if opcion.precio_venta_opcion_sugerido is not none %}
-                                        <div class="opcion-detalle">Precio Venta Sug.: ${{ "{:,.2f}".format(opcion.precio_venta_opcion_sugerido|float) }}</div>
+                                    {% if opcion.producto_interno_ref %}
+                                        | Vinculado a: <a href="{{ url_for('productos_bp.vista_editar_producto', id_producto=opcion.id_producto_interno) }}" target="_blank" title="Ver producto interno">{{ opcion.producto_interno_ref.nombre_producto }} (SKU: {{ opcion.producto_interno_ref.sku or 'N/A' }})</a>
                                     {% endif %}
-                                </li>
-                            {% endfor %}
+                                </div>
+                            </li>
+                        {% endfor %}
                         </ul>
                     {% else %}
-                        <p class="no-opciones-text">No hay opciones definidas para este grupo.</p>
+                        <p class="text-muted-detalle" style="padding-left: 15px; font-style: italic;">No hay opciones definidas para este grupo.</p>
                     {% endif %}
-                </div>
-            {% endfor %}
+                </li>
+                {% endfor %}
+            </ul>
         {% else %}
-            <p style="text-align: center; color: var(--color-texto-secundario);">Esta variante aún no tiene grupos de componentes configurados.</p>
+            <p>No hay grupos de componentes definidos para esta variante.</p>
         {% endif %}
-        <div style="margin-top: 20px;">
-             {# CORREGIDO el url_for aquí #}
-             <a href="{{ url_for('admin_servicios_bp.admin_vista_crear_grupo_componente', id_variante_config=variante_config.id_variante_config) }}" class="button button-secondary">
-                <i class="fas fa-plus-circle" style="margin-right: 5px;"></i> Añadir Nuevo Grupo a esta Variante
+         <div style="margin-top: 20px;">
+             {# El enlace para añadir un nuevo grupo te lleva a la página de edición de la variante, donde puedes añadir grupos #}
+            <a href="{{ url_for('admin_servicios_bp.admin_vista_crear_editar_variante_config', id_variante_config=variante_config.id_variante_config) }}#lista-grupos-componentes" class="button button-secondary">
+                <i class="fas fa-plus-circle" style="margin-right: 5px;"></i> Añadir/Editar Grupos para esta Variante
             </a>
         </div>
     </fieldset>
 
 <style>
-    /* Estilos generales del formulario ya definidos en style.css */
-    .view-section { /* Para fieldsets que son solo de visualización */
-        background-color: #fdfdff; /* Un fondo ligeramente diferente si se desea */
-    }
-    .details-grid-cols-2 {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-        gap: 15px 25px; /* Espacio entre filas y columnas */
-    }
-    .detail-item {
-        padding: 8px 0;
-        border-bottom: 1px solid #f0f0f0;
-    }
-    .detail-item:last-child {
-        border-bottom: none;
-    }
-    .detail-item.full-span-col { /* Para elementos que ocupan todo el ancho */
-        grid-column: 1 / -1;
-    }
-    .detail-item-divider {
-        grid-column: 1 / -1;
-        font-weight: 600;
-        color: var(--color-texto-principal);
-        padding: 15px 0 5px 0;
-        margin-top: 10px;
-        border-bottom: 1px solid var(--color-borde-sutil);
-        font-size: 1em;
-    }
-    .detail-label {
-        font-weight: 500;
-        color: var(--color-texto-secundario);
-        display: block;
-        margin-bottom: 3px;
-        font-size: 0.85em;
-    }
-    .detail-value {
-        color: var(--color-texto-principal);
-        font-size: 0.95em;
-    }
-    .content-actions-bar-public .button, /* Si usas una clase específica para barras públicas */
-    .content-actions-bar .button { /* Para la barra de acciones general */
-        font-size: 0.85em;
-        padding: 8px 15px;
-    }
-    .status-badge {
-        padding: 3px 8px;
-        border-radius: var(--radio-borde-general);
-        font-size: 0.8em;
-        font-weight: 500;
-        color: white;
-        text-transform: capitalize;
-        display: inline-block;
-    }
-    /* .status-activo, .status-inactivo ya definidos en otras plantillas o style.css */
+    .view-section { background-color: #fdfdff; }
+    .details-grid-cols-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 10px 25px; }
+    .detail-item { padding: 8px 0; border-bottom: 1px dotted var(--color-borde-sutil); }
+    .detail-item:last-child { border-bottom: none; }
+    .detail-item.full-width { grid-column: 1 / -1; }
+    .detail-label { font-weight: 500; color: var(--color-texto-secundario); display: block; margin-bottom: 3px; font-size: 0.85em; }
+    .detail-value { color: var(--color-texto-principal); font-size: 0.95em; }
 
-    /* Estilos para Grupos de Componentes */
-    .grupo-componente-card {
-        background-color: #fff;
+    .list-group-detalle { list-style: none; padding: 0; margin: 0; }
+    .list-group-item-detalle {
+        padding: 15px;
         border: 1px solid var(--color-borde-sutil);
         border-radius: var(--radio-borde-general);
-        margin-bottom: 20px;
-        box-shadow: var(--sombra-caja-ligera);
+        margin-bottom: 15px;
+        background-color: #fff;
     }
-    .grupo-header {
-        background-color: #f8f9fa;
-        padding: 10px 15px;
-        border-bottom: 1px solid var(--color-borde-sutil);
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        flex-wrap: wrap;
+    .list-group-item-detalle:last-child { margin-bottom: 0; }
+    .grupo-header-detalle { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid #eee;}
+    .grupo-nombre-detalle { font-size: 1.1em; font-weight: 600; color: var(--color-texto-principal); }
+    .text-muted-detalle { color: var(--color-texto-secundario); font-size: 0.9em; margin-left: 8px; }
+    .grupo-actions-detalle .button-small-action { /* Reutilizar clase para tamaño */
+        font-size: 0.8em !important; padding: 5px 10px !important; height: auto !important; line-height: 1.4 !important; text-decoration: none !important;
     }
-    .grupo-nombre {
-        font-size: 1.1em;
-        font-weight: 600;
-        color: var(--color-texto-principal);
-        margin: 0;
-    }
-    .grupo-info {
-        font-size: 0.85em;
-        color: var(--color-texto-secundario);
-        margin-left: 15px;
-    }
-    .grupo-info span:not(:last-child):after {
-        content: " | ";
-        margin: 0 5px;
-    }
-    .grupo-actions {
-        margin-left: auto; /* Empuja a la derecha */
-    }
-    .button-edit-black-small, .button-secondary-small { /* Estilos ya definidos en crear_editar_variante */
-        font-size: 0.8em !important;
-        padding: 5px 10px !important;
-    }
-
-    .lista-opciones-componente {
-        list-style-type: none;
-        padding: 0 15px 5px 15px; /* Padding interno para las opciones */
-    }
-    .opcion-item {
-        padding: 10px 0;
-        border-bottom: 1px dotted #e0e0e0;
-    }
-    .opcion-item:last-child {
-        border-bottom: none;
-    }
-    .opcion-nombre {
-        font-weight: 500;
-        color: var(--color-texto-principal);
-        font-size: 0.95em;
-        margin-bottom: 3px;
-    }
-    .opcion-detalle {
-        font-size: 0.85em;
-        color: var(--color-texto-secundario);
-        padding-left: 15px;
-        line-height: 1.5;
-    }
-    .opcion-detalle a {
-        color: var(--color-acento-primario);
-        text-decoration: none;
-    }
-    .opcion-detalle a:hover {
-        text-decoration: underline;
-    }
-    .opcion-inactiva .opcion-nombre,
-    .opcion-inactiva .opcion-detalle {
-        color: #aaa;
-        text-decoration: line-through;
-    }
-    .opcion-inactiva .opcion-detalle a {
-        color: #aaa;
-    }
-    .badge-inactivo {
-        font-size: 0.8em;
-        color: var(--color-peligro);
-        font-weight: normal;
-        margin-left: 5px;
-    }
-    .no-opciones-text {
-        padding: 15px;
-        text-align: center;
-        color: var(--color-texto-secundario);
-        font-style: italic;
-    }
+    .lista-opciones-componente { list-style-type: none; padding: 0 15px 5px 15px; }
+    .opcion-item { padding: 10px 0; border-bottom: 1px dotted #e0e0e0; }
+    .opcion-item:last-child { border-bottom: none; }
+    .opcion-nombre { font-weight: 500; color: var(--color-texto-principal); font-size: 0.95em; margin-bottom: 3px; }
+    .opcion-detalle { font-size: 0.85em; color: var(--color-texto-secundario); padding-left: 15px; line-height: 1.5; }
+    .opcion-detalle a { color: var(--color-acento-primario); text-decoration: none; }
+    .opcion-detalle a:hover { text-decoration: underline; }
+    .opcion-inactiva .opcion-nombre, .opcion-inactiva .opcion-detalle { color: #aaa; text-decoration: line-through; }
 </style>
 {% endblock %}

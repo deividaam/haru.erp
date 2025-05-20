@@ -32,7 +32,7 @@ class Subcategoria(Base):
     id_subcategoria_padre = Column(Integer, ForeignKey('subcategorias.id_subcategoria'), nullable=True)
     
     categoria_contenedora = relationship("Categoria", foreign_keys=[id_categoria_contenedora], back_populates="subcategorias_directas")
-    subcategoria_padre_ref = relationship("Subcategoria", remote_side=[id_subcategoria], back_populates="subcategorias_hijas_directas") # Renombrado para claridad
+    subcategoria_padre_ref = relationship("Subcategoria", remote_side=[id_subcategoria], back_populates="subcategorias_hijas_directas") 
     subcategorias_hijas_directas = relationship("Subcategoria", back_populates="subcategoria_padre_ref")
     productos_en_subcategoria = relationship("Producto", foreign_keys="[Producto.id_subcategoria_especifica_producto]", back_populates="subcategoria_especifica_producto")
 
@@ -54,15 +54,15 @@ class Producto(Base):
     es_indivisible = Column(Boolean, default=False, nullable=False)
     sabor = Column(String(100), nullable=True)
     color = Column(String(100), nullable=True)
-    tamano_pulgadas = Column(String(50), nullable=True) # Considerar cambiar a un campo más genérico "Tamano"
+    tamano_pulgadas = Column(String(50), nullable=True) 
     material = Column(String(100), nullable=True)
     dimensiones_capacidad = Column(String(100), nullable=True)
     tema_estilo = Column(String(100), nullable=True)
-    modalidad_servicio_directo = Column(String(100), nullable=True) # Si el producto es un servicio directo
+    modalidad_servicio_directo = Column(String(100), nullable=True) 
     forma_tipo = Column(String(100), nullable=True)
     dias_anticipacion_compra_proveedor = Column(Integer, nullable=True)
-    marca = Column(String(100), nullable=True) # Campo añadido
-    modelo_sku_proveedor = Column(String(100), nullable=True) # Campo añadido
+    marca = Column(String(100), nullable=True) 
+    modelo_sku_proveedor = Column(String(100), nullable=True) 
     activo = Column(Boolean, default=True, nullable=False)
     fecha_creacion = Column(TIMESTAMP, server_default=func.now())
     fecha_actualizacion = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now())
@@ -73,10 +73,8 @@ class Producto(Base):
     detalles_compra = relationship("DetalleCompra", back_populates="producto", cascade="all, delete-orphan")
     opciones_componente_servicio = relationship("OpcionComponenteServicio", back_populates="producto_interno_ref")
 
-    # --- Relaciones para el Módulo de Inventario ---
     existencias = relationship("ExistenciaProducto", back_populates="producto", cascade="all, delete-orphan")
     movimientos_inventario = relationship("MovimientoInventario", back_populates="producto", cascade="all, delete-orphan")
-    # --- Fin Relaciones Inventario ---
 
     def __repr__(self):
         return f"<Producto(id={self.id_producto}, nombre='{self.nombre_producto}', sku='{self.sku}')>"
@@ -145,13 +143,12 @@ class DetalleCompra(Base):
     monto_descuento_unitario = Column(DECIMAL(10, 2), nullable=True, default=0.00)
     costo_unitario_compra = Column(DECIMAL(10, 2), nullable=False)
     costo_total_item = Column(DECIMAL(12, 2), nullable=False)
-    disponibilidad_proveedor = Column(String(50), nullable=True) # Ejemplo: "Alta", "Media", "Baja", "Agotado"
+    disponibilidad_proveedor = Column(String(50), nullable=True) 
     notas_item = Column(Text, nullable=True)
     encabezado = relationship("EncabezadoCompra", back_populates="detalles")
     producto = relationship("Producto", back_populates="detalles_compra")
     def __repr__(self): return f"<DetalleCompra(id={self.id_detalle_compra}, prod_id={self.id_producto})>"
 
-# --- MODELOS PARA CONFIGURACIÓN DE SERVICIOS Y PRODUCTOS DE SERVICIO ---
 class TipoServicioBase(Base):
     __tablename__ = 'tipos_servicio_base'
     id_tipo_servicio_base = Column(Integer, primary_key=True, autoincrement=True)
@@ -209,7 +206,6 @@ class OpcionComponenteServicio(Base):
     selecciones_en_cotizaciones = relationship("DetalleComponenteSeleccionado", back_populates="opcion_componente_elegida")
     def __repr__(self): return f"<OpcionComponenteServicio(nombre_cliente='{self.nombre_display_cliente}')>"
 
-# --- MODELOS PARA PROYECTOS Y COTIZACIONES ---
 class Proyecto(Base):
     __tablename__ = 'proyectos'
     id_proyecto = Column(Integer, primary_key=True, autoincrement=True)
@@ -243,8 +239,15 @@ class Cotizacion(Base):
     monto_servicios_productos = Column(DECIMAL(12, 2), nullable=True, default=0.00)
     monto_costos_logisticos = Column(DECIMAL(12, 2), nullable=True, default=0.00)
     monto_subtotal_general = Column(DECIMAL(12, 2), nullable=True, default=0.00)
-    monto_impuestos = Column(DECIMAL(12, 2), nullable=True, default=0.00)
+    
+    # Campos para almacenar los montos calculados
     monto_descuento_global = Column(DECIMAL(12,2), nullable=True, default=0.00)
+    monto_impuestos = Column(DECIMAL(12, 2), nullable=True, default=0.00)
+    
+    # NUEVOS CAMPOS PARA PORCENTAJES
+    porcentaje_descuento_global = Column(DECIMAL(5,2), nullable=True) # Ej. 10.00 para 10%
+    porcentaje_impuestos = Column(DECIMAL(5,2), nullable=True)      # Ej. 16.00 para 16%
+
     monto_total_cotizado = Column(DECIMAL(12, 2), nullable=True, default=0.00)
     terminos_condiciones = Column(Text, nullable=True)
     notas_cotizacion = Column(Text, nullable=True)
@@ -265,6 +268,8 @@ class ItemCotizacion(Base):
     precio_total_item_calculado = Column(DECIMAL(10, 2), nullable=False)
     notas_item_cot = Column(Text, nullable=True)
     orden_display_cot = Column(Integer, default=0)
+    numero_invitados_servicio_item = Column(Integer, nullable=True)
+
     cotizacion_ref = relationship("Cotizacion", back_populates="items_cotizacion")
     variante_servicio_config_usada = relationship("VarianteServicioConfig", back_populates="items_cotizacion_asociados")
     componentes_seleccionados = relationship("DetalleComponenteSeleccionado", back_populates="item_cotizacion_pertenece", cascade="all, delete-orphan")
@@ -283,15 +288,6 @@ class DetalleComponenteSeleccionado(Base):
     opcion_componente_elegida = relationship("OpcionComponenteServicio", back_populates="selecciones_en_cotizaciones")
     def __repr__(self): return f"<DetalleComponenteSeleccionado(opcion_id={self.id_opcion_componente})>"
 
-# --- INICIO: Modelos para el Módulo de Inventario ---
-# (Asumiendo que Usuario no existe aún, se omite la FK a usuario por ahora)
-# class Usuario(Base): # Descomentar y definir si tienes un modelo de Usuario
-#     __tablename__ = 'usuarios'
-#     id_usuario = Column(Integer, primary_key=True)
-#     nombre_usuario = Column(String(100), unique=True, nullable=False)
-#     # ... otros campos ...
-#     movimientos_inventario_realizados = relationship("MovimientoInventario", back_populates="usuario_responsable_rel")
-
 class Almacen(Base):
     __tablename__ = 'almacenes'
     id_almacen = Column(Integer, primary_key=True, autoincrement=True)
@@ -299,7 +295,6 @@ class Almacen(Base):
     descripcion = Column(Text, nullable=True)
     activo = Column(Boolean, default=True, nullable=False)
 
-    # Relaciones inversas
     existencias = relationship("ExistenciaProducto", back_populates="almacen", cascade="all, delete-orphan")
     movimientos_origen = relationship("MovimientoInventario", foreign_keys="[MovimientoInventario.id_almacen_origen]", back_populates="almacen_origen_rel", cascade="all, delete-orphan")
     movimientos_destino = relationship("MovimientoInventario", foreign_keys="[MovimientoInventario.id_almacen_destino]", back_populates="almacen_destino_rel", cascade="all, delete-orphan")
@@ -325,7 +320,6 @@ class ExistenciaProducto(Base):
     
     ultima_actualizacion = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now())
 
-    # Relaciones
     producto = relationship("Producto", back_populates="existencias")
     almacen = relationship("Almacen", back_populates="existencias")
 
@@ -351,19 +345,13 @@ class MovimientoInventario(Base):
     
     costo_unitario_en_movimiento = Column(DECIMAL(10, 2), nullable=True)
     
-    # Si tienes un modelo Usuario y quieres registrar quién hizo el movimiento:
-    # id_usuario_responsable = Column(Integer, ForeignKey('usuarios.id_usuario'), nullable=True)
-    # usuario_responsable_rel = relationship("Usuario", back_populates="movimientos_inventario_realizados")
-    # O un campo de texto simple:
-    nombre_usuario_responsable = Column(String(150), nullable=True) # Alternativa simple
+    nombre_usuario_responsable = Column(String(150), nullable=True) 
     
     notas = Column(Text, nullable=True)
 
-    # Relaciones
     producto = relationship("Producto", back_populates="movimientos_inventario")
     almacen_destino_rel = relationship("Almacen", foreign_keys=[id_almacen_destino], back_populates="movimientos_destino")
     almacen_origen_rel = relationship("Almacen", foreign_keys=[id_almacen_origen], back_populates="movimientos_origen")
 
     def __repr__(self):
         return f"<MovimientoInventario(id={self.id_movimiento}, prod_id={self.id_producto}, tipo='{self.tipo_movimiento}', cant={self.cantidad})>"
-# --- FIN: Modelos para el Módulo de Inventario ---

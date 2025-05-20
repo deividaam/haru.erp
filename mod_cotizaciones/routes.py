@@ -2,7 +2,7 @@
 from flask import render_template, request, redirect, url_for, flash, session, jsonify
 from sqlalchemy.orm import Session, joinedload, selectinload
 from sqlalchemy import desc, distinct
-from decimal import Decimal, ROUND_CEILING, ROUND_HALF_UP 
+from decimal import Decimal, ROUND_CEILING, ROUND_HALF_UP, ROUND_DOWN, InvalidOperation
 from datetime import date, datetime # Asegurar datetime
 from math import ceil
 
@@ -130,48 +130,64 @@ def vista_crear_cotizacion_paso2_configurar(id_proyecto=None, id_cotizacion=None
                 id_proyecto=id_proyecto, 
                 version=nueva_version,
                 fecha_emision=date.today(),
-                estado="Borrador"
-                # Los montos se calcularán o se tomarán del proyecto si aplica
+                estado="Borrador",
+                # Establecer porcentajes por defecto para nuevas cotizaciones
+                porcentaje_descuento_global=Decimal('0.00'),
+                porcentaje_impuestos=Decimal('16.00') # IVA por defecto en México
             )
-            if proyecto: # Asignar costos logísticos del proyecto por defecto
+            if proyecto: 
                 cotizacion_obj_para_template.monto_costos_logisticos = (proyecto.costo_transporte_estimado or Decimal('0.0')) + \
                                                                       (proyecto.costo_viaticos_estimado or Decimal('0.0')) + \
                                                                       (proyecto.costo_hospedaje_estimado or Decimal('0.0'))
             titulo = f"Nueva Cotización (V{nueva_version}) para: {proyecto.nombre_evento}"
         
-        else: # Ni id_cotizacion ni id_proyecto
+        else: 
             flash("Se requiere un proyecto o una cotización existente.", "danger")
             return redirect(url_for('cotizaciones_bp.vista_listar_cotizaciones'))
 
-        # Para los selects de configuración de servicios
-        todas_variantes_config_activas = db.query(VarianteServicioConfig).options(
-            joinedload(VarianteServicioConfig.tipo_servicio_base_ref) # Cargar el tipo base para mostrar su nombre
+        todas_variantes_config_obj_list = db.query(VarianteServicioConfig).options(
+            joinedload(VarianteServicioConfig.tipo_servicio_base_ref) 
         ).filter(VarianteServicioConfig.activo==True).order_by(VarianteServicioConfig.id_tipo_servicio_base, VarianteServicioConfig.nombre_variante).all()
+        
+        todas_variantes_config_serializable = []
+        for variante in todas_variantes_config_obj_list:
+            todas_variantes_config_serializable.append({
+                "id_variante_config": variante.id_variante_config,
+                "nombre_variante": variante.nombre_variante,
+                "id_tipo_servicio_base": variante.id_tipo_servicio_base,
+                "nombre_tipo_servicio_base": variante.tipo_servicio_base_ref.nombre if variante.tipo_servicio_base_ref else None,
+                "nivel_paquete": variante.nivel_paquete,
+                "nivel_perfil": variante.nivel_perfil,
+                "precio_base_sugerido": float(variante.precio_base_sugerido) if variante.precio_base_sugerido is not None else None
+            })
 
         return render_template('configurar_cotizacion.html',
                                proyecto=proyecto,
-                               cotizacion=cotizacion_obj_para_template, # Puede ser un objeto nuevo o uno existente
+                               cotizacion=cotizacion_obj_para_template, 
                                es_nueva_cotizacion=es_nueva_cotizacion,
                                fecha_hoy=fecha_hoy_iso,
                                todos_tipos_servicio_base_activos=tipos_servicio_base_activos,
-                               todas_variantes_config=todas_variantes_config_activas, # Para selects si es necesario
+                               todas_variantes_config=todas_variantes_config_serializable, 
                                titulo_pagina=titulo,
-                               enumerate=enumerate) # Pasar enumerate si se usa en la plantilla
+                               enumerate=enumerate) 
     except Exception as e:
-        flash(f"Error al preparar la configuración de la cotización: {str(e)}", "danger")
-        if id_proyecto and not id_cotizacion: # Si falló creando una nueva para un proyecto
+        error_type_name = type(e).__name__
+        error_message_str = str(e)
+        print(f"ERROR in vista_crear_cotizacion_paso2_configurar: {error_type_name} - {error_message_str}")
+        import traceback
+        traceback.print_exc()
+        
+        flash("Error al preparar la configuración de la cotización. Por favor, intente de nuevo o contacte a soporte si el problema persiste.", "danger")
+
+        if id_proyecto and not id_cotizacion: 
              return redirect(url_for('proyectos_bp.vista_detalle_proyecto', id_proyecto=id_proyecto))
-        return redirect(url_for('cotizaciones_bp.vista_listar_cotizaciones')) # Fallback general
+        return redirect(url_for('cotizaciones_bp.vista_listar_cotizaciones')) 
     finally:
         if db.is_active:
             db.close()
 
 @cotizaciones_bp.route('/guardar', methods=['POST'])
 def vista_guardar_configuracion_cotizacion():
-    # (Esta ruta ya la tienes y es bastante compleja, la mantendremos para editar cotizaciones existentes)
-    # ... tu lógica existente para guardar una cotización que ya pasó por el paso 2 ...
-    # Asegúrate de que esta lógica maneje correctamente la actualización de ítems y componentes.
-    # Por brevedad, no la repito aquí, pero es la que se encarga de procesar el form de 'configurar_cotizacion.html'
     db = SessionLocal()
     id_proyecto_form = request.form.get('id_proyecto', type=int)
     id_cotizacion_existente = request.form.get('id_cotizacion', type=int)
@@ -187,16 +203,28 @@ def vista_guardar_configuracion_cotizacion():
 
         numero_invitados_cotizacion_str = request.form.get('numero_invitados_cotizacion')
         numero_invitados_cotizacion = int(numero_invitados_cotizacion_str) if numero_invitados_cotizacion_str and numero_invitados_cotizacion_str.isdigit() else None
-        numero_invitados_para_calculo = Decimal(numero_invitados_cotizacion if numero_invitados_cotizacion is not None else proyecto_para_repopular_original.numero_invitados or 1)
-
+        
         accion = request.form.get('accion', 'guardar_borrador')
         fecha_emision_form = date.fromisoformat(request.form.get('fecha_emision'))
         fecha_validez_form_str = request.form.get('fecha_validez')
         fecha_validez_form = date.fromisoformat(fecha_validez_form_str) if fecha_validez_form_str else None
         estado_form = request.form.get('estado', 'Borrador')
         monto_costos_logisticos = Decimal(request.form.get('monto_costos_logisticos', '0.00'))
-        monto_descuento_global = Decimal(request.form.get('monto_descuento_global', '0.00'))
-        monto_impuestos = Decimal(request.form.get('monto_impuestos', '0.00'))
+        
+        # Leer porcentajes del formulario
+        porcentaje_descuento_str = request.form.get('porcentaje_descuento_global', '0.00')
+        porcentaje_impuestos_str = request.form.get('porcentaje_impuestos', '16.00') # Default IVA 16%
+
+        try:
+            porcentaje_descuento_form = Decimal(porcentaje_descuento_str) if porcentaje_descuento_str else Decimal('0.00')
+            porcentaje_impuestos_form = Decimal(porcentaje_impuestos_str) if porcentaje_impuestos_str else Decimal('0.00')
+        except InvalidOperation:
+            flash("Formato de porcentaje de descuento o impuestos inválido.", "danger")
+            # Necesitarás repopular el formulario aquí si este error ocurre
+            # (Lógica de repopulación omitida por brevedad, pero es similar al bloque finally)
+            return redirect(request.referrer or url_for('cotizaciones_bp.vista_listar_cotizaciones'))
+
+
         terminos_condiciones_form = request.form.get('terminos_condiciones')
         notas_cotizacion_form = request.form.get('notas_cotizacion')
 
@@ -212,12 +240,12 @@ def vista_guardar_configuracion_cotizacion():
             cotizacion_obj.estado = estado_form
             cotizacion_obj.numero_invitados_override = numero_invitados_cotizacion if numero_invitados_cotizacion != proyecto_para_repopular_original.numero_invitados else None
             cotizacion_obj.monto_costos_logisticos = monto_costos_logisticos
-            cotizacion_obj.monto_descuento_global = monto_descuento_global
-            cotizacion_obj.monto_impuestos = monto_impuestos
+            cotizacion_obj.porcentaje_descuento_global = porcentaje_descuento_form
+            cotizacion_obj.porcentaje_impuestos = porcentaje_impuestos_form
             cotizacion_obj.terminos_condiciones = terminos_condiciones_form
             cotizacion_obj.notas_cotizacion = notas_cotizacion_form
         
-        else: # Creando una nueva cotización (aunque esta ruta es más para guardar una ya configurada)
+        else: 
             version_form = request.form.get('version', type=int, default=1)
             cotizacion_obj = Cotizacion(
                 id_proyecto=id_proyecto_form,
@@ -227,26 +255,23 @@ def vista_guardar_configuracion_cotizacion():
                 estado=estado_form,
                 numero_invitados_override=numero_invitados_cotizacion if numero_invitados_cotizacion != proyecto_para_repopular_original.numero_invitados else None,
                 monto_costos_logisticos=monto_costos_logisticos,
-                monto_descuento_global=monto_descuento_global,
-                monto_impuestos=monto_impuestos,
+                porcentaje_descuento_global=porcentaje_descuento_form,
+                porcentaje_impuestos=porcentaje_impuestos_form,
                 terminos_condiciones=terminos_condiciones_form,
                 notas_cotizacion=notas_cotizacion_form
             )
             db.add(cotizacion_obj)
             db.flush() 
 
-        cotizacion_para_repopular_original = cotizacion_obj # Para repopular en caso de error
+        cotizacion_para_repopular_original = cotizacion_obj 
 
-        # Eliminar ítems y componentes existentes para reemplazarlos (si es una edición)
         if id_cotizacion_existente:
-            # Primero eliminar DetalleComponenteSeleccionado para los ítems de esta cotización
             items_actuales_ids = [item.id_item_cotizacion for item in cotizacion_obj.items_cotizacion]
             if items_actuales_ids:
                 db.query(DetalleComponenteSeleccionado).filter(DetalleComponenteSeleccionado.id_item_cotizacion.in_(items_actuales_ids)).delete(synchronize_session=False)
-            # Luego eliminar ItemCotizacion
             db.query(ItemCotizacion).filter_by(id_cotizacion=id_cotizacion_existente).delete(synchronize_session=False)
             db.flush() 
-            cotizacion_obj.items_cotizacion = [] # Limpiar la relación en el objeto
+            cotizacion_obj.items_cotizacion = [] 
 
         monto_total_servicios_calculado = Decimal('0.00')
         
@@ -258,96 +283,96 @@ def vista_guardar_configuracion_cotizacion():
             cantidad_servicio_str = request.form.get(f'items[{item_idx}][cantidad_servicio]', '1.0')
             cantidad_servicio = Decimal(cantidad_servicio_str) if cantidad_servicio_str else Decimal('1.0')
             descripcion_item = request.form.get(f'items[{item_idx}][descripcion_servicio_cotizado]')
-            # El precio total del ítem debe ser calculado en base a sus componentes y cantidad.
-            # O si es un ítem manual, se toma el precio del form.
-            # Por ahora, asumimos que el JS ya lo calculó y lo envía.
             precio_total_item_calculado_form = Decimal(request.form.get(f'items[{item_idx}][precio_total_item_calculado]', '0.00'))
+            
+            numero_invitados_item_str = request.form.get(f'items[{item_idx}][numero_invitados_servicio_item]')
+            numero_invitados_item = int(numero_invitados_item_str) if numero_invitados_item_str and numero_invitados_item_str.isdigit() else None
+
 
             nuevo_item_cot = ItemCotizacion(
-                id_cotizacion=cotizacion_obj.id_cotizacion, # Usar el ID de la cotización (nueva o existente)
+                id_cotizacion=cotizacion_obj.id_cotizacion, 
                 id_variante_servicio_config=id_variante_item,
                 nombre_display_servicio=nombre_display_item,
                 descripcion_servicio_cotizado=descripcion_item,
                 cantidad_servicio=cantidad_servicio,
-                precio_total_item_calculado = precio_total_item_calculado_form # Este es el precio total para la cantidad del ítem
+                precio_total_item_calculado = precio_total_item_calculado_form,
+                numero_invitados_servicio_item = numero_invitados_item 
             )
             db.add(nuevo_item_cot)
-            db.flush() # Para obtener el ID del nuevo ítem
+            db.flush() 
 
-            # Procesar componentes seleccionados para este ítem
             comp_idx = 0
             while f'items[{item_idx}][componentes][{comp_idx}][id_opcion_componente]' in request.form:
                 id_opcion_comp_form_str = request.form[f'items[{item_idx}][componentes][{comp_idx}][id_opcion_componente]']
                 if id_opcion_comp_form_str and id_opcion_comp_form_str.isdigit():
                     id_opcion_comp_form = int(id_opcion_comp_form_str)
                     opcion_obj_db = db.query(OpcionComponenteServicio).options(
-                        joinedload(OpcionComponenteServicio.producto_interno_ref) # Cargar producto para es_indivisible y unidad_base
+                        joinedload(OpcionComponenteServicio.producto_interno_ref) 
                     ).get(id_opcion_comp_form)
 
                     if opcion_obj_db:
                         cantidad_opcion_solicitada = Decimal(request.form.get(f'items[{item_idx}][componentes][{comp_idx}][cantidad_opcion_solicitada_cliente]', '1'))
                         
-                        # --- Lógica de cálculo de cantidad_final_producto_interno_calc ---
-                        # Esta lógica debe ser consistente con cómo se calcula en el frontend al añadir el ítem.
-                        # Aquí la replicamos para guardarla en la BD.
+                        invitados_para_calculo_componente = Decimal(numero_invitados_item if numero_invitados_item is not None else (cotizacion_obj.numero_invitados_override or proyecto_para_repopular_original.numero_invitados or 1))
+
+                        cantidad_final_calculada_para_bd = Decimal('0.0') 
                         variante_config_para_item = db.query(VarianteServicioConfig).options(
                             selectinload(VarianteServicioConfig.grupos_componentes)
                         ).get(id_variante_item) if id_variante_item else None
 
-                        cantidad_final_calculada_para_bd = Decimal('0.0') # Valor por defecto
-
                         if variante_config_para_item and opcion_obj_db.id_grupo_config:
                             grupo_actual_config = next((g for g in variante_config_para_item.grupos_componentes if g.id_grupo_config == opcion_obj_db.id_grupo_config), None)
                             if grupo_actual_config:
-                                # Necesitamos saber cuántas opciones se seleccionaron *realmente* para este grupo en el form para este ítem específico
-                                # Esto es complejo porque el form envía todas las selecciones juntas.
-                                # Asumiremos una simplificación: la cantidad_consumo_base se multiplica por el factor de ajuste si se conoce.
-                                # Para una mayor precisión, el frontend debería enviar el 'factor_ajuste_intra_grupo' y 'factor_ajuste_global_de_grupos'
-                                # o la cantidad ya ajustada por persona.
-                                # Por ahora, usaremos una estimación basada en cantidad_consumo_base.
-                                # Esta es una simplificación y puede necesitar refinamiento.
                                 cantidad_consumo_base_opcion = Decimal(opcion_obj_db.cantidad_consumo_base or '0.0')
-                                cantidad_final_calculada_para_bd = cantidad_consumo_base_opcion * numero_invitados_para_calculo * cantidad_opcion_solicitada
+                                cantidad_final_calculada_para_bd = cantidad_consumo_base_opcion * invitados_para_calculo_componente * cantidad_opcion_solicitada
 
                                 if opcion_obj_db.producto_interno_ref and opcion_obj_db.producto_interno_ref.es_indivisible:
                                     cantidad_final_calculada_para_bd = Decimal(ceil(cantidad_final_calculada_para_bd))
                                 elif opcion_obj_db.producto_interno_ref and not opcion_obj_db.producto_interno_ref.es_indivisible:
                                     if opcion_obj_db.producto_interno_ref.unidad_medida_base.lower() in ['g', 'ml']:
                                         cantidad_final_calculada_para_bd = (cantidad_final_calculada_para_bd / Decimal('5')).quantize(Decimal('1'), rounding=ROUND_CEILING) * Decimal('5')
-                                        if cantidad_final_calculada_para_bd < (cantidad_consumo_base_opcion * numero_invitados_para_calculo * cantidad_opcion_solicitada):
-                                            cantidad_final_calculada_para_bd = (((cantidad_consumo_base_opcion * numero_invitados_para_calculo * cantidad_opcion_solicitada) + Decimal('0.00001')) / Decimal('5')).quantize(Decimal('1'), rounding=ROUND_CEILING) * Decimal('5')
-                        # --- Fin Lógica de cálculo ---
-
+                                        if cantidad_final_calculada_para_bd < (cantidad_consumo_base_opcion * invitados_para_calculo_componente * cantidad_opcion_solicitada):
+                                            cantidad_final_calculada_para_bd = (((cantidad_consumo_base_opcion * invitados_para_calculo_componente * cantidad_opcion_solicitada) + Decimal('0.00001')) / Decimal('5')).quantize(Decimal('1'), rounding=ROUND_CEILING) * Decimal('5')
+                            
                         nuevo_detalle_comp_sel = DetalleComponenteSeleccionado(
                             id_item_cotizacion=nuevo_item_cot.id_item_cotizacion,
                             id_opcion_componente=id_opcion_comp_form,
                             cantidad_opcion_solicitada_cliente=cantidad_opcion_solicitada,
-                            cantidad_final_producto_interno_calc=cantidad_final_calculada_para_bd, # Guardar la cantidad calculada
+                            cantidad_final_producto_interno_calc=cantidad_final_calculada_para_bd, 
                             precio_venta_seleccion_cliente_calc=(opcion_obj_db.costo_adicional_opcion or Decimal('0.00')) * cantidad_opcion_solicitada
                         )
                         db.add(nuevo_detalle_comp_sel)
                 comp_idx += 1
             
-            monto_total_servicios_calculado += (nuevo_item_cot.precio_total_item_calculado) # El precio ya es total para la cantidad del ítem
+            monto_total_servicios_calculado += (nuevo_item_cot.precio_total_item_calculado) 
             item_idx += 1
         
         cotizacion_obj.monto_servicios_productos = monto_total_servicios_calculado
-        cotizacion_obj.monto_subtotal_general = cotizacion_obj.monto_servicios_productos + (cotizacion_obj.monto_costos_logisticos or Decimal('0.00'))
-        cotizacion_obj.monto_total_cotizado = cotizacion_obj.monto_subtotal_general - \
-                                             (cotizacion_obj.monto_descuento_global or Decimal('0.00')) + \
-                                             (cotizacion_obj.monto_impuestos or Decimal('0.00'))
+        subtotal_con_logistica = cotizacion_obj.monto_servicios_productos + (cotizacion_obj.monto_costos_logisticos or Decimal('0.00'))
+        cotizacion_obj.monto_subtotal_general = subtotal_con_logistica
+
+        # Calcular y guardar montos de descuento e impuestos
+        descuento_calculado = (subtotal_con_logistica * (cotizacion_obj.porcentaje_descuento_global / Decimal(100))).quantize(Decimal('0.01'), rounding=ROUND_DOWN) if cotizacion_obj.porcentaje_descuento_global is not None else Decimal('0.00')
+        cotizacion_obj.monto_descuento_global = descuento_calculado
+        
+        base_para_impuestos = subtotal_con_logistica - descuento_calculado
+        impuestos_calculados = (base_para_impuestos * (cotizacion_obj.porcentaje_impuestos / Decimal(100))).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP) if cotizacion_obj.porcentaje_impuestos is not None else Decimal('0.00')
+        cotizacion_obj.monto_impuestos = impuestos_calculados
+        
+        cotizacion_obj.monto_total_cotizado = base_para_impuestos + impuestos_calculados
+        
         db.commit()
         flash(f"Cotización V{cotizacion_obj.version} para '{proyecto_para_repopular_original.nombre_evento}' guardada exitosamente.", "success")
 
         if accion == 'guardar_borrador':
             return redirect(url_for('cotizaciones_bp.vista_crear_cotizacion_paso2_configurar', id_cotizacion=cotizacion_obj.id_cotizacion))
-        else: # guardar_finalizar
+        else: 
             return redirect(url_for('cotizaciones_bp.vista_ver_cotizacion', id_cotizacion=cotizacion_obj.id_cotizacion))
 
-    except ValueError as ve: # Errores de conversión de fecha o Decimal
+    except ValueError as ve: 
         if db.is_active: db.rollback()
         flash(f"Error en los datos del formulario de cotización: {str(ve)}", "danger")
-    except Exception as e: # Otros errores (ej. BD)
+    except Exception as e: 
         if db.is_active: db.rollback()
         flash(f"Error al guardar la cotización: {str(e)}", "danger")
         import traceback
@@ -356,28 +381,39 @@ def vista_guardar_configuracion_cotizacion():
         if db.is_active:
             db.close() 
 
-    # Si hubo un error y no se hizo redirect, repopular el formulario
-    db_repopulate = SessionLocal() # Nueva sesión para repopular
+    db_repopulate = SessionLocal() 
     proyecto_repop_final = None
     cotizacion_display_repop = None
     try:
         if id_proyecto_form:
             proyecto_repop_final = db_repopulate.query(Proyecto).get(id_proyecto_form)
         
-        if not proyecto_repop_final: # Debería existir si id_proyecto_form es válido
+        if not proyecto_repop_final: 
              flash("Error crítico: No se pudo recargar el proyecto para mostrar el formulario de error.", "danger")
              return redirect(url_for('cotizaciones_bp.vista_listar_cotizaciones'))
 
-        # Para los selects
         tipos_servicio_base_activos_repop = db_repopulate.query(TipoServicioBase)\
                                             .filter(TipoServicioBase.activo == True)\
                                             .order_by(TipoServicioBase.nombre)\
                                             .all()
-        todas_variantes_config_activas_repop = db_repopulate.query(VarianteServicioConfig).options(
+        
+        todas_variantes_obj_repop = db_repopulate.query(VarianteServicioConfig).options(
             joinedload(VarianteServicioConfig.tipo_servicio_base_ref)
         ).filter(VarianteServicioConfig.activo==True).order_by(VarianteServicioConfig.id_tipo_servicio_base, VarianteServicioConfig.nombre_variante).all()
         
-        if id_cotizacion_existente: # Si estábamos editando
+        todas_variantes_config_serializable_repop = []
+        for variante_repop in todas_variantes_obj_repop:
+            todas_variantes_config_serializable_repop.append({
+                "id_variante_config": variante_repop.id_variante_config,
+                "nombre_variante": variante_repop.nombre_variante,
+                "id_tipo_servicio_base": variante_repop.id_tipo_servicio_base,
+                "nombre_tipo_servicio_base": variante_repop.tipo_servicio_base_ref.nombre if variante_repop.tipo_servicio_base_ref else None,
+                "nivel_paquete": variante_repop.nivel_paquete,
+                "nivel_perfil": variante_repop.nivel_perfil,
+                "precio_base_sugerido": float(variante_repop.precio_base_sugerido) if variante_repop.precio_base_sugerido is not None else None
+            })
+        
+        if id_cotizacion_existente: 
             cotizacion_display_repop = db_repopulate.query(Cotizacion).options(
                  joinedload(Cotizacion.proyecto), 
                  selectinload(Cotizacion.items_cotizacion).options(
@@ -389,12 +425,9 @@ def vista_guardar_configuracion_cotizacion():
                     )
                 )
             ).get(id_cotizacion_existente)
-        elif cotizacion_para_repopular_original: # Si era una nueva creación que falló
+        elif cotizacion_para_repopular_original: 
             cotizacion_display_repop = cotizacion_para_repopular_original 
-            # Para repopular los ítems si era una creación fallida, necesitarías reconstruirlos
-            # desde request.form, lo cual es más complejo y ya debería estar en cotizacion_para_repopular_original si se llegó a esa parte.
-            # Si no, se mostrará sin ítems.
-            if not hasattr(cotizacion_display_repop, 'items_cotizacion'): # Asegurar que la lista exista
+            if not hasattr(cotizacion_display_repop, 'items_cotizacion'): 
                  cotizacion_display_repop.items_cotizacion = []
 
 
@@ -402,16 +435,15 @@ def vista_guardar_configuracion_cotizacion():
 
         return render_template('configurar_cotizacion.html',
                                proyecto=proyecto_repop_final, 
-                               cotizacion=cotizacion_display_repop, # Pasar el objeto cotización (puede tener ítems si se repopula bien)
+                               cotizacion=cotizacion_display_repop, 
                                es_nueva_cotizacion=(not id_cotizacion_existente),
                                fecha_hoy=date.today().isoformat(),
                                todos_tipos_servicio_base_activos=tipos_servicio_base_activos_repop,
-                               todas_variantes_config=todas_variantes_config_activas_repop,
+                               todas_variantes_config=todas_variantes_config_serializable_repop, 
                                titulo_pagina=titulo_repop,
                                enumerate=enumerate)
     except Exception as e_repop:
         flash(f"Error adicional al intentar repopular el formulario: {str(e_repop)}", "danger")
-        # Redirigir a un lugar seguro
         if id_cotizacion_existente:
             return redirect(url_for('cotizaciones_bp.vista_crear_cotizacion_paso2_configurar', id_cotizacion=id_cotizacion_existente))
         elif id_proyecto_form:
@@ -456,23 +488,33 @@ def vista_ver_cotizacion(id_cotizacion):
         if db.is_active:
             db.close()
 
-# --- NUEVA RUTA PARA CREACIÓN INTEGRAL ---
 @cotizaciones_bp.route('/nueva/integral', methods=['GET', 'POST'])
 def vista_crear_evento_cotizacion_integral():
     db = SessionLocal()
     try:
-        # Para el GET: preparar datos para los selects del formulario
         tipos_servicio_base_activos = db.query(TipoServicioBase)\
                                         .filter(TipoServicioBase.activo == True)\
                                         .order_by(TipoServicioBase.nombre)\
                                         .all()
         
-        todas_variantes_config_activas = db.query(VarianteServicioConfig).options(
+        todas_variantes_obj_list_integral = db.query(VarianteServicioConfig).options(
             joinedload(VarianteServicioConfig.tipo_servicio_base_ref)
         ).filter(VarianteServicioConfig.activo==True).order_by(VarianteServicioConfig.id_tipo_servicio_base, VarianteServicioConfig.nombre_variante).all()
+        
+        todas_variantes_config_serializable_integral = []
+        for variante_int in todas_variantes_obj_list_integral:
+            todas_variantes_config_serializable_integral.append({
+                "id_variante_config": variante_int.id_variante_config,
+                "nombre_variante": variante_int.nombre_variante,
+                "id_tipo_servicio_base": variante_int.id_tipo_servicio_base,
+                "nombre_tipo_servicio_base": variante_int.tipo_servicio_base_ref.nombre if variante_int.tipo_servicio_base_ref else None,
+                "nivel_paquete": variante_int.nivel_paquete,
+                "nivel_perfil": variante_int.nivel_perfil,
+                "precio_base_sugerido": float(variante_int.precio_base_sugerido) if variante_int.precio_base_sugerido is not None else None
+            })
+
 
         if request.method == 'POST':
-            # --- Sección de Datos del Proyecto ---
             identificador_evento_form = request.form.get('identificador_evento', '').strip()
             nombre_evento_form = request.form.get('nombre_evento', '').strip()
             fecha_evento_str = request.form.get('fecha_evento')
@@ -482,13 +524,15 @@ def vista_crear_evento_cotizacion_integral():
             cliente_email_form = request.form.get('cliente_email', '').strip()
             direccion_evento_form = request.form.get('direccion_evento', '').strip()
             tipo_ubicacion_form = request.form.get('tipo_ubicacion', 'Local (CDMX y Área Metropolitana)')
-            costo_transporte_str = request.form.get('costo_transporte_estimado', '0.00')
-            costo_viaticos_str = request.form.get('costo_viaticos_estimado', '0.00')
-            costo_hospedaje_str = request.form.get('costo_hospedaje_estimado', '0.00')
+            
+            # Leer costos logísticos directamente como montos, ya que el form los tiene así
+            costo_transporte_form = Decimal(request.form.get('costo_transporte_cotizacion', '0.00'))
+            costo_viaticos_form = Decimal(request.form.get('costo_viaticos_cotizacion', '0.00'))
+            costo_hospedaje_form = Decimal(request.form.get('costo_hospedaje_cotizacion', '0.00'))
+            monto_total_costos_logisticos_form = costo_transporte_form + costo_viaticos_form + costo_hospedaje_form
+
             notas_proyecto_form = request.form.get('notas_proyecto', '').strip()
 
-
-            # Validaciones para el proyecto
             errores_proyecto = []
             if not identificador_evento_form: errores_proyecto.append("Identificador del Evento es obligatorio.")
             if not nombre_evento_form: errores_proyecto.append("Nombre del Evento es obligatorio.")
@@ -498,8 +542,8 @@ def vista_crear_evento_cotizacion_integral():
                 for error in errores_proyecto: flash(error, "danger")
                 return render_template('crear_evento_cotizacion_integral.html',
                                        todos_tipos_servicio_base_activos=tipos_servicio_base_activos,
-                                       todas_variantes_config=todas_variantes_config_activas,
-                                       form_data=request.form, # Repopular con datos del form
+                                       todas_variantes_config=todas_variantes_config_serializable_integral, 
+                                       form_data=request.form, 
                                        fecha_hoy=date.today().isoformat(),
                                        titulo_pagina="Nuevo Evento y Cotización (Corregir Errores)")
 
@@ -508,7 +552,7 @@ def vista_crear_evento_cotizacion_integral():
                 flash(f"El Identificador del Evento '{identificador_evento_form}' ya existe. Elige otro.", "warning")
                 return render_template('crear_evento_cotizacion_integral.html',
                                        todos_tipos_servicio_base_activos=tipos_servicio_base_activos,
-                                       todas_variantes_config=todas_variantes_config_activas,
+                                       todas_variantes_config=todas_variantes_config_serializable_integral, 
                                        form_data=request.form,
                                        fecha_hoy=date.today().isoformat(),
                                        titulo_pagina="Nuevo Evento y Cotización (Identificador Duplicado)")
@@ -520,12 +564,11 @@ def vista_crear_evento_cotizacion_integral():
                 flash("Formato de fecha o número de invitados del proyecto inválido.", "danger")
                 return render_template('crear_evento_cotizacion_integral.html',
                                        todos_tipos_servicio_base_activos=tipos_servicio_base_activos,
-                                       todas_variantes_config=todas_variantes_config_activas,
+                                       todas_variantes_config=todas_variantes_config_serializable_integral, 
                                        form_data=request.form,
                                        fecha_hoy=date.today().isoformat(),
                                        titulo_pagina="Nuevo Evento y Cotización (Error de Formato)")
 
-            # Crear el Proyecto
             nuevo_proyecto = Proyecto(
                 identificador_evento=identificador_evento_form,
                 nombre_evento=nombre_evento_form,
@@ -536,19 +579,17 @@ def vista_crear_evento_cotizacion_integral():
                 cliente_email=cliente_email_form,
                 direccion_evento=direccion_evento_form,
                 tipo_ubicacion=tipo_ubicacion_form,
-                costo_transporte_estimado=Decimal(costo_transporte_str),
-                costo_viaticos_estimado=Decimal(costo_viaticos_str),
-                costo_hospedaje_estimado=Decimal(costo_hospedaje_str),
+                costo_transporte_estimado=costo_transporte_form, # Usar el valor del form de cotización
+                costo_viaticos_estimado=costo_viaticos_form,     # Usar el valor del form de cotización
+                costo_hospedaje_estimado=costo_hospedaje_form,   # Usar el valor del form de cotización
                 notas_proyecto=notas_proyecto_form
             )
             db.add(nuevo_proyecto)
             db.flush() 
 
-            # --- Sección de Datos de la Cotización ---
-            numero_invitados_cotizacion_str = request.form.get('numero_invitados_cotizacion', str(nuevo_proyecto.numero_invitados))
+            numero_invitados_cotizacion_str = request.form.get('numero_invitados_cotizacion_override_integral', str(nuevo_proyecto.numero_invitados)) 
             numero_invitados_cotizacion = int(numero_invitados_cotizacion_str) if numero_invitados_cotizacion_str and numero_invitados_cotizacion_str.isdigit() else nuevo_proyecto.numero_invitados or 1
-            numero_invitados_para_calculo = Decimal(numero_invitados_cotizacion)
-
+            
             fecha_emision_cot_str = request.form.get('fecha_emision_cotizacion', date.today().isoformat())
             fecha_validez_cot_str = request.form.get('fecha_validez_cotizacion')
             
@@ -557,14 +598,29 @@ def vista_crear_evento_cotizacion_integral():
                 fecha_validez_cot_obj = date.fromisoformat(fecha_validez_cot_str) if fecha_validez_cot_str else None
             except ValueError:
                 flash("Formato de fecha de emisión o validez de cotización inválido.", "danger")
-                # Considerar rollback del proyecto si la cotización falla aquí, o manejar de otra forma
                 db.rollback() 
                 return render_template('crear_evento_cotizacion_integral.html',
                                        todos_tipos_servicio_base_activos=tipos_servicio_base_activos,
-                                       todas_variantes_config=todas_variantes_config_activas,
+                                       todas_variantes_config=todas_variantes_config_serializable_integral, 
                                        form_data=request.form,
                                        fecha_hoy=date.today().isoformat(),
                                        titulo_pagina="Nuevo Evento y Cotización (Error Fecha Cot.)")
+            
+            # Leer porcentajes del form para la cotización
+            porcentaje_desc_cot_str = request.form.get('porcentaje_descuento_global_cotizacion', '0.00')
+            porcentaje_imp_cot_str = request.form.get('porcentaje_impuestos_cotizacion', '16.00')
+            try:
+                porcentaje_desc_cot_form = Decimal(porcentaje_desc_cot_str) if porcentaje_desc_cot_str else Decimal('0.00')
+                porcentaje_imp_cot_form = Decimal(porcentaje_imp_cot_str) if porcentaje_imp_cot_str else Decimal('0.00')
+            except InvalidOperation:
+                flash("Formato de porcentaje de descuento o impuestos inválido para la cotización.", "danger")
+                db.rollback()
+                return render_template('crear_evento_cotizacion_integral.html',
+                                       todos_tipos_servicio_base_activos=tipos_servicio_base_activos,
+                                       todas_variantes_config=todas_variantes_config_serializable_integral,
+                                       form_data=request.form,
+                                       fecha_hoy=date.today().isoformat(),
+                                       titulo_pagina="Nuevo Evento y Cotización (Error Porcentaje)")
 
 
             nueva_cotizacion = Cotizacion(
@@ -574,16 +630,15 @@ def vista_crear_evento_cotizacion_integral():
                 fecha_validez=fecha_validez_cot_obj,
                 estado=request.form.get('estado_cotizacion', 'Borrador'),
                 numero_invitados_override=numero_invitados_cotizacion if numero_invitados_cotizacion != nuevo_proyecto.numero_invitados else None,
-                monto_costos_logisticos=Decimal(request.form.get('monto_costos_logisticos_cotizacion', '0.00')),
-                monto_descuento_global=Decimal(request.form.get('monto_descuento_global_cotizacion', '0.00')),
-                monto_impuestos=Decimal(request.form.get('monto_impuestos_cotizacion', '0.00')),
+                monto_costos_logisticos=monto_total_costos_logisticos_form, 
+                porcentaje_descuento_global=porcentaje_desc_cot_form, # Guardar porcentaje
+                porcentaje_impuestos=porcentaje_imp_cot_form,       # Guardar porcentaje
                 terminos_condiciones=request.form.get('terminos_condiciones_cotizacion'),
                 notas_cotizacion=request.form.get('notas_cotizacion_internas')
             )
             db.add(nueva_cotizacion)
             db.flush() 
 
-            # Procesar ítems de la cotización
             monto_total_servicios_calculado = Decimal('0.00')
             item_idx = 0
             while f'items[{item_idx}][nombre_display_servicio]' in request.form:
@@ -594,6 +649,10 @@ def vista_crear_evento_cotizacion_integral():
                 cantidad_servicio = Decimal(cantidad_servicio_str) if cantidad_servicio_str else Decimal('1.0')
                 descripcion_item = request.form.get(f'items[{item_idx}][descripcion_servicio_cotizado]')
                 precio_total_item_calculado_form = Decimal(request.form.get(f'items[{item_idx}][precio_total_item_calculado]', '0.00'))
+                
+                numero_invitados_item_form = request.form.get(f'items[{item_idx}][numero_invitados_servicio_item]')
+                numero_invitados_item_obj = int(numero_invitados_item_form) if numero_invitados_item_form and numero_invitados_item_form.isdigit() else None
+
 
                 nuevo_item_cot = ItemCotizacion(
                     id_cotizacion=nueva_cotizacion.id_cotizacion,
@@ -601,7 +660,8 @@ def vista_crear_evento_cotizacion_integral():
                     nombre_display_servicio=nombre_display_item,
                     descripcion_servicio_cotizado=descripcion_item,
                     cantidad_servicio=cantidad_servicio,
-                    precio_total_item_calculado = precio_total_item_calculado_form 
+                    precio_total_item_calculado = precio_total_item_calculado_form,
+                    numero_invitados_servicio_item=numero_invitados_item_obj 
                 )
                 db.add(nuevo_item_cot)
                 db.flush()
@@ -618,7 +678,8 @@ def vista_crear_evento_cotizacion_integral():
                         if opcion_obj_db:
                             cantidad_opcion_solicitada = Decimal(request.form.get(f'items[{item_idx}][componentes][{comp_idx}][cantidad_opcion_solicitada_cliente]', '1'))
                             
-                            # Replicar lógica de cálculo de cantidad_final_producto_interno_calc
+                            invitados_para_calculo_comp = Decimal(numero_invitados_item_obj if numero_invitados_item_obj is not None else nueva_cotizacion.numero_invitados_override or nuevo_proyecto.numero_invitados or 1)
+
                             cantidad_final_calculada_para_bd = Decimal('0.0') 
                             variante_config_para_item = db.query(VarianteServicioConfig).options(
                                 selectinload(VarianteServicioConfig.grupos_componentes)
@@ -628,18 +689,15 @@ def vista_crear_evento_cotizacion_integral():
                                 grupo_actual_config = next((g for g in variante_config_para_item.grupos_componentes if g.id_grupo_config == opcion_obj_db.id_grupo_config), None)
                                 if grupo_actual_config:
                                     cantidad_consumo_base_opcion = Decimal(opcion_obj_db.cantidad_consumo_base or '0.0')
-                                    # Simplificación: Asumimos que el JS envía la cantidad ya ajustada por persona o factores de ajuste.
-                                    # O, para una lógica más robusta, se debería pasar más info del JS o recalcular aquí.
-                                    # Por ahora, usaremos una estimación simple:
-                                    cantidad_final_calculada_para_bd = cantidad_consumo_base_opcion * numero_invitados_para_calculo * cantidad_opcion_solicitada
+                                    cantidad_final_calculada_para_bd = cantidad_consumo_base_opcion * invitados_para_calculo_comp * cantidad_opcion_solicitada
 
                                     if opcion_obj_db.producto_interno_ref and opcion_obj_db.producto_interno_ref.es_indivisible:
                                         cantidad_final_calculada_para_bd = Decimal(ceil(cantidad_final_calculada_para_bd))
                                     elif opcion_obj_db.producto_interno_ref and not opcion_obj_db.producto_interno_ref.es_indivisible:
                                         if opcion_obj_db.producto_interno_ref.unidad_medida_base.lower() in ['g', 'ml']:
                                             cantidad_final_calculada_para_bd = (cantidad_final_calculada_para_bd / Decimal('5')).quantize(Decimal('1'), rounding=ROUND_CEILING) * Decimal('5')
-                                            if cantidad_final_calculada_para_bd < (cantidad_consumo_base_opcion * numero_invitados_para_calculo * cantidad_opcion_solicitada):
-                                                cantidad_final_calculada_para_bd = (((cantidad_consumo_base_opcion * numero_invitados_para_calculo * cantidad_opcion_solicitada) + Decimal('0.00001')) / Decimal('5')).quantize(Decimal('1'), rounding=ROUND_CEILING) * Decimal('5')
+                                            if cantidad_final_calculada_para_bd < (cantidad_consumo_base_opcion * invitados_para_calculo_comp * cantidad_opcion_solicitada):
+                                                cantidad_final_calculada_para_bd = (((cantidad_consumo_base_opcion * invitados_para_calculo_comp * cantidad_opcion_solicitada) + Decimal('0.00001')) / Decimal('5')).quantize(Decimal('1'), rounding=ROUND_CEILING) * Decimal('5')
                             
                             nuevo_detalle_comp_sel = DetalleComponenteSeleccionado(
                                 id_item_cotizacion=nuevo_item_cot.id_item_cotizacion,
@@ -655,10 +713,17 @@ def vista_crear_evento_cotizacion_integral():
                 item_idx += 1
 
             nueva_cotizacion.monto_servicios_productos = monto_total_servicios_calculado
-            nueva_cotizacion.monto_subtotal_general = nueva_cotizacion.monto_servicios_productos + (nueva_cotizacion.monto_costos_logisticos or Decimal('0.00'))
-            nueva_cotizacion.monto_total_cotizado = nueva_cotizacion.monto_subtotal_general - \
-                                                 (nueva_cotizacion.monto_descuento_global or Decimal('0.00')) + \
-                                                 (nueva_cotizacion.monto_impuestos or Decimal('0.00'))
+            subtotal_con_logistica_integral = nueva_cotizacion.monto_servicios_productos + (nueva_cotizacion.monto_costos_logisticos or Decimal('0.00'))
+            nueva_cotizacion.monto_subtotal_general = subtotal_con_logistica_integral
+
+            descuento_calculado_integral = (subtotal_con_logistica_integral * (nueva_cotizacion.porcentaje_descuento_global / Decimal(100))).quantize(Decimal('0.01'), rounding=ROUND_DOWN) if nueva_cotizacion.porcentaje_descuento_global is not None else Decimal('0.00')
+            nueva_cotizacion.monto_descuento_global = descuento_calculado_integral
+            
+            base_para_impuestos_integral = subtotal_con_logistica_integral - descuento_calculado_integral
+            impuestos_calculados_integral = (base_para_impuestos_integral * (nueva_cotizacion.porcentaje_impuestos / Decimal(100))).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP) if nueva_cotizacion.porcentaje_impuestos is not None else Decimal('0.00')
+            nueva_cotizacion.monto_impuestos = impuestos_calculados_integral
+            
+            nueva_cotizacion.monto_total_cotizado = base_para_impuestos_integral + impuestos_calculados_integral
             
             db.commit()
             flash(f"Evento '{nuevo_proyecto.nombre_evento}' y Cotización V1 creados exitosamente.", "success")
@@ -667,7 +732,7 @@ def vista_crear_evento_cotizacion_integral():
         # Para GET
         return render_template('crear_evento_cotizacion_integral.html',
                                todos_tipos_servicio_base_activos=tipos_servicio_base_activos,
-                               todas_variantes_config=todas_variantes_config_activas,
+                               todas_variantes_config=todas_variantes_config_serializable_integral, 
                                form_data={}, 
                                fecha_hoy=date.today().isoformat(),
                                titulo_pagina="Nuevo Evento y Cotización Integral")
@@ -676,14 +741,12 @@ def vista_crear_evento_cotizacion_integral():
         flash(f"Error al procesar la creación integral: {str(e)}", "danger")
         import traceback
         traceback.print_exc()
-        # Repopular con datos si es posible, o redirigir
         return render_template('crear_evento_cotizacion_integral.html',
                                todos_tipos_servicio_base_activos=tipos_servicio_base_activos if 'tipos_servicio_base_activos' in locals() else [],
-                               todas_variantes_config=todas_variantes_config_activas if 'todas_variantes_config_activas' in locals() else [],
+                               todas_variantes_config=todas_variantes_config_serializable_integral if 'todas_variantes_config_serializable_integral' in locals() else [], 
                                form_data=request.form if request.method == 'POST' else {},
                                fecha_hoy=date.today().isoformat(),
                                titulo_pagina="Nuevo Evento y Cotización (Error)")
     finally:
         if db and db.is_active:
             db.close()
-

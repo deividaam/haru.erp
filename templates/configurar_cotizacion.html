@@ -86,9 +86,13 @@
             </div>
         </fieldset>
 
-        {# --- NUEVA SECCIÓN: Configuración de Servicio Detallada --- #}
+        {# --- SECCIÓN: Configuración de Servicio Detallada --- #}
         <fieldset class="form-section">
-            <legend><h4>Añadir/Configurar Servicio Detallado</h4></legend>
+            <legend><h4 id="configuradorServicioTitulo">Añadir Servicio Detallado</h4></legend>
+            <input type="hidden" id="editing_item_idx" value=""> 
+            <input type="hidden" id="editing_item_id_variante_config_original" value="">
+
+
             <p class="subtle-text">Selecciona un tipo de servicio, paquete y perfil para configurar sus componentes. Una vez configurado, podrás añadirlo como un ítem a la cotización.</p>
 
             <div class="form-grid-3col" style="margin-bottom: 20px;">
@@ -96,7 +100,7 @@
                     <label for="select_tipo_servicio_base">1. Tipo de Servicio:</label>
                     <select id="select_tipo_servicio_base" class="form-control">
                         <option value="">-- Selecciona Tipo --</option>
-                        {% for tsb in todos_tipos_servicio_base_activos %} {# Debes pasar esto desde la ruta Flask #}
+                        {% for tsb in todos_tipos_servicio_base_activos %}
                             <option value="{{ tsb.id_tipo_servicio_base }}">{{ tsb.nombre }}</option>
                         {% endfor %}
                     </select>
@@ -118,34 +122,54 @@
             <div id="info_variante_seleccionada" class="selected-product-info-box-compact" style="display:none; margin-bottom:15px; background-color: #e6fff3; border-color: #b3ffda;">
                 Variante Seleccionada: <strong id="nombre_variante_display"></strong> (ID: <span id="id_variante_display"></span>)
             </div>
+            
+            <div id="config_invitados_para_servicio_actual_container" style="display:none; margin-top: 15px; margin-bottom:15px; padding:15px; border: 1px solid #e0e4e8; border-radius: var(--radio-borde-general); background-color: #f9fafb;">
+                <h6 style="margin-top:0; margin-bottom:10px; font-weight:500;">Invitados para este Servicio Específico:</h6>
+                <div class="form-group">
+                    <label for="config_usar_invitados_generales_evento" class="checkbox-label-inline">
+                        <input type="checkbox" id="config_usar_invitados_generales_evento" checked>
+                        Aplicar invitados generales de la cotización (<span id="config_display_invitados_generales_evento">N/A</span>)
+                    </label>
+                </div>
+                <div class="form-group" id="config_campo_invitados_especificos_servicio" style="display:none; margin-top: 8px;">
+                    <label for="config_numero_invitados_este_servicio">Número de invitados para ESTE servicio:</label>
+                    <input type="number" id="config_numero_invitados_este_servicio" min="1" class="form-control" style="width: 100px;">
+                </div>
+            </div>
 
             <div id="contenedor_grupos_columnas" class="opciones-servicio-container-columnas" style="display:none;">
-                </div>
+            </div>
             <div id="acciones_servicio_configurable" style="margin-top: 20px; display:none;">
                  <button type="button" id="btnAnadirServicioConfiguradoComoItem" class="button button-primary">
                     Añadir este Servicio Configurado a la Cotización
+                </button>
+                 <button type="button" id="btnCancelarEdicionServicio" class="button button-secondary" style="display:none; margin-left:10px;">
+                    Cancelar Edición
                 </button>
             </div>
         </fieldset>
 
 
-        {# --- Sección Ítems de la Cotización (donde se añadirán los servicios configurados) --- #}
+        {# --- Sección Ítems de la Cotización --- #}
         <fieldset class="form-section">
             <legend><h4>Ítems Actuales de la Cotización</h4></legend>
             <div id="items-cotizacion-container">
-                {# Los ítems existentes se renderizan aquí desde el backend si se está editando #}
                 {% if cotizacion and cotizacion.items_cotizacion %}
                     {% for item_cot_idx, item_cot in enumerate(cotizacion.items_cotizacion|sort(attribute='orden_display_cot')) %}
                         <div class="item-cotizacion-card" data-item-idx="{{ item_cot_idx }}">
                             <input type="hidden" name="items[{{ item_cot_idx }}][id_item_cotizacion]" value="{{ item_cot.id_item_cotizacion or '' }}">
                             <input type="hidden" name="items[{{ item_cot_idx }}][id_variante_servicio_config]" value="{{ item_cot.id_variante_servicio_config or '' }}">
+                            <input type="hidden" name="items[{{ item_cot_idx }}][numero_invitados_servicio_item]" value="{{ item_cot.numero_invitados_servicio_item or (cotizacion.numero_invitados_override or proyecto.numero_invitados or 1) }}">
 
                             <div class="item-cotizacion-header">
-                                <h5 class="item-nombre-display"> {# Clase añadida para estilo #}
+                                <h5 class="item-nombre-display">
                                     <input type="text" name="items[{{ item_cot_idx }}][nombre_display_servicio]"
                                            value="{{ item_cot.nombre_display_servicio }}" placeholder="Nombre del Servicio/Paquete" class="input-inline-editable" required>
                                 </h5>
-                                <button type="button" class="button button-danger-small remove-item-cotizacion-btn">Eliminar Servicio</button> {# Texto cambiado #}
+                                <div> {# Contenedor para botones de acción del ítem #}
+                                    <button type="button" class="button button-edit-black-small edit-item-cotizacion-btn" style="margin-right: 5px;">Editar</button>
+                                    <button type="button" class="button button-danger-small remove-item-cotizacion-btn">Eliminar</button>
+                                </div>
                             </div>
                             <div class="form-grid-2col">
                                 <div class="form-group">
@@ -160,11 +184,13 @@
                                 </div>
                             </div>
                             <div class="form-group">
+                                <small class="text-muted">Este servicio se calculará para <strong>{{ item_cot.numero_invitados_servicio_item or (cotizacion.numero_invitados_override or proyecto.numero_invitados or 1) }}</strong> invitados.</small>
+                            </div>
+                            <div class="form-group">
                                 <label>Descripción (para el cliente):</label>
                                 <textarea name="items[{{ item_cot_idx }}][descripcion_servicio_cotizado]" rows="2" class="input-descripcion-servicio">{{ item_cot.descripcion_servicio_cotizado or '' }}</textarea>
                             </div>
 
-                            {# Mostrar componentes seleccionados para este ítem #}
                             <div class="componentes-seleccionados-display-container">
                                 <strong class="componentes-display-titulo">Componentes Incluidos:</strong>
                                 {% if item_cot.componentes_seleccionados %}
@@ -186,7 +212,6 @@
                                 {% else %}
                                 <p class="componentes-display-none"><em>Este ítem no tiene componentes detallados o es un servicio personalizado.</em></p>
                                 {% endif %}
-                                 {# Inputs ocultos para los componentes seleccionados de este ítem #}
                                 {% for comp_idx, comp_sel in enumerate(item_cot.componentes_seleccionados) %}
                                     <input type="hidden" name="items[{{ item_cot_idx }}][componentes][{{ comp_idx }}][id_opcion_componente]" value="{{ comp_sel.id_opcion_componente }}">
                                     <input type="hidden" name="items[{{ item_cot_idx }}][componentes][{{ comp_idx }}][cantidad_opcion_solicitada_cliente]" value="{{ comp_sel.cantidad_opcion_solicitada_cliente }}">
@@ -196,7 +221,7 @@
                     {% endfor %}
                 {% endif %}
             </div>
-            <p id="noItemsCotizacionMessage" style="text-align:center; padding:10px; {% if not (cotizacion and cotizacion.items_cotizacion) %}display:block;{% else %}display:none;{% endif %}">
+            <p id="noItemsCotizacionMessage" style="text-align:center; padding:10px; {% if cotizacion is none or not cotizacion.items_cotizacion %}display:block;{% else %}display:none;{% endif %}">
                 Aún no has añadido ítems a esta cotización. Configura un servicio detallado arriba y añádelo.
             </p>
         </fieldset>
@@ -212,16 +237,18 @@
                            min="0">
                 </div>
                 <div class="form-group">
-                    <label for="monto_descuento_global">Descuento Global ($):</label>
-                    <input type="number" step="0.01" name="monto_descuento_global" id="monto_descuento_global"
-                           value="{{ request.form.get('monto_descuento_global', '{:.2f}'.format(cotizacion.monto_descuento_global|float) if cotizacion and cotizacion.monto_descuento_global is not none else '0.00') }}"
-                           min="0">
+                    <label for="porcentaje_descuento_global">Descuento Global (%):</label>
+                    <input type="number" step="0.01" name="porcentaje_descuento_global" id="porcentaje_descuento_global"
+                           value="{{ request.form.get('porcentaje_descuento_global', '{:.2f}'.format(cotizacion.porcentaje_descuento_global|float if cotizacion and cotizacion.porcentaje_descuento_global is not none else 0.00)) }}"
+                           min="0" max="100">
+                    <input type="hidden" name="monto_descuento_global_calculado" id="monto_descuento_global_calculado" value="{{ '{:.2f}'.format(cotizacion.monto_descuento_global|float) if cotizacion and cotizacion.monto_descuento_global is not none else '0.00' }}">
                 </div>
                 <div class="form-group">
-                    <label for="monto_impuestos">Impuestos (ej. IVA) ($):</label>
-                    <input type="number" step="0.01" name="monto_impuestos" id="monto_impuestos"
-                           value="{{ request.form.get('monto_impuestos', '{:.2f}'.format(cotizacion.monto_impuestos|float) if cotizacion and cotizacion.monto_impuestos is not none else '0.00') }}"
+                    <label for="porcentaje_impuestos">Impuestos (ej. IVA %):</label>
+                    <input type="number" step="0.01" name="porcentaje_impuestos" id="porcentaje_impuestos"
+                           value="{{ request.form.get('porcentaje_impuestos', '{:.2f}'.format(cotizacion.porcentaje_impuestos|float if cotizacion and cotizacion.porcentaje_impuestos is not none else 16.00)) }}"
                            min="0">
+                    <input type="hidden" name="monto_impuestos_calculado" id="monto_impuestos_calculado" value="{{ '{:.2f}'.format(cotizacion.monto_impuestos|float) if cotizacion and cotizacion.monto_impuestos is not none else '0.00' }}">
                 </div>
             </div>
             <hr style="margin: 20px 0;">
@@ -258,6 +285,20 @@
 
 <style>
     /* ... (Estilos existentes de configurar_cotizacion.html) ... */
+    .button-edit-black-small { 
+        background-color: var(--color-texto-principal);
+        color: white;
+        padding: 4px 8px;
+        font-size: 0.8em;
+        border-radius: var(--radio-borde-general);
+        text-decoration: none;
+        border: 1px solid var(--color-texto-principal);
+        transition: background-color 0.2s ease, opacity 0.2s ease;
+    }
+    .button-edit-black-small:hover {
+        background-color: #333;
+        opacity: 0.9;
+    }
     .opciones-servicio-container-columnas {
         display: flex;
         flex-direction: row;
@@ -313,54 +354,51 @@
     }
     .subtle-text { font-size: 0.9em; color: var(--color-texto-secundario); line-height: 1.5; }
 
-    /* Estilos para la tarjeta de ítem de cotización */
     .item-cotizacion-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 15px; /* Aumentado para más espacio */
+        margin-bottom: 15px; 
         padding-bottom: 10px;
         border-bottom: 1px solid #eee;
     }
-    .item-cotizacion-header .item-nombre-display { /* Estilo para el h5 que contiene el input */
+    .item-cotizacion-header .item-nombre-display { 
         margin: 0;
         flex-grow: 1;
-        font-size: 1.1em; /* Tamaño de fuente base para el nombre del servicio */
+        font-size: 1.1em; 
         font-weight: 600;
         color: var(--color-texto-principal);
     }
-    .input-inline-editable { /* Para el input del nombre del servicio */
+    .input-inline-editable { 
         border: none;
         background-color: transparent;
-        padding: 2px 5px; /* Pequeño padding para que no se vea pegado */
-        font-size: inherit; /* Hereda de .item-nombre-display */
-        font-weight: inherit; /* Hereda de .item-nombre-display */
-        color: inherit; /* Hereda de .item-nombre-display */
-        width: calc(100% - 10px); /* Ocupar el espacio disponible menos padding */
-        box-shadow: none; /* Quitar sombra si la tiene por defecto */
+        padding: 2px 5px; 
+        font-size: inherit; 
+        font-weight: inherit; 
+        color: inherit; 
+        width: calc(100% - 10px); 
+        box-shadow: none; 
     }
     .input-inline-editable:focus {
-        background-color: #f0f8ff; /* Un fondo sutil al enfocar */
+        background-color: #f0f8ff; 
         border: 1px solid var(--color-borde-input);
         box-shadow: none;
     }
-    .button.button-danger-small.remove-item-cotizacion-btn { /* Asegurar que el botón de eliminar use las variables de color */
+    .button.button-danger-small.remove-item-cotizacion-btn { 
         background-color: var(--color-peligro);
         color: white;
         border: 1px solid var(--color-peligro);
-        padding: 6px 12px; /* Ajustar padding si es necesario */
+        padding: 6px 12px; 
         font-size: 0.85em;
     }
     .button.button-danger-small.remove-item-cotizacion-btn:hover {
-        background-color: #c82333; /* Un rojo más oscuro para hover */
+        background-color: #c82333; 
         border-color: #bd2130;
     }
 
-
-    /* Estilos para la visualización de componentes en el ítem de cotización */
     .componentes-seleccionados-display-container {
         margin-top: 15px;
-        padding: 12px 15px; /* Ajustado padding */
+        padding: 12px 15px; 
         background-color: #f8f9fa;
         border: 1px solid #e9ecef;
         border-radius: var(--radio-borde-general);
@@ -371,7 +409,7 @@
         font-weight: 600;
         color: var(--color-texto-principal);
         margin-bottom: 8px;
-        font-size: 0.95em; /* Un poco más grande */
+        font-size: 0.95em; 
     }
     .componentes-display-lista {
         list-style-type: none;
@@ -379,11 +417,11 @@
         margin-bottom: 0;
     }
     .componentes-display-item {
-        padding: 5px 0; /* Más espaciado vertical */
+        padding: 5px 0; 
         color: var(--color-texto-secundario);
         border-bottom: 1px dotted #e0e0e0;
-        display: flex; /* Para alinear nombre y cantidad */
-        justify-content: space-between; /* Para separar nombre y cantidad */
+        display: flex; 
+        justify-content: space-between; 
         align-items: center;
     }
     .componentes-display-item:last-child {
@@ -391,8 +429,8 @@
     }
     .componente-cantidad-display {
         font-size: 0.9em;
-        color: #555; /* Un poco más oscuro */
-        background-color: #e9ecef; /* Fondo para la cantidad */
+        color: #555; 
+        background-color: #e9ecef; 
         padding: 2px 6px;
         border-radius: 4px;
     }
@@ -401,10 +439,23 @@
         font-style: italic;
         padding: 5px 0;
     }
+    .checkbox-label-inline { 
+        display: flex;
+        align-items: center;
+        font-weight: normal !important;
+        font-size: 0.9em !important;
+    }
+    .checkbox-label-inline input[type="checkbox"] {
+        margin-right: 8px;
+        transform: scale(0.9); 
+    }
 </style>
 
+<script id="todas_variantes_config_json" type="application/json">
+    {{ todas_variantes_config | tojson | safe }}
+</script>
+
 <script>
-// Lógica JS para selectores dependientes y carga de opciones
 document.addEventListener('DOMContentLoaded', function() {
     const selectTipoServicio = document.getElementById('select_tipo_servicio_base');
     const selectNivelPaquete = document.getElementById('select_nivel_paquete');
@@ -412,48 +463,149 @@ document.addEventListener('DOMContentLoaded', function() {
     const infoVarianteDiv = document.getElementById('info_variante_seleccionada');
     const nombreVarianteDisplay = document.getElementById('nombre_variante_display');
     const idVarianteDisplay = document.getElementById('id_variante_display');
+    
+    const configInvitadosServicioContainerEl = document.getElementById('config_invitados_para_servicio_actual_container');
+    const chkUsarInvitadosGeneralesEventoEl = document.getElementById('config_usar_invitados_generales_evento');
+    const displayInvitadosGeneralesEventoEl = document.getElementById('config_display_invitados_generales_evento');
+    const campoInvitadosEspecificosServicioEl = document.getElementById('config_campo_invitados_especificos_servicio');
+    const inputNumeroInvitadosEsteServicioEl = document.getElementById('config_numero_invitados_este_servicio');
+    const inputNumeroInvitadosCotizacionEl = document.getElementById('numero_invitados_cotizacion');
+    
     const contenedorGruposColumnas = document.getElementById('contenedor_grupos_columnas');
     const accionesServicioConfigurableDiv = document.getElementById('acciones_servicio_configurable');
     const btnAnadirServicioConfigurado = document.getElementById('btnAnadirServicioConfiguradoComoItem');
     const itemsCotizacionContainer = document.getElementById('items-cotizacion-container');
     const noItemsMessage = document.getElementById('noItemsCotizacionMessage');
+    
     let itemCotizacionIndex = document.querySelectorAll('#items-cotizacion-container .item-cotizacion-card').length;
     let currentConfiguredVariant = null;
     let currentConfiguredVariantEstructura = null;
 
-    function populateSelect(selectElement, options, placeholder) {
-        selectElement.innerHTML = `<option value="">${placeholder}</option>`;
-        options.forEach(option => {
-            const value = typeof option === 'object' ? option.id : option;
-            const text = typeof option === 'object' ? option.nombre : option;
-            selectElement.add(new Option(text, value));
-        });
-        selectElement.disabled = false;
+    let isEditingItemMode = false;
+    let editingItemCard = null; 
+    let componentesParaEditar = [];
+    const configuradorServicioTitulo = document.getElementById('configuradorServicioTitulo');
+    const btnCancelarEdicionServicio = document.getElementById('btnCancelarEdicionServicio');
+    const editingItemIdxInput = document.getElementById('editing_item_idx');
+    const editingItemIdVarianteOriginalInput = document.getElementById('editing_item_id_variante_config_original');
+
+    let todasVariantesJS = [];
+    const variantesJsonScript = document.getElementById('todas_variantes_config_json');
+    if (variantesJsonScript) {
+        try {
+            todasVariantesJS = JSON.parse(variantesJsonScript.textContent);
+        } catch (e) {
+            console.error("Error parseando JSON de variantes:", e);
+        }
     }
 
+    const inputPorcentajeDescuento = document.getElementById('porcentaje_descuento_global');
+    const inputMontoDescuentoCalculado = document.getElementById('monto_descuento_global_calculado');
+    const inputPorcentajeImpuestos = document.getElementById('porcentaje_impuestos');
+    const inputMontoImpuestosCalculado = document.getElementById('monto_impuestos_calculado');
+
+
+    function populateSelect(selectElement, options, placeholder) {
+        if (!selectElement) return;
+        selectElement.innerHTML = `<option value="">${placeholder}</option>`;
+        if (options && Array.isArray(options)) { 
+            options.forEach(option => {
+                const value = typeof option === 'object' ? option.id : option;
+                const text = typeof option === 'object' ? option.nombre : option;
+                selectElement.add(new Option(text, value));
+            });
+        }
+        selectElement.disabled = !(options && options.length > 0);
+    }
+
+    function resetServiceConfigurator(clearMainSelects = true) {
+        if(clearMainSelects){
+            if(selectTipoServicio) { selectTipoServicio.value = ""; selectTipoServicio.disabled = false; }
+            if(selectNivelPaquete) { populateSelect(selectNivelPaquete, [], '-- Selecciona Paquete --'); selectNivelPaquete.disabled = true;}
+            if(selectNivelPerfil) { populateSelect(selectNivelPerfil, [], '-- Selecciona Perfil --'); selectNivelPerfil.disabled = true;}
+        }
+        // Siempre habilitar los selects al resetear, a menos que se entre en modo edición inmediatamente después
+        if(selectTipoServicio) selectTipoServicio.disabled = false;
+        if(selectNivelPaquete) selectNivelPaquete.disabled = true; // Paquete se habilita al seleccionar tipo
+        if(selectNivelPerfil) selectNivelPerfil.disabled = true;   // Perfil se habilita al seleccionar paquete
+
+
+        if(infoVarianteDiv) infoVarianteDiv.style.display = 'none';
+        if(configInvitadosServicioContainerEl) configInvitadosServicioContainerEl.style.display = 'none';
+        if(contenedorGruposColumnas) {
+            contenedorGruposColumnas.style.display = 'none';
+            contenedorGruposColumnas.innerHTML = '';
+        }
+        if(accionesServicioConfigurableDiv) accionesServicioConfigurableDiv.style.display = 'none';
+        
+        currentConfiguredVariant = null;
+        currentConfiguredVariantEstructura = null;
+        
+        isEditingItemMode = false;
+        editingItemCard = null;
+        componentesParaEditar = [];
+        if(configuradorServicioTitulo) configuradorServicioTitulo.textContent = "Añadir Servicio Detallado";
+        if(btnAnadirServicioConfigurado) btnAnadirServicioConfigurado.textContent = "Añadir este Servicio Configurado a la Cotización";
+        if(btnCancelarEdicionServicio) btnCancelarEdicionServicio.style.display = 'none';
+        if(editingItemIdxInput) editingItemIdxInput.value = "";
+        if(editingItemIdVarianteOriginalInput) editingItemIdVarianteOriginalInput.value = "";
+    }
+
+    if(btnCancelarEdicionServicio){
+        btnCancelarEdicionServicio.addEventListener('click', function(){
+            resetServiceConfigurator(true); 
+        });
+    }
+
+    async function fetchAndPopulate(selectElement, url, placeholder, dependentActionCallback = null) {
+        if (!selectElement) return;
+        populateSelect(selectElement, [], placeholder); 
+        selectElement.disabled = true;
+        try {
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(`Error API: ${response.status}`);
+            const data = await response.json();
+            populateSelect(selectElement, data, placeholder);
+            if (dependentActionCallback) await dependentActionCallback(); 
+        } catch (error) {
+            console.error(`Error fetching para ${selectElement.id}:`, error);
+            populateSelect(selectElement, [], placeholder); 
+        }
+    }
+    
     if (selectTipoServicio) {
         selectTipoServicio.addEventListener('change', async function() {
             const tipoBaseId = this.value;
-            selectNivelPaquete.innerHTML = '<option value="">-- Selecciona Paquete --</option>';
+            // No resetear todo el configurador si solo cambia el tipo y no estamos en modo edición forzada
+            if (!isEditingItemMode) { 
+                 resetServiceConfigurator(false); // false para no limpiar este select
+            }
+            populateSelect(selectNivelPaquete, [], '-- Selecciona Paquete --');
             selectNivelPaquete.disabled = true;
-            selectNivelPerfil.innerHTML = '<option value="">-- Selecciona Perfil --</option>';
+            populateSelect(selectNivelPerfil, [], '-- Selecciona Perfil --');
             selectNivelPerfil.disabled = true;
-            contenedorGruposColumnas.style.display = 'none';
-            contenedorGruposColumnas.innerHTML = '';
-            infoVarianteDiv.style.display = 'none';
-            accionesServicioConfigurableDiv.style.display = 'none';
-            currentConfiguredVariant = null;
-            currentConfiguredVariantEstructura = null;
 
             if (tipoBaseId) {
-                try {
-                    const response = await fetch(`{{ url_for('admin_servicios_bp.api_get_niveles_paquete') }}?id_tipo_base=${tipoBaseId}`);
-                    if (!response.ok) throw new Error('Error al cargar paquetes');
-                    const paquetes = await response.json();
-                    populateSelect(selectNivelPaquete, paquetes, '-- Selecciona Paquete --');
-                } catch (error) {
-                    console.error("Error fetching paquetes:", error);
-                }
+                await fetchAndPopulate(
+                    selectNivelPaquete,
+                    `{{ url_for('admin_servicios_bp.api_get_niveles_paquete') }}?id_tipo_base=${tipoBaseId}`,
+                    '-- Selecciona Paquete --',
+                    async () => { 
+                        if (isEditingItemMode && editingItemCard) {
+                            const idVarianteActual = editingItemIdVarianteOriginalInput.value;
+                            const varianteObjActual = todasVariantesJS.find(v => v.id_variante_config == idVarianteActual);
+                            // Solo preseleccionar paquete si el tipo de servicio coincide con el de la variante original
+                            if (varianteObjActual && varianteObjActual.id_tipo_servicio_base == tipoBaseId && Array.from(selectNivelPaquete.options).map(o=>o.value).includes(String(varianteObjActual.nivel_paquete))) {
+                                selectNivelPaquete.value = varianteObjActual.nivel_paquete;
+                                selectNivelPaquete.disabled = true; 
+                                await selectNivelPaquete.dispatchEvent(new Event('change'));
+                            } else if (isEditingItemMode) { 
+                                // Si el tipo no coincide, no podemos preseleccionar paquete, mantener deshabilitado
+                                selectNivelPaquete.disabled = true;
+                            }
+                        }
+                    }
+                );
             }
         });
     }
@@ -462,24 +614,34 @@ document.addEventListener('DOMContentLoaded', function() {
         selectNivelPaquete.addEventListener('change', async function() {
             const tipoBaseId = selectTipoServicio.value;
             const paqueteNombre = this.value;
-            selectNivelPerfil.innerHTML = '<option value="">-- Selecciona Perfil --</option>';
+            
+            populateSelect(selectNivelPerfil, [], '-- Selecciona Perfil --');
             selectNivelPerfil.disabled = true;
-            contenedorGruposColumnas.style.display = 'none';
-            contenedorGruposColumnas.innerHTML = '';
-            infoVarianteDiv.style.display = 'none';
-            accionesServicioConfigurableDiv.style.display = 'none';
-            currentConfiguredVariant = null;
-            currentConfiguredVariantEstructura = null;
+            if(infoVarianteDiv) infoVarianteDiv.style.display = 'none';
+            if(configInvitadosServicioContainerEl) configInvitadosServicioContainerEl.style.display = 'none';
+            if(contenedorGruposColumnas) { contenedorGruposColumnas.style.display = 'none'; contenedorGruposColumnas.innerHTML = '';}
+            if(accionesServicioConfigurableDiv) accionesServicioConfigurableDiv.style.display = 'none';
+            currentConfiguredVariant = null; currentConfiguredVariantEstructura = null;
 
             if (tipoBaseId && paqueteNombre) {
-                try {
-                    const response = await fetch(`{{ url_for('admin_servicios_bp.api_get_niveles_perfil') }}?id_tipo_base=${tipoBaseId}&paquete=${encodeURIComponent(paqueteNombre)}`);
-                    if (!response.ok) throw new Error('Error al cargar perfiles');
-                    const perfiles = await response.json();
-                    populateSelect(selectNivelPerfil, perfiles, '-- Selecciona Perfil --');
-                } catch (error) {
-                    console.error("Error fetching perfiles:", error);
-                }
+                 await fetchAndPopulate(
+                    selectNivelPerfil,
+                    `{{ url_for('admin_servicios_bp.api_get_niveles_perfil') }}?id_tipo_base=${tipoBaseId}&paquete=${encodeURIComponent(paqueteNombre)}`,
+                    '-- Selecciona Perfil --',
+                    async () => { 
+                        if (isEditingItemMode && editingItemCard) {
+                            const idVarianteActual = editingItemIdVarianteOriginalInput.value;
+                            const varianteObjActual = todasVariantesJS.find(v => v.id_variante_config == idVarianteActual);
+                            if (varianteObjActual && varianteObjActual.nivel_paquete == paqueteNombre && Array.from(selectNivelPerfil.options).map(o=>o.value).includes(String(varianteObjActual.nivel_perfil))) {
+                                selectNivelPerfil.value = varianteObjActual.nivel_perfil;
+                                selectNivelPerfil.disabled = true; 
+                                await selectNivelPerfil.dispatchEvent(new Event('change'));
+                            } else if (isEditingItemMode) {
+                                selectNivelPerfil.disabled = true;
+                            }
+                        }
+                    }
+                );
             }
         });
     }
@@ -489,55 +651,115 @@ document.addEventListener('DOMContentLoaded', function() {
             const tipoBaseId = selectTipoServicio.value;
             const paqueteNombre = selectNivelPaquete.value;
             const perfilNombre = this.value;
-            contenedorGruposColumnas.style.display = 'none';
-            contenedorGruposColumnas.innerHTML = '';
-            infoVarianteDiv.style.display = 'none';
-            accionesServicioConfigurableDiv.style.display = 'none';
-            currentConfiguredVariant = null;
-            currentConfiguredVariantEstructura = null;
+            
+            if(infoVarianteDiv) infoVarianteDiv.style.display = 'none';
+            if(configInvitadosServicioContainerEl) configInvitadosServicioContainerEl.style.display = 'none';
+            if(contenedorGruposColumnas) { contenedorGruposColumnas.style.display = 'none'; contenedorGruposColumnas.innerHTML = '';}
+            if(accionesServicioConfigurableDiv) accionesServicioConfigurableDiv.style.display = 'none';
+            currentConfiguredVariant = null; currentConfiguredVariantEstructura = null;
 
             if (tipoBaseId && paqueteNombre && perfilNombre) {
                 try {
                     const response = await fetch(`{{ url_for('admin_servicios_bp.api_buscar_variante_por_niveles') }}?id_tipo_base=${tipoBaseId}&paquete=${encodeURIComponent(paqueteNombre)}&perfil=${encodeURIComponent(perfilNombre)}`);
-                    if (!response.ok) throw new Error('Variante no encontrada o error');
+                    if (!response.ok) throw new Error('Variante no encontrada o error en API');
                     const varianteData = await response.json();
 
                     if (varianteData && varianteData.id_variante_config) {
-                        currentConfiguredVariant = varianteData;
-                        nombreVarianteDisplay.textContent = varianteData.nombre_variante;
-                        idVarianteDisplay.textContent = varianteData.id_variante_config;
-                        infoVarianteDiv.style.display = 'block';
-                        cargarEstructuraVariante(varianteData.id_variante_config);
+                        currentConfiguredVariant = varianteData; 
+                        if(nombreVarianteDisplay) nombreVarianteDisplay.textContent = varianteData.nombre_variante;
+                        if(idVarianteDisplay) idVarianteDisplay.textContent = varianteData.id_variante_config;
+                        if(infoVarianteDiv) infoVarianteDiv.style.display = 'block';
+                        
+                        if (configInvitadosServicioContainerEl) {
+                            const numInvCotizacion = inputNumeroInvitadosCotizacionEl ? (inputNumeroInvitadosCotizacionEl.value.trim() || '1') : '1';
+                            if(displayInvitadosGeneralesEventoEl) displayInvitadosGeneralesEventoEl.textContent = numInvCotizacion;
+                            
+                            if (isEditingItemMode && editingItemCard) { 
+                                const numInvitadosItemActual = parseInt(editingItemCard.querySelector(`input[name$="[numero_invitados_servicio_item]"]`).value);
+                                if(inputNumeroInvitadosEsteServicioEl) inputNumeroInvitadosEsteServicioEl.value = numInvitadosItemActual;
+                                if(chkUsarInvitadosGeneralesEventoEl) chkUsarInvitadosGeneralesEventoEl.checked = (numInvitadosItemActual == parseInt(numInvCotizacion));
+                            } else { 
+                                if(inputNumeroInvitadosEsteServicioEl) inputNumeroInvitadosEsteServicioEl.value = numInvCotizacion;
+                                if(chkUsarInvitadosGeneralesEventoEl) chkUsarInvitadosGeneralesEventoEl.checked = true;
+                            }
+                            if(chkUsarInvitadosGeneralesEventoEl && campoInvitadosEspecificosServicioEl) {
+                                campoInvitadosEspecificosServicioEl.style.display = chkUsarInvitadosGeneralesEventoEl.checked ? 'none' : 'block';
+                            }
+                            configInvitadosServicioContainerEl.style.display = 'block';
+                        }
+                        await cargarEstructuraVariante(varianteData.id_variante_config, isEditingItemMode ? componentesParaEditar : []);
                     } else {
-                        infoVarianteDiv.innerHTML = '<p class="text-red-500">No se encontró una variante de servicio para esta combinación.</p>';
-                        infoVarianteDiv.style.display = 'block';
+                        if(infoVarianteDiv) {
+                            infoVarianteDiv.innerHTML = '<p style="color:red;">No se encontró una variante de servicio para esta combinación.</p>';
+                            infoVarianteDiv.style.display = 'block';
+                        }
                     }
                 } catch (error) {
                     console.error("Error buscando variante:", error);
-                    infoVarianteDiv.innerHTML = `<p class="text-red-500">Error al buscar variante: ${error.message}</p>`;
-                    infoVarianteDiv.style.display = 'block';
+                    if(infoVarianteDiv) {
+                        infoVarianteDiv.innerHTML = `<p style="color:red;">Error al buscar variante: ${error.message}</p>`;
+                        infoVarianteDiv.style.display = 'block';
+                    }
                 }
             }
         });
     }
 
-    async function cargarEstructuraVariante(idVariante) {
+    if (chkUsarInvitadosGeneralesEventoEl && campoInvitadosEspecificosServicioEl && inputNumeroInvitadosEsteServicioEl && inputNumeroInvitadosCotizacionEl) {
+        chkUsarInvitadosGeneralesEventoEl.addEventListener('change', function() {
+            const numInvCotizacion = inputNumeroInvitadosCotizacionEl.value.trim() || '1';
+            if (this.checked) {
+                campoInvitadosEspecificosServicioEl.style.display = 'none';
+                inputNumeroInvitadosEsteServicioEl.value = numInvCotizacion;
+            } else {
+                campoInvitadosEspecificosServicioEl.style.display = 'block';
+                inputNumeroInvitadosEsteServicioEl.focus();
+            }
+        });
+        inputNumeroInvitadosCotizacionEl.addEventListener('input', function() {
+            const numInvCot = this.value.trim() || '1';
+            if(displayInvitadosGeneralesEventoEl) displayInvitadosGeneralesEventoEl.textContent = numInvCot;
+            if (chkUsarInvitadosGeneralesEventoEl.checked && inputNumeroInvitadosEsteServicioEl) {
+                inputNumeroInvitadosEsteServicioEl.value = numInvCot;
+            }
+        });
+        const numInvCotizacionInicial = inputNumeroInvitadosCotizacionEl.value.trim() || '1';
+        if(displayInvitadosGeneralesEventoEl) displayInvitadosGeneralesEventoEl.textContent = numInvCotizacionInicial;
+        if(inputNumeroInvitadosEsteServicioEl) inputNumeroInvitadosEsteServicioEl.value = numInvCotizacionInicial;
+    }
+
+    async function cargarEstructuraVariante(idVariante, componentesASeleccionar = []) {
         try {
             const response = await fetch(`{{ url_for('admin_servicios_bp.api_get_estructura_variante') }}?id_variante_config=${idVariante}`);
             if (!response.ok) throw new Error('Error al cargar estructura de la variante');
             currentConfiguredVariantEstructura = await response.json();
 
             renderizarGruposEnColumnas(currentConfiguredVariantEstructura.grupos);
-            accionesServicioConfigurableDiv.style.display = 'block';
-            contenedorGruposColumnas.style.display = 'flex';
+            
+            if (componentesASeleccionar.length > 0) {
+                componentesASeleccionar.forEach(idOpcionComp => {
+                    const checkbox = contenedorGruposColumnas.querySelector(`input[type="checkbox"][value="${idOpcionComp}"]`);
+                    if (checkbox) {
+                        checkbox.checked = true;
+                    }
+                });
+            }
+            aplicarLogicaCheckboxesDinamicos(); 
+
+            if(accionesServicioConfigurableDiv) accionesServicioConfigurableDiv.style.display = 'block';
+            if(contenedorGruposColumnas) contenedorGruposColumnas.style.display = 'flex';
         } catch (error) {
             console.error("Error cargando estructura variante:", error);
-            contenedorGruposColumnas.innerHTML = `<p class="text-red-500">Error al cargar opciones: ${error.message}</p>`;
-            contenedorGruposColumnas.style.display = 'block';
+            if(contenedorGruposColumnas) {
+                contenedorGruposColumnas.innerHTML = `<p style="color:red;">Error al cargar opciones: ${error.message}</p>`;
+                contenedorGruposColumnas.style.display = 'block';
+            }
+             if(accionesServicioConfigurableDiv) accionesServicioConfigurableDiv.style.display = 'none';
         }
     }
 
     function renderizarGruposEnColumnas(grupos) {
+        if(!contenedorGruposColumnas) return;
         contenedorGruposColumnas.innerHTML = '';
         if (!grupos || grupos.length === 0) {
             contenedorGruposColumnas.innerHTML = '<p>Esta variante no tiene grupos de componentes configurados.</p>';
@@ -570,7 +792,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     checkbox.dataset.unidadProductoBase = opcion.producto_info ? opcion.producto_info.unidad_medida_base : opcion.unidad_consumo_base;
                     checkbox.dataset.productoEsIndivisible = opcion.producto_info ? opcion.producto_info.es_indivisible : (opcion.unidad_consumo_base === 'pieza');
 
-
                     const span = document.createElement('span');
                     span.textContent = ` ${opcion.nombre_display_cliente} (${opcion.cantidad_consumo_base} ${opcion.unidad_consumo_base})`;
                     label.appendChild(checkbox);
@@ -583,7 +804,6 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             contenedorGruposColumnas.appendChild(divColumnaGrupo);
         });
-        aplicarLogicaCheckboxesDinamicos();
     }
 
     function aplicarLogicaCheckboxesDinamicos() {
@@ -591,7 +811,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const checkboxesEnGrupo = Array.from(grupoDiv.querySelectorAll('input[type="checkbox"]'));
             const maxSeleccionables = parseInt(grupoDiv.dataset.opcionesPermitidas);
             checkboxesEnGrupo.forEach(checkbox => {
-                checkbox.addEventListener('change', () => {
+                checkbox.addEventListener('change', () => { 
                     const seleccionadosActual = checkboxesEnGrupo.filter(cb => cb.checked).length;
                     if (seleccionadosActual >= maxSeleccionables) {
                         checkboxesEnGrupo.forEach(cb => {
@@ -607,18 +827,83 @@ document.addEventListener('DOMContentLoaded', function() {
                         });
                     }
                 });
+                checkbox.dispatchEvent(new Event('change')); 
             });
         });
     }
+    
+    async function handleEditItemClick(itemCardToEdit) {
+        editingItemCard = itemCardToEdit;
+        isEditingItemMode = true;
+        if(configuradorServicioTitulo) configuradorServicioTitulo.textContent = "Editando Componentes/Invitados del Servicio";
+        if(btnAnadirServicioConfigurado) btnAnadirServicioConfigurado.textContent = "Actualizar Componentes/Invitados";
+        if(btnCancelarEdicionServicio) btnCancelarEdicionServicio.style.display = 'inline-block';
+        if(editingItemIdxInput) editingItemIdxInput.value = itemCardToEdit.dataset.itemIdx;
+
+        const idVarianteActual = editingItemCard.querySelector(`input[name$="[id_variante_servicio_config]"]`).value;
+        if(editingItemIdVarianteOriginalInput) editingItemIdVarianteOriginalInput.value = idVarianteActual;
+
+        const numInvitadosItemActual = parseInt(editingItemCard.querySelector(`input[name$="[numero_invitados_servicio_item]"]`).value);
+        componentesParaEditar = Array.from(editingItemCard.querySelectorAll(`input[name^="items[${itemCardToEdit.dataset.itemIdx}][componentes]"][name$="[id_opcion_componente]"]`)).map(inp => inp.value);
+
+        const varianteObjActual = todasVariantesJS.find(v => v.id_variante_config == idVarianteActual);
+
+        if (varianteObjActual) {
+            selectTipoServicio.value = varianteObjActual.id_tipo_servicio_base;
+            selectTipoServicio.disabled = true;
+            
+            await fetchAndPopulate(selectNivelPaquete, `{{ url_for('admin_servicios_bp.api_get_niveles_paquete') }}?id_tipo_base=${varianteObjActual.id_tipo_servicio_base}`, '-- Selecciona Paquete --');
+            selectNivelPaquete.value = varianteObjActual.nivel_paquete;
+            selectNivelPaquete.disabled = true;
+
+            await fetchAndPopulate(selectNivelPerfil, `{{ url_for('admin_servicios_bp.api_get_niveles_perfil') }}?id_tipo_base=${varianteObjActual.id_tipo_servicio_base}&paquete=${encodeURIComponent(varianteObjActual.nivel_paquete)}`, '-- Selecciona Perfil --');
+            selectNivelPerfil.value = varianteObjActual.nivel_perfil;
+            selectNivelPerfil.disabled = true;
+            
+            currentConfiguredVariant = varianteObjActual; 
+            if(nombreVarianteDisplay) nombreVarianteDisplay.textContent = varianteObjActual.nombre_variante;
+            if(idVarianteDisplay) idVarianteDisplay.textContent = varianteObjActual.id_variante_config;
+            if(infoVarianteDiv) infoVarianteDiv.style.display = 'block';
+
+            if (configInvitadosServicioContainerEl) {
+                const numInvCotizacion = inputNumeroInvitadosCotizacionEl ? (inputNumeroInvitadosCotizacionEl.value.trim() || '1') : '1';
+                if(displayInvitadosGeneralesEventoEl) displayInvitadosGeneralesEventoEl.textContent = numInvCotizacion;
+                if(inputNumeroInvitadosEsteServicioEl) inputNumeroInvitadosEsteServicioEl.value = numInvitadosItemActual;
+                if(chkUsarInvitadosGeneralesEventoEl) chkUsarInvitadosGeneralesEventoEl.checked = (numInvitadosItemActual == parseInt(numInvCotizacion));
+                if(campoInvitadosEspecificosServicioEl) campoInvitadosEspecificosServicioEl.style.display = chkUsarInvitadosGeneralesEventoEl.checked ? 'none' : 'block';
+                configInvitadosServicioContainerEl.style.display = 'block';
+            }
+            await cargarEstructuraVariante(idVarianteActual, componentesParaEditar);
+        } else {
+            alert("No se pudo encontrar la configuración de la variante para este ítem. No se pueden bloquear los selectores.");
+            resetServiceConfigurator(true); 
+        }
+    }
+
 
     if (btnAnadirServicioConfigurado) {
         btnAnadirServicioConfigurado.addEventListener('click', function() {
-            if (!currentConfiguredVariant || !currentConfiguredVariant.id_variante_config || !currentConfiguredVariantEstructura) {
-                alert("Por favor, selecciona y configura un servicio completamente primero (Tipo, Paquete, Perfil).");
+            const idVarianteParaUsar = isEditingItemMode ? editingItemIdVarianteOriginalInput.value : (currentConfiguredVariant ? currentConfiguredVariant.id_variante_config : null);
+            const nombreVarianteParaUsar = isEditingItemMode ? (editingItemCard.querySelector('.item-nombre-display input') ? editingItemCard.querySelector('.item-nombre-display input').value : "Servicio Editado") : (currentConfiguredVariant ? currentConfiguredVariant.nombre_variante : "Servicio Desconocido");
+            const precioEstimadoOriginal = isEditingItemMode ? parseFloat(editingItemCard.querySelector('.input-precio-item').value) : (currentConfiguredVariant ? (currentConfiguredVariant.precio_base_sugerido || 0.00) : 0.00);
+
+
+            if (!idVarianteParaUsar || !currentConfiguredVariantEstructura) {
+                 alert("Por favor, selecciona y configura un servicio completamente primero (Tipo, Paquete, Perfil) o asegúrate de que el servicio a editar esté cargado.");
                 return;
             }
 
-            const numeroInvitados = parseInt(document.getElementById('numero_invitados_cotizacion').value) || 1;
+            let numeroInvitadosParaEsteServicio;
+            if (chkUsarInvitadosGeneralesEventoEl && chkUsarInvitadosGeneralesEventoEl.checked) {
+                const numInvCotizacionVal = inputNumeroInvitadosCotizacionEl ? (inputNumeroInvitadosCotizacionEl.value.trim() || '1') : '1';
+                numeroInvitadosParaEsteServicio = parseInt(numInvCotizacionVal);
+            } else if (inputNumeroInvitadosEsteServicioEl) {
+                numeroInvitadosParaEsteServicio = parseInt(inputNumeroInvitadosEsteServicioEl.value) || 1;
+            } else {
+                numeroInvitadosParaEsteServicio = parseInt(document.getElementById('numero_invitados_cotizacion').value) || 1;
+            }
+            if (numeroInvitadosParaEsteServicio < 1) numeroInvitadosParaEsteServicio = 1;
+
             const componentesSeleccionadosParaItem = [];
             let detalleHtmlComponentes = '';
             const totalGruposDisponiblesEnVariante = currentConfiguredVariantEstructura.grupos.length;
@@ -662,67 +947,96 @@ document.addEventListener('DOMContentLoaded', function() {
                              cantidadAjustadaPersonaFinal = Math.ceil(cantidadAjustadaPorPersonaBruta / 5.000001) * 5;
                         }
                     }
-                    let cantidadTotalEventoFinal = cantidadAjustadaPersonaFinal * numeroInvitados;
+                    let cantidadTotalEventoFinal = cantidadAjustadaPersonaFinal * numeroInvitadosParaEsteServicio; 
                     let cantFinalDisplay = esIndivisible ? cantidadTotalEventoFinal.toFixed(0) : (cantidadTotalEventoFinal % 1 === 0 ? cantidadTotalEventoFinal.toFixed(0) : cantidadTotalEventoFinal.toFixed(1));
 
                     detalleHtmlComponentes += `<li class="componentes-display-item">${opcionOriginal.nombre_display_cliente} <span class="componente-cantidad-display">(Cant: ${cantFinalDisplay} ${unidadFinal})</span></li>`;
                     componentesSeleccionadosParaItem.push({
                         id_opcion_componente: opcionOriginal.id_opcion_componente,
-                        cantidad_opcion_solicitada_cliente: "1",
+                        cantidad_opcion_solicitada_cliente: "1", 
                     });
                 });
             });
 
-            if (componentesSeleccionadosParaItem.length === 0) {
-                alert("Debes seleccionar al menos una opción de algún grupo para añadir el servicio.");
+            if (componentesSeleccionadosParaItem.length === 0 && currentConfiguredVariantEstructura.grupos.length > 0) {
+                alert("Debes seleccionar al menos una opción de algún grupo para añadir el servicio, si la variante tiene grupos configurados.");
                 return;
             }
+            
+            if (isEditingItemMode && editingItemCard) {
+                const idx = editingItemCard.dataset.itemIdx;
+                editingItemCard.querySelector(`input[name="items[${idx}][id_variante_servicio_config]"]`).value = idVarianteParaUsar;
+                editingItemCard.querySelector(`input[name="items[${idx}][numero_invitados_servicio_item]"]`).value = numeroInvitadosParaEsteServicio;
+                
+                const guestInfoSmall = editingItemCard.querySelector('.form-group small.text-muted');
+                if(guestInfoSmall) guestInfoSmall.innerHTML = `Este servicio se calculará para <strong>${numeroInvitadosParaEsteServicio}</strong> invitados.`;
 
-            itemCotizacionIndex++;
-            const nuevoItemIdx = itemCotizacionIndex - 1;
-            const itemHtml = `
-                <div class="item-cotizacion-card" data-item-idx="${nuevoItemIdx}">
-                    <input type="hidden" name="items[${nuevoItemIdx}][id_item_cotizacion]" value="">
-                    <input type="hidden" name="items[${nuevoItemIdx}][id_variante_servicio_config]" value="${currentConfiguredVariant.id_variante_config}">
-                    <div class="item-cotizacion-header">
-                        <h5 class="item-nombre-display">
-                            <input type="text" name="items[${nuevoItemIdx}][nombre_display_servicio]"
-                                   value="${currentConfiguredVariant.nombre_variante}" class="input-inline-editable" required>
-                        </h5>
-                        <button type="button" class="button button-danger-small remove-item-cotizacion-btn">Eliminar Servicio</button>
-                    </div>
-                    <div class="form-grid-2col">
-                        <div class="form-group">
-                            <label>Cantidad del Servicio:</label>
-                            <input type="number" name="items[${nuevoItemIdx}][cantidad_servicio]" value="1.0" min="0.1" step="any" class="input-cantidad-servicio">
+                const componentesContainer = editingItemCard.querySelector('.componentes-seleccionados-display-container');
+                const componentesLista = componentesContainer.querySelector('.componentes-display-lista');
+                
+                if (detalleHtmlComponentes) {
+                    if(componentesLista) componentesLista.innerHTML = detalleHtmlComponentes;
+                } else {
+                    if(componentesLista) componentesLista.innerHTML = '<p class="componentes-display-none"><em>Servicio base o sin componentes detallados.</em></p>';
+                }
+                
+                editingItemCard.querySelectorAll(`input[name^="items[${idx}][componentes]"]`).forEach(inp => inp.remove());
+                let newHiddenInputsHTML = componentesSeleccionadosParaItem.map((comp, compIdx) => `
+                    <input type="hidden" name="items[${idx}][componentes][${compIdx}][id_opcion_componente]" value="${comp.id_opcion_componente}">
+                    <input type="hidden" name="items[${idx}][componentes][${compIdx}][cantidad_opcion_solicitada_cliente]" value="${comp.cantidad_opcion_solicitada_cliente}">
+                `).join('');
+                componentesContainer.insertAdjacentHTML('beforeend', newHiddenInputsHTML);
+            } else {
+                const nuevoItemIdx = itemCotizacionIndex;
+                const itemHtml = `
+                    <div class="item-cotizacion-card" data-item-idx="${nuevoItemIdx}">
+                        <input type="hidden" name="items[${nuevoItemIdx}][id_item_cotizacion]" value="">
+                        <input type="hidden" name="items[${nuevoItemIdx}][id_variante_servicio_config]" value="${idVarianteParaUsar}">
+                        <input type="hidden" name="items[${nuevoItemIdx}][numero_invitados_servicio_item]" value="${numeroInvitadosParaEsteServicio}">
+                        <div class="item-cotizacion-header">
+                            <h5 class="item-nombre-display">
+                                <input type="text" name="items[${nuevoItemIdx}][nombre_display_servicio]"
+                                       value="${nombreVarianteParaUsar}" class="input-inline-editable" required>
+                            </h5>
+                            <div>
+                                <button type="button" class="button button-edit-black-small edit-item-cotizacion-btn" style="margin-right: 5px;">Editar</button>
+                                <button type="button" class="button button-danger-small remove-item-cotizacion-btn">Eliminar</button>
+                            </div>
+                        </div>
+                        <div class="form-grid-2col">
+                            <div class="form-group">
+                                <label>Cantidad del Servicio:</label>
+                                <input type="number" name="items[${nuevoItemIdx}][cantidad_servicio]" value="1.0" min="0.1" step="any" class="input-cantidad-servicio">
+                            </div>
+                            <div class="form-group">
+                                <label>Precio Total Ítem (Estimado):</label>
+                                 <input type="number" step="0.01" name="items[${nuevoItemIdx}][precio_total_item_calculado]"
+                                       value="${parseFloat(precioEstimadoOriginal).toFixed(2)}" class="input-precio-item" readonly style="font-weight:bold; background-color:#e9ecef;">
+                            </div>
                         </div>
                         <div class="form-group">
-                            <label>Precio Total Ítem (se calculará):</label>
-                             <input type="number" step="0.01" name="items[${nuevoItemIdx}][precio_total_item_calculado]"
-                                   value="0.00" class="input-precio-item" readonly style="font-weight:bold; background-color:#e9ecef;">
+                            <small class="text-muted">Este servicio se calculará para <strong>${numeroInvitadosParaEsteServicio}</strong> invitados.</small>
+                        </div>
+                        <div class="form-group">
+                            <label>Descripción (para el cliente):</label>
+                            <textarea name="items[${nuevoItemIdx}][descripcion_servicio_cotizado]" rows="2" class="input-descripcion-servicio">${currentConfiguredVariant ? (currentConfiguredVariant.descripcion_publica || '') : ''}</textarea>
+                        </div>
+                        <div class="componentes-seleccionados-display-container">
+                            <strong class="componentes-display-titulo">Componentes Seleccionados (Estimación para ${numeroInvitadosParaEsteServicio} inv.):</strong>
+                            ${detalleHtmlComponentes ? `<ul class="componentes-display-lista">${detalleHtmlComponentes}</ul>` : '<p class="componentes-display-none"><em>Servicio base o sin componentes detallados.</em></p>'}
+                            ${componentesSeleccionadosParaItem.map((comp, compIdx) => `
+                                <input type="hidden" name="items[${nuevoItemIdx}][componentes][${compIdx}][id_opcion_componente]" value="${comp.id_opcion_componente}">
+                                <input type="hidden" name="items[${nuevoItemIdx}][componentes][${compIdx}][cantidad_opcion_solicitada_cliente]" value="${comp.cantidad_opcion_solicitada_cliente}">
+                            `).join('')}
                         </div>
                     </div>
-                    <div class="form-group">
-                        <label>Descripción (para el cliente):</label>
-                        <textarea name="items[${nuevoItemIdx}][descripcion_servicio_cotizado]" rows="2" class="input-descripcion-servicio"></textarea>
-                    </div>
-                    <div class="componentes-seleccionados-display-container">
-                        <strong class="componentes-display-titulo">Componentes Incluidos:</strong>
-                        ${detalleHtmlComponentes ? `<ul class="componentes-display-lista">${detalleHtmlComponentes}</ul>` : '<p class="componentes-display-none"><em>No se seleccionaron componentes específicos.</em></p>'}
-                        ${componentesSeleccionadosParaItem.map((comp, compIdx) => `
-                            <input type="hidden" name="items[${nuevoItemIdx}][componentes][${compIdx}][id_opcion_componente]" value="${comp.id_opcion_componente}">
-                            <input type="hidden" name="items[${nuevoItemIdx}][componentes][${compIdx}][cantidad_opcion_solicitada_cliente]" value="${comp.cantidad_opcion_solicitada_cliente}">
-                        `).join('')}
-                    </div>
-                </div>
-            `;
-            itemsCotizacionContainer.insertAdjacentHTML('beforeend', itemHtml);
+                `;
+                itemsCotizacionContainer.insertAdjacentHTML('beforeend', itemHtml);
+                itemCotizacionIndex++; 
+            }
+            
+            resetServiceConfigurator(true); 
             if(noItemsMessage) noItemsMessage.style.display = 'none';
-
-            selectTipoServicio.value = '';
-            selectTipoServicio.dispatchEvent(new Event('change'));
-            currentConfiguredVariant = null;
-            currentConfiguredVariantEstructura = null;
             calcularTotalesGenerales();
         });
     }
@@ -741,12 +1055,15 @@ document.addEventListener('DOMContentLoaded', function() {
                     });
                     currentIdx++;
                 });
-                itemCotizacionIndex = currentIdx;
+                itemCotizacionIndex = currentIdx; 
 
                 if (itemsCotizacionContainer.children.length === 0 && noItemsMessage) {
                     noItemsMessage.style.display = 'block';
                 }
                 calcularTotalesGenerales();
+            } else if (event.target.classList.contains('edit-item-cotizacion-btn')) {
+                const cardToEdit = event.target.closest('.item-cotizacion-card');
+                handleEditItemClick(cardToEdit);
             }
         });
     }
@@ -754,36 +1071,60 @@ document.addEventListener('DOMContentLoaded', function() {
     const formCotizacion = document.getElementById('formConfigurarCotizacion');
     function calcularTotalesGenerales() {
         let subtotalServicios = 0;
-        formCotizacion.querySelectorAll('.input-precio-item').forEach(input => {
-            subtotalServicios += parseFloat(input.value) || 0;
+        formCotizacion.querySelectorAll('.item-cotizacion-card').forEach(card => {
+            const cantidadInput = card.querySelector('.input-cantidad-servicio');
+            const precioInput = card.querySelector('.input-precio-item');
+            const cantidad = parseFloat(cantidadInput.value) || 1.0; 
+            subtotalServicios += (parseFloat(precioInput.value) || 0) * cantidad;
         });
+
         document.getElementById('displaySubtotalServicios').textContent = '$' + subtotalServicios.toFixed(2);
 
         const costosLogisticos = parseFloat(document.getElementById('monto_costos_logisticos').value) || 0;
         const subtotalGeneral = subtotalServicios + costosLogisticos;
         document.getElementById('displaySubtotalGeneral').textContent = '$' + subtotalGeneral.toFixed(2);
 
-        const descuentoGlobal = parseFloat(document.getElementById('monto_descuento_global').value) || 0;
-        document.getElementById('displayDescuentoGlobal').textContent = '-$' + descuentoGlobal.toFixed(2);
+        // Cálculo con porcentajes
+        const porcentajeDescuento = parseFloat(inputPorcentajeDescuento.value) || 0;
+        const montoDescuento = (subtotalGeneral * (porcentajeDescuento / 100));
+        if(inputMontoDescuentoCalculado) inputMontoDescuentoCalculado.value = montoDescuento.toFixed(2);
+        document.getElementById('displayDescuentoGlobal').textContent = '-$' + montoDescuento.toFixed(2);
 
-        const impuestos = parseFloat(document.getElementById('monto_impuestos').value) || 0;
-        document.getElementById('displayImpuestos').textContent = '+$' + impuestos.toFixed(2);
+        const baseParaImpuestos = subtotalGeneral - montoDescuento;
+        const porcentajeImpuestos = parseFloat(inputPorcentajeImpuestos.value) || 0;
+        const montoImpuestos = (baseParaImpuestos * (porcentajeImpuestos / 100));
+        if(inputMontoImpuestosCalculado) inputMontoImpuestosCalculado.value = montoImpuestos.toFixed(2);
+        document.getElementById('displayImpuestos').textContent = '+$' + montoImpuestos.toFixed(2);
 
-        const totalCotizado = subtotalGeneral - descuentoGlobal + impuestos;
+        const totalCotizado = baseParaImpuestos + montoImpuestos;
         document.getElementById('displayTotalCotizado').textContent = '$' + totalCotizado.toFixed(2);
     }
 
+
     if (formCotizacion) {
         formCotizacion.addEventListener('input', function(event) {
-            if (event.target.classList.contains('input-precio-item') ||
-                event.target.id === 'monto_costos_logisticos' ||
-                event.target.id === 'monto_descuento_global' ||
-                event.target.id === 'monto_impuestos' ||
-                event.target.classList.contains('input-cantidad-servicio')) {
+            const target = event.target;
+            if (target.classList.contains('input-precio-item') ||
+                target.classList.contains('input-cantidad-servicio') || 
+                target.id === 'monto_costos_logisticos' ||
+                target.id === 'porcentaje_descuento_global' || // Cambiado a porcentaje
+                target.id === 'porcentaje_impuestos' ||      // Cambiado a porcentaje
+                target.id === 'numero_invitados_cotizacion' || 
+                target.id === 'config_numero_invitados_este_servicio' 
+                ) {
+                if (target.id === 'numero_invitados_cotizacion' && displayInvitadosGeneralesEventoEl) {
+                     const numInvCot = target.value.trim() || '1';
+                     displayInvitadosGeneralesEventoEl.textContent = numInvCot;
+                     if (chkUsarInvitadosGeneralesEventoEl && chkUsarInvitadosGeneralesEventoEl.checked && inputNumeroInvitadosEsteServicioEl) {
+                         inputNumeroInvitadosEsteServicioEl.value = numInvCot;
+                     }
+                }
                 calcularTotalesGenerales();
             }
         });
-        calcularTotalesGenerales();
+        if (itemCotizacionIndex > 0) { // Calcular al cargar si ya hay ítems
+            calcularTotalesGenerales();
+        }
     }
 });
 </script>
