@@ -5,11 +5,12 @@
     {# Ej: "Detalle Proyecto: Graduación Valeria 2024" #}
 
     <div class="content-actions-bar" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
-        <a href="{{ url_for('vista_listar_proyectos') }}" class="button button-secondary">&laquo; Volver a Lista de Proyectos</a>
+        {# CORRECCIÓN AQUÍ: Se añadió el prefijo del blueprint 'proyectos_bp.' #}
+        <a href="{{ url_for('proyectos_bp.vista_listar_proyectos') }}" class="button button-secondary">&laquo; Volver a Lista de Proyectos</a>
         <div>
-            <a href="{{ url_for('vista_editar_proyecto', id_proyecto=proyecto.id_proyecto) }}" class="button button-primary" style="margin-right: 10px;">Editar Proyecto</a>
-            {# Placeholder para el botón de nueva cotización para ESTE proyecto #}
-            <a href="#" class="button" style="background-color: var(--color-acento-secundario); border-color: var(--color-acento-secundario);">+ Nueva Cotización</a>
+            <a href="{{ url_for('proyectos_bp.vista_editar_proyecto', id_proyecto=proyecto.id_proyecto) }}" class="button button-primary" style="margin-right: 10px;">Editar Proyecto</a>
+            {# Botón para nueva cotización para ESTE proyecto #}
+            <a href="{{ url_for('cotizaciones_bp.vista_crear_cotizacion_paso2_configurar', id_proyecto=proyecto.id_proyecto) }}" class="button" style="background-color: var(--color-acento-secundario); border-color: var(--color-acento-secundario);">+ Nueva Cotización</a>
         </div>
     </div>
 
@@ -120,7 +121,7 @@
                                 </td>
                                 <td style="text-align: right;">${{ "%.2f"|format(cotizacion.monto_total_cotizado|float) if cotizacion.monto_total_cotizado is not none else '0.00' }}</td>
                                 <td class="actions">
-                                    <a href="#" class="button-edit-black" style="font-size: 0.8em; padding: 4px 8px;">Ver/Editar</a> {# Placeholder #}
+                                    <a href="{{ url_for('cotizaciones_bp.vista_ver_cotizacion', id_cotizacion=cotizacion.id_cotizacion) }}" class="button-edit-black" style="font-size: 0.8em; padding: 4px 8px;">Ver/Editar</a>
                                 </td>
                             </tr>
                         {% endfor %}
@@ -131,8 +132,7 @@
             <p style="text-align: center; color: var(--color-texto-secundario);">Aún no hay cotizaciones para este proyecto.</p>
         {% endif %}
         <div style="margin-top: 15px; text-align: right;">
-             {# Botón para nueva cotización, podría ser el mismo que el de arriba #}
-            <a href="#" class="button" style="background-color: var(--color-acento-secundario); border-color: var(--color-acento-secundario);">+ Crear Nueva Cotización para este Proyecto</a>
+            <a href="{{ url_for('cotizaciones_bp.vista_crear_cotizacion_paso2_configurar', id_proyecto=proyecto.id_proyecto) }}" class="button" style="background-color: var(--color-acento-secundario); border-color: var(--color-acento-secundario);">+ Crear Nueva Cotización para este Proyecto</a>
         </div>
     </fieldset>
 
@@ -185,10 +185,9 @@
     .status-rechazada { background-color: var(--color-peligro); } /* Rojo */
     .status-cancelada { background-color: #ffc107; color: #333; } /* Amarillo */
 
-    /* Asegurar que los fieldsets tengan un poco de espacio si se apilan */
     .form-section + .form-section,
     .view-section + .view-section,
-    .view-section + .form-section, /* Si mezclas fieldsets de vista y de tabla */
+    .view-section + .form-section, 
     .form-section + .view-section {
         margin-top: 25px;
     }

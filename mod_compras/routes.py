@@ -44,26 +44,49 @@ def vista_registrar_compra():
     try:
         db = SessionLocal() # Asignar la sesión dentro del try
         proveedores_activos = db.query(Proveedor).filter_by(activo=True).order_by(Proveedor.nombre_proveedor).all()
-        almacen_principal_id = 1 
-        almacen_destino_obj = db.query(Almacen).filter_by(id_almacen=almacen_principal_id, activo=True).first()
         
-        if not almacen_destino_obj:
-            almacen_existente = db.query(Almacen).filter(Almacen.nombre_almacen.ilike("Principal")).first()
-            if not almacen_existente:
-                almacen_destino_obj = Almacen(nombre_almacen="Principal", descripcion="Almacén principal por defecto")
-                db.add(almacen_destino_obj)
-                db.flush() 
-                almacen_principal_id = almacen_destino_obj.id_almacen
-                flash("Almacén 'Principal' creado por defecto.", "info")
-            else:
-                almacen_principal_id = almacen_existente.id_almacen
-                # almacen_destino_obj = almacen_existente # Ya no es necesario reasignar aquí
+        nombre_almacen_deseado = "Principal"
+        almacen_destino_obj = None
+        almacen_principal_id = None
 
-            # Volver a consultar almacen_destino_obj después de posible creación/asignación
-            almacen_destino_obj = db.query(Almacen).get(almacen_principal_id)
-            if not almacen_destino_obj:
-                 flash("No se encontró un almacén de destino activo. Por favor, crea uno primero.", "danger")
-                 return redirect(url_for('inventario_bp.vista_gestionar_almacenes'))
+        # Intentar encontrar el almacén "Principal" existente
+        almacen_existente = db.query(Almacen).filter(Almacen.nombre_almacen.ilike(nombre_almacen_deseado)).first()
+
+        if almacen_existente:
+            if not almacen_existente.activo:
+                flash(f"El almacén '{almacen_existente.nombre_almacen}' existe pero no está activo. Por favor, actívelo para poder registrar compras.", "danger")
+                # Idealmente, redirigir a una página para gestionar almacenes.
+                # Si no tienes una, puedes redirigir a una vista general o mostrar un error.
+                return redirect(url_for('compras_bp.vista_listar_facturas_compra')) # Ajusta esta ruta según tu app
+            almacen_destino_obj = almacen_existente
+            almacen_principal_id = almacen_existente.id_almacen
+        else:
+            # El almacén "Principal" no existe, se procede a crearlo.
+            almacen_nuevo = Almacen(
+                nombre_almacen=nombre_almacen_deseado,
+                descripcion="Almacén principal por defecto",
+                activo=True # Asegúrate de crearlo como activo
+            )
+            db.add(almacen_nuevo)
+            try:
+                db.commit() # <--- PUNTO CLAVE: Guardar el nuevo almacén en la BD
+                flash(f"Almacén '{nombre_almacen_deseado}' creado por defecto.", "info") # Mensaje solo en la creación exitosa
+                db.refresh(almacen_nuevo) # Refrescar para obtener el ID asignado y otros valores por defecto de la BD
+                almacen_destino_obj = almacen_nuevo
+                almacen_principal_id = almacen_nuevo.id_almacen
+            except Exception as e_commit_almacen:
+                db.rollback() # Revertir si falla el commit
+                flash(f"Error crítico al crear el almacén '{nombre_almacen_deseado}' por defecto: {str(e_commit_almacen)}. No se puede continuar.", "danger")
+                # Considera redirigir a una página de error o al dashboard principal
+                # Ejemplo: return redirect(url_for('main.index')) # Ajusta esta ruta según tu aplicación
+                return redirect(url_for('compras_bp.vista_listar_facturas_compra')) # Ajusta esta ruta
+
+        # Verificar si, después de intentar crear o buscar, tenemos un almacén válido
+        if not almacen_destino_obj or not almacen_principal_id:
+            flash("No se pudo configurar un almacén de destino para la compra. Verifique la configuración de almacenes o contacte a soporte.", "danger")
+            # Redirigir a una página donde se puedan gestionar los almacenes o a una página de error
+            # Ejemplo: return redirect(url_for('inventario_bp.vista_gestionar_almacenes')) # Ajusta esta ruta
+            return redirect(url_for('compras_bp.vista_listar_facturas_compra')) # Ajusta esta ruta
 
         form_data_repopulate = {}
 
@@ -109,7 +132,6 @@ def vista_registrar_compra():
             elif not detalles_compra_form:
                 flash("Debe añadir al menos un producto a la compra.", "danger")
             else:
-                # Mover el try-except para operaciones de BD aquí dentro del POST
                 try:
                     fecha_documento_obj = date.fromisoformat(fecha_documento_form_str)
                     monto_total_calculado_presentacion = sum(d['costo_total_item_presentacion'] for d in detalles_compra_form)
@@ -156,7 +178,7 @@ def vista_registrar_compra():
 
                             movimiento_entrada = MovimientoInventario(
                                 id_producto=det_data['id_producto'],
-                                id_almacen_destino=almacen_principal_id,
+                                id_almacen_destino=almacen_principal_id, # Usar el ID del almacén ya determinado
                                 tipo_movimiento="ENTRADA_COMPRA",
                                 cantidad=cantidad_convertida_base,
                                 fecha_movimiento=datetime.now(),
@@ -169,13 +191,13 @@ def vista_registrar_compra():
 
                             existencia = db.query(ExistenciaProducto).filter_by(
                                 id_producto=det_data['id_producto'],
-                                id_almacen=almacen_principal_id
+                                id_almacen=almacen_principal_id # Usar el ID del almacén ya determinado
                             ).first()
 
                             if not existencia:
                                 existencia = ExistenciaProducto(
                                     id_producto=det_data['id_producto'],
-                                    id_almacen=almacen_principal_id,
+                                    id_almacen=almacen_principal_id, # Usar el ID del almacén ya determinado
                                     cantidad_disponible=Decimal('0.0')
                                 )
                                 db.add(existencia)
@@ -186,7 +208,7 @@ def vista_registrar_compra():
                         except ValueError as ve_conv:
                             flash(f"Error al convertir unidades para el producto en la compra (ID: {det_data['id_producto']}): {str(ve_conv)}. El movimiento de inventario podría no ser preciso.", "danger")
                     
-                    db.commit()
+                    db.commit() # Commit final para la compra y movimientos de inventario
                     flash(f"Compra registrada (ID Enc: {nuevo_encabezado.id_encabezado_compra}) y stock actualizado.", "success")
                     return redirect(url_for('compras_bp.vista_listar_facturas_compra'))
                 
@@ -196,19 +218,18 @@ def vista_registrar_compra():
                 except InvalidOperation:
                     if db.is_active: db.rollback()
                     flash("Formato numérico inválido en alguno de los montos de la compra.", "danger")
-                except Exception as e: # Captura más genérica para errores de BD en el commit
+                except Exception as e: 
                     if db.is_active: db.rollback()
                     flash(f"Error al registrar la compra: {str(e)}", "danger")
                     import traceback
                     traceback.print_exc()
             
-            # Si hubo errores de validación o de BD, repopular el formulario
             form_data_repopulate_final = {
-                'id_proveedor': id_proveedor_form, # Usar las variables del form
+                'id_proveedor': id_proveedor_form,
                 'fecha_documento': fecha_documento_form_str,
                 'numero_documento': numero_documento_form,
                 'notas_generales': notas_generales_form,
-                'detalles': detalles_compra_form # Usar los detalles parseados
+                'detalles': detalles_compra_form 
             }
             return render_template('registrar_compra.html',
                                    proveedores=proveedores_activos,
@@ -220,10 +241,10 @@ def vista_registrar_compra():
         return render_template('registrar_compra.html',
                                proveedores=proveedores_activos,
                                fecha_hoy=date.today().isoformat(),
-                               form_data=form_data_repopulate, # Estará vacío en el GET inicial
+                               form_data=form_data_repopulate, 
                                titulo_pagina="Registrar Nueva Compra")
     finally:
-        if db and db.is_active: # Comprobar que db no sea None antes de acceder a is_active
+        if db and db.is_active: 
             db.close()
 
 

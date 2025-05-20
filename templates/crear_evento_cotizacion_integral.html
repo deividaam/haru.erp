@@ -94,7 +94,10 @@
     </fieldset>
 
     <fieldset class="form-section">
-        <legend><h4>Paso 3: Añadir Servicios a la Cotización</h4></legend>
+        <legend><h4 id="configuradorServicioTitulo_integral">Paso 3: Añadir Servicios a la Cotización</h4></legend>
+        <input type="hidden" id="editing_item_idx_integral" value="">
+        <input type="hidden" id="editing_item_id_variante_config_original_integral" value="">
+
         <p class="subtle-text">Selecciona un tipo de servicio, paquete y perfil. Luego, define los invitados para este servicio y configura sus componentes antes de añadirlo.</p>
 
         <div class="form-grid-3col" style="margin-bottom: 20px;">
@@ -125,17 +128,17 @@
             Variante Seleccionada: <strong id="nombre_variante_display_integral"></strong> (ID: <span id="id_variante_display_integral"></span>)
         </div>
 
-        <div id="config_invitados_para_servicio_actual_container" style="display:none !important; margin-top: 15px; margin-bottom:15px; padding:15px; border: 1px solid #e0e4e8; border-radius: var(--radio-borde-general); background-color: #f9fafb;">
+        <div id="config_invitados_para_servicio_actual_container_integral" style="display:none; margin-top: 15px; margin-bottom:15px; padding:15px; border: 1px solid #e0e4e8; border-radius: var(--radio-borde-general); background-color: #f9fafb;">
             <h6 style="margin-top:0; margin-bottom:10px; font-weight:500;">Invitados para este Servicio Específico:</h6>
             <div class="form-group">
-                <label for="config_usar_invitados_generales_evento" class="checkbox-label-inline">
-                    <input type="checkbox" id="config_usar_invitados_generales_evento" checked>
-                    Aplicar invitados generales del evento (<span id="config_display_invitados_generales_evento">N/A</span>)
+                <label for="config_usar_invitados_generales_evento_integral" class="checkbox-label-inline">
+                    <input type="checkbox" id="config_usar_invitados_generales_evento_integral" checked>
+                    Aplicar invitados generales del evento (<span id="config_display_invitados_generales_evento_integral">N/A</span>)
                 </label>
             </div>
-            <div class="form-group" id="config_campo_invitados_especificos_servicio" style="display:none; margin-top: 8px;">
-                <label for="config_numero_invitados_este_servicio">Número de invitados para ESTE servicio:</label>
-                <input type="number" id="config_numero_invitados_este_servicio" min="1" class="form-control" style="width: 100px;">
+            <div class="form-group" id="config_campo_invitados_especificos_servicio_integral" style="display:none; margin-top: 8px;">
+                <label for="config_numero_invitados_este_servicio_integral">Número de invitados para ESTE servicio:</label>
+                <input type="number" id="config_numero_invitados_este_servicio_integral" min="1" class="form-control" style="width: 100px;">
             </div>
         </div>
 
@@ -146,6 +149,9 @@
         <div id="acciones_servicio_configurable_integral" style="margin-top: 20px; display:none;">
              <button type="button" id="btnAnadirServicioConfiguradoComoItem_integral" class="button button-primary">
                 Añadir este Servicio Configurado a la Cotización
+            </button>
+             <button type="button" id="btnCancelarEdicionServicio_integral" class="button button-secondary" style="display:none; margin-left:10px;">
+                Cancelar Edición
             </button>
         </div>
     </fieldset>
@@ -234,7 +240,6 @@
     .subtle-text { font-size: 0.9em; color: var(--color-texto-secundario); line-height: 1.5; }
     .required-indicator { color: var(--color-peligro); font-weight: bold; margin-left: 2px; }
     
-    /* ESTILO PARA EL CONTENEDOR DE GRUPOS DE COMPONENTES */
     .opciones-servicio-container-columnas {
         display: flex; 
         flex-direction: row;
@@ -308,6 +313,20 @@
         border: 1px solid var(--color-peligro); padding: 6px 12px;
         font-size: 0.85em;
     }
+    .button-edit-black-small { /* Estilo para el botón de editar más pequeño */
+        background-color: var(--color-texto-principal);
+        color: white;
+        padding: 4px 8px;
+        font-size: 0.8em;
+        border-radius: var(--radio-borde-general);
+        text-decoration: none;
+        border: 1px solid var(--color-texto-principal);
+        transition: background-color 0.2s ease, opacity 0.2s ease;
+    }
+    .button-edit-black-small:hover {
+        background-color: #333;
+        opacity: 0.9;
+    }
      .componentes-seleccionados-display-container {
         margin-top: 15px; padding: 12px 15px; background-color: #f8f9fa;
         border: 1px solid #e9ecef; border-radius: var(--radio-borde-general); font-size: 0.9em;
@@ -340,26 +359,28 @@
         transform: scale(0.9); 
     }
     
-    #config_invitados_para_servicio_actual_container {
-        /* Los estilos de layout como márgenes, padding, borde, etc., están definidos inline en el HTML. */
-        /* La propiedad 'display' es controlada por JavaScript y el estilo inline del elemento para mostrar/ocultar dinámicamente. */
-        /* Se elimina 'display: block !important;' de aquí para evitar conflictos y permitir control por JS. */
+    #config_invitados_para_servicio_actual_container_integral {
+        /* Estilos de layout ya definidos inline */
     }
-    #config_invitados_para_servicio_actual_container h6 {
+    #config_invitados_para_servicio_actual_container_integral h6 {
         font-size: 1em;
     }
-    #config_invitados_para_servicio_actual_container .form-group {
+    #config_invitados_para_servicio_actual_container_integral .form-group {
         margin-bottom: 8px; 
     }
-    #config_invitados_para_servicio_actual_container .form-group:last-child {
+    #config_invitados_para_servicio_actual_container_integral .form-group:last-child {
         margin-bottom: 0;
     }
 </style>
 
+<script id="todas_variantes_config_json_integral" type="application/json">
+    {{ todas_variantes_config | tojson | safe }}
+</script>
+
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    console.log("DOM integral cargado (v12_styles_fixed). Verificando elementos...");
-
+    // IDs específicos para esta plantilla (con _integral)
     const selectTipoServicio = document.getElementById('select_tipo_servicio_base_integral');
     const selectNivelPaquete = document.getElementById('select_nivel_paquete_integral');
     const selectNivelPerfil = document.getElementById('select_nivel_perfil_integral');
@@ -367,201 +388,228 @@ document.addEventListener('DOMContentLoaded', function() {
     const nombreVarianteDisplay = document.getElementById('nombre_variante_display_integral');
     const idVarianteDisplay = document.getElementById('id_variante_display_integral');
     
-    const configInvitadosServicioContainer = document.getElementById('config_invitados_para_servicio_actual_container');
-    const chkUsarInvitadosGeneralesEvento = document.getElementById('config_usar_invitados_generales_evento');
-    const displayInvitadosGeneralesEvento = document.getElementById('config_display_invitados_generales_evento');
-    const campoInvitadosEspecificosServicio = document.getElementById('config_campo_invitados_especificos_servicio');
-    const inputNumeroInvitadosEsteServicio = document.getElementById('config_numero_invitados_este_servicio');
+    const configInvitadosServicioContainerEl = document.getElementById('config_invitados_para_servicio_actual_container_integral');
+    const chkUsarInvitadosGeneralesEventoEl = document.getElementById('config_usar_invitados_generales_evento_integral');
+    const displayInvitadosGeneralesEventoEl = document.getElementById('config_display_invitados_generales_evento_integral');
+    const campoInvitadosEspecificosServicioEl = document.getElementById('config_campo_invitados_especificos_servicio_integral');
+    const inputNumeroInvitadosEsteServicioEl = document.getElementById('config_numero_invitados_este_servicio_integral');
+    
+    // Referencia al input de invitados generales del PROYECTO para esta plantilla
+    const inputNumeroInvitadosProyectoEl = document.getElementById('numero_invitados_proyecto'); 
     
     const contenedorGruposColumnas = document.getElementById('contenedor_grupos_columnas_integral');
     const accionesServicioConfigurableDiv = document.getElementById('acciones_servicio_configurable_integral');
     const btnAnadirServicioConfigurado = document.getElementById('btnAnadirServicioConfiguradoComoItem_integral');
     const itemsCotizacionContainer = document.getElementById('items-cotizacion-container-integral');
     const noItemsMessage = document.getElementById('noItemsCotizacionMessage_integral');
-    let itemCotizacionIndex = 0; 
-
+    
+    let itemCotizacionIndex = document.querySelectorAll('#items-cotizacion-container-integral .item-cotizacion-card').length;
     let currentConfiguredVariant = null;
     let currentConfiguredVariantEstructura = null;
-    const inputInvitadosProyecto = document.getElementById('numero_invitados_proyecto');
 
-    // Verificaciones iniciales
-    if (!selectTipoServicio) console.error("select_tipo_servicio_base_integral NO ENCONTRADO");
-    if (!selectNivelPaquete) console.error("select_nivel_paquete_integral NO ENCONTRADO");
-    if (!selectNivelPerfil) console.error("select_nivel_perfil_integral NO ENCONTRADO");
-    if (!infoVarianteDiv) console.error("info_variante_seleccionada_integral NO ENCONTRADO.");
-    if (!configInvitadosServicioContainer) console.error("config_invitados_para_servicio_actual_container NO ENCONTRADO.");
-    if (!contenedorGruposColumnas) console.error("¡CRÍTICO! contenedor_grupos_columnas_integral NO ENCONTRADO.");
-    if (!accionesServicioConfigurableDiv) console.error("acciones_servicio_configurable_integral NO ENCONTRADO.");
-    if (!inputInvitadosProyecto) console.error("numero_invitados_proyecto NO ENCONTRADO.");
+    let isEditingItemMode = false;
+    let editingItemCard = null; 
+    let componentesParaEditar = [];
+    const configuradorServicioTitulo = document.getElementById('configuradorServicioTitulo_integral');
+    const btnCancelarEdicionServicio = document.getElementById('btnCancelarEdicionServicio_integral');
+    const editingItemIdxInput = document.getElementById('editing_item_idx_integral');
+    const editingItemIdVarianteOriginalInput = document.getElementById('editing_item_id_variante_config_original_integral');
+
+    // Cargar datos de variantes desde el JSON incrustado
+    let todasVariantesJS = [];
+    const variantesJsonScript = document.getElementById('todas_variantes_config_json_integral');
+    if (variantesJsonScript) {
+        try {
+            todasVariantesJS = JSON.parse(variantesJsonScript.textContent);
+        } catch (e) {
+            console.error("Error parseando JSON de variantes:", e);
+        }
+    }
 
 
     function populateSelect(selectElement, options, placeholder) {
-        console.log(`PopulateSelect: Elemento: ${selectElement.id}, Placeholder: "${placeholder}", Opciones:`, options);
+        if (!selectElement) return;
         selectElement.innerHTML = `<option value="">${placeholder}</option>`;
-        if (options && Array.isArray(options) && options.length > 0) {
+        if (options && Array.isArray(options)) { 
             options.forEach(option => {
                 const value = typeof option === 'object' ? option.id : option;
                 const text = typeof option === 'object' ? option.nombre : option;
                 selectElement.add(new Option(text, value));
             });
-            selectElement.disabled = false;
-            console.log(`${selectElement.id} habilitado y poblado.`);
-        } else {
-            console.warn(`PopulateSelect: No hay opciones válidas para ${selectElement.id}. Se mantiene deshabilitado.`);
-            selectElement.disabled = true;
         }
+        selectElement.disabled = !(options && options.length > 0);
     }
 
+    function resetServiceConfiguratorIntegral(clearMainSelects = true) {
+        if(clearMainSelects){
+            if(selectTipoServicio) { selectTipoServicio.value = ""; selectTipoServicio.disabled = false; }
+            if(selectNivelPaquete) { populateSelect(selectNivelPaquete, [], '-- Selecciona Paquete --'); selectNivelPaquete.disabled = true;}
+            if(selectNivelPerfil) { populateSelect(selectNivelPerfil, [], '-- Selecciona Perfil --'); selectNivelPerfil.disabled = true;}
+        }
+        if(infoVarianteDiv) infoVarianteDiv.style.display = 'none';
+        if(configInvitadosServicioContainerEl) configInvitadosServicioContainerEl.style.display = 'none';
+        if(contenedorGruposColumnas) {
+            contenedorGruposColumnas.style.display = 'none';
+            contenedorGruposColumnas.innerHTML = '';
+        }
+        if(accionesServicioConfigurableDiv) accionesServicioConfigurableDiv.style.display = 'none';
+        
+        currentConfiguredVariant = null;
+        currentConfiguredVariantEstructura = null;
+        
+        isEditingItemMode = false;
+        editingItemCard = null;
+        componentesParaEditar = [];
+        if(configuradorServicioTitulo) configuradorServicioTitulo.textContent = "Paso 3: Añadir Servicios a la Cotización";
+        if(btnAnadirServicioConfigurado) btnAnadirServicioConfigurado.textContent = "Añadir este Servicio Configurado a la Cotización";
+        if(btnCancelarEdicionServicio) btnCancelarEdicionServicio.style.display = 'none';
+        if(editingItemIdxInput) editingItemIdxInput.value = "";
+        if(editingItemIdVarianteOriginalInput) editingItemIdVarianteOriginalInput.value = "";
+    }
+
+    if(btnCancelarEdicionServicio){
+        btnCancelarEdicionServicio.addEventListener('click', function(){
+            resetServiceConfiguratorIntegral(true); 
+        });
+    }
+
+    async function fetchAndPopulateIntegral(selectElement, url, placeholder, dependentActionCallback = null) {
+        if (!selectElement) return;
+        populateSelect(selectElement, [], placeholder); 
+        selectElement.disabled = true;
+        try {
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(`Error API: ${response.status}`);
+            const data = await response.json();
+            populateSelect(selectElement, data, placeholder);
+            if (dependentActionCallback) await dependentActionCallback();
+        } catch (error) {
+            console.error(`Error fetching para ${selectElement.id}:`, error);
+            populateSelect(selectElement, [], placeholder); 
+        }
+    }
+    
     if (selectTipoServicio) {
         selectTipoServicio.addEventListener('change', async function() {
-            console.log("Tipo de Servicio - Valor cambiado a:", this.value);
             const tipoBaseId = this.value;
-            
+            if (!isEditingItemMode) { 
+                resetServiceConfiguratorIntegral(false); 
+            }
             populateSelect(selectNivelPaquete, [], '-- Selecciona Paquete --');
+            selectNivelPaquete.disabled = true;
             populateSelect(selectNivelPerfil, [], '-- Selecciona Perfil --');
-            
-            if(infoVarianteDiv) infoVarianteDiv.style.display = 'none';
-            if(configInvitadosServicioContainer) {
-                configInvitadosServicioContainer.style.display = 'none'; 
-                configInvitadosServicioContainer.classList.remove('opciones-servicio-container-columnas'); 
-            }
-            if(contenedorGruposColumnas) {
-                contenedorGruposColumnas.style.display = 'none'; 
-                contenedorGruposColumnas.innerHTML = '';
-                contenedorGruposColumnas.classList.remove('opciones-servicio-container-columnas');
-            }
-            if(accionesServicioConfigurableDiv) accionesServicioConfigurableDiv.style.display = 'none';
-            currentConfiguredVariant = null;
-            currentConfiguredVariantEstructura = null;
+            selectNivelPerfil.disabled = true;
 
             if (tipoBaseId) {
-                console.log("API Call: Fetching paquetes para tipo base ID:", tipoBaseId);
-                const urlApiPaquetes = `{{ url_for('admin_servicios_bp.api_get_niveles_paquete') }}?id_tipo_base=${tipoBaseId}`;
-                try {
-                    const response = await fetch(urlApiPaquetes);
-                    if (!response.ok) {
-                        const errorData = await response.text();
-                        console.error("Error API (paquetes):", response.status, errorData);
-                        throw new Error(`Error al cargar paquetes: ${response.status}`);
+                await fetchAndPopulateIntegral(
+                    selectNivelPaquete,
+                    `{{ url_for('admin_servicios_bp.api_get_niveles_paquete') }}?id_tipo_base=${tipoBaseId}`,
+                    '-- Selecciona Paquete --',
+                    async () => { 
+                        if (isEditingItemMode && editingItemCard) {
+                            const idVarianteActual = editingItemIdVarianteOriginalInput.value;
+                            const varianteObjActual = todasVariantesJS.find(v => v.id_variante_config == idVarianteActual);
+                            if (varianteObjActual && varianteObjActual.id_tipo_servicio_base == tipoBaseId && Array.from(selectNivelPaquete.options).map(o=>o.value).includes(String(varianteObjActual.nivel_paquete))) {
+                                selectNivelPaquete.value = varianteObjActual.nivel_paquete;
+                                selectNivelPaquete.disabled = true; 
+                                await selectNivelPaquete.dispatchEvent(new Event('change'));
+                            } else if (isEditingItemMode) { 
+                                selectNivelPaquete.disabled = true;
+                            }
+                        }
                     }
-                    const paquetes = await response.json();
-                    console.log("API Response (paquetes):", paquetes);
-                    populateSelect(selectNivelPaquete, paquetes, '-- Selecciona Paquete --');
-                } catch (error) { 
-                    console.error("Excepción en fetch (paquetes):", error);
-                }
+                );
             }
         });
     }
 
     if (selectNivelPaquete) {
         selectNivelPaquete.addEventListener('change', async function() {
-            console.log("Nivel de Paquete - Valor cambiado a:", this.value);
             const tipoBaseId = selectTipoServicio.value;
             const paqueteNombre = this.value;
+            
             populateSelect(selectNivelPerfil, [], '-- Selecciona Perfil --');
+            selectNivelPerfil.disabled = true;
             if(infoVarianteDiv) infoVarianteDiv.style.display = 'none';
-            if(configInvitadosServicioContainer) {
-                configInvitadosServicioContainer.style.display = 'none';
-                configInvitadosServicioContainer.classList.remove('opciones-servicio-container-columnas');
-            }
-            if(contenedorGruposColumnas) {
-                contenedorGruposColumnas.style.display = 'none';
-                contenedorGruposColumnas.innerHTML = '';
-                contenedorGruposColumnas.classList.remove('opciones-servicio-container-columnas');
-            }
+            if(configInvitadosServicioContainerEl) configInvitadosServicioContainerEl.style.display = 'none';
+            if(contenedorGruposColumnas) { contenedorGruposColumnas.style.display = 'none'; contenedorGruposColumnas.innerHTML = '';}
             if(accionesServicioConfigurableDiv) accionesServicioConfigurableDiv.style.display = 'none';
-            currentConfiguredVariant = null;
-            currentConfiguredVariantEstructura = null;
+            currentConfiguredVariant = null; currentConfiguredVariantEstructura = null;
 
             if (tipoBaseId && paqueteNombre) {
-                console.log("API Call: Fetching perfiles para tipo:", tipoBaseId, "paquete:", paqueteNombre);
-                const urlApiPerfiles = `{{ url_for('admin_servicios_bp.api_get_niveles_perfil') }}?id_tipo_base=${tipoBaseId}&paquete=${encodeURIComponent(paqueteNombre)}`;
-                try {
-                    const response = await fetch(urlApiPerfiles);
-                    if (!response.ok) {
-                        console.error("Error API (perfiles):", response.status, await response.text());
-                        throw new Error('Error al cargar perfiles');
+                 await fetchAndPopulateIntegral(
+                    selectNivelPerfil,
+                    `{{ url_for('admin_servicios_bp.api_get_niveles_perfil') }}?id_tipo_base=${tipoBaseId}&paquete=${encodeURIComponent(paqueteNombre)}`,
+                    '-- Selecciona Perfil --',
+                    async () => { 
+                        if (isEditingItemMode && editingItemCard) {
+                            const idVarianteActual = editingItemIdVarianteOriginalInput.value;
+                            const varianteObjActual = todasVariantesJS.find(v => v.id_variante_config == idVarianteActual);
+                            if (varianteObjActual && varianteObjActual.nivel_paquete == paqueteNombre && Array.from(selectNivelPerfil.options).map(o=>o.value).includes(String(varianteObjActual.nivel_perfil))) {
+                                selectNivelPerfil.value = varianteObjActual.nivel_perfil;
+                                selectNivelPerfil.disabled = true; 
+                                await selectNivelPerfil.dispatchEvent(new Event('change'));
+                            } else if (isEditingItemMode) {
+                                selectNivelPerfil.disabled = true;
+                            }
+                        }
                     }
-                    const perfiles = await response.json();
-                    console.log("API Response (perfiles):", perfiles);
-                    populateSelect(selectNivelPerfil, perfiles, '-- Selecciona Perfil --');
-                } catch (error) { 
-                    console.error("Excepción en fetch (perfiles):", error);
-                }
+                );
             }
         });
     }
-    
+
     if (selectNivelPerfil) {
         selectNivelPerfil.addEventListener('change', async function() {
-            console.log("Nivel de Perfil - Valor cambiado a:", this.value);
             const tipoBaseId = selectTipoServicio.value;
             const paqueteNombre = selectNivelPaquete.value;
-            const perfilNombre = this.value; 
+            const perfilNombre = this.value;
             
             if(infoVarianteDiv) infoVarianteDiv.style.display = 'none';
-            
-            if(configInvitadosServicioContainer) { 
-                configInvitadosServicioContainer.style.display = 'none'; // Ocultar inicialmente al cambiar perfil
-                configInvitadosServicioContainer.classList.remove('opciones-servicio-container-columnas'); 
-            }
-            
-            if(contenedorGruposColumnas) {
-                contenedorGruposColumnas.style.display = 'none'; 
-                contenedorGruposColumnas.innerHTML = ''; 
-                contenedorGruposColumnas.classList.remove('opciones-servicio-container-columnas');
-            }
+            if(configInvitadosServicioContainerEl) configInvitadosServicioContainerEl.style.display = 'none';
+            if(contenedorGruposColumnas) { contenedorGruposColumnas.style.display = 'none'; contenedorGruposColumnas.innerHTML = '';}
             if(accionesServicioConfigurableDiv) accionesServicioConfigurableDiv.style.display = 'none';
-            currentConfiguredVariant = null;
-            currentConfiguredVariantEstructura = null;
+            currentConfiguredVariant = null; currentConfiguredVariantEstructura = null;
 
             if (tipoBaseId && paqueteNombre && perfilNombre) {
-                console.log("API Call: Buscando variante para:", tipoBaseId, paqueteNombre, perfilNombre);
-                const urlApiBuscarVariante = `{{ url_for('admin_servicios_bp.api_buscar_variante_por_niveles') }}?id_tipo_base=${tipoBaseId}&paquete=${encodeURIComponent(paqueteNombre)}&perfil=${encodeURIComponent(perfilNombre)}`;
                 try {
-                    const response = await fetch(urlApiBuscarVariante);
-                    if (!response.ok) {
-                        const errorText = await response.text();
-                        console.error("Error API (buscar_variante):", response.status, errorText);
-                        if(infoVarianteDiv) {
-                            infoVarianteDiv.innerHTML = `<p style="color:red;">Variante no encontrada (API status: ${response.status}).</p>`;
-                            infoVarianteDiv.style.display = 'block';
-                        }
-                        return; 
-                    }
+                    const response = await fetch(`{{ url_for('admin_servicios_bp.api_buscar_variante_por_niveles') }}?id_tipo_base=${tipoBaseId}&paquete=${encodeURIComponent(paqueteNombre)}&perfil=${encodeURIComponent(perfilNombre)}`);
+                    if (!response.ok) throw new Error('Variante no encontrada o error en API');
                     const varianteData = await response.json();
-                    console.log("API Response (buscar_variante):", varianteData);
 
                     if (varianteData && varianteData.id_variante_config) {
-                        currentConfiguredVariant = varianteData;
+                        currentConfiguredVariant = varianteData; 
                         if(nombreVarianteDisplay) nombreVarianteDisplay.textContent = varianteData.nombre_variante;
                         if(idVarianteDisplay) idVarianteDisplay.textContent = varianteData.id_variante_config;
                         if(infoVarianteDiv) infoVarianteDiv.style.display = 'block';
                         
-                        if(configInvitadosServicioContainer) { // Mostrar SOLO SI se encontró variante válida
-                            const numInvProyecto = inputInvitadosProyecto.value || '1';
-                            if(displayInvitadosGeneralesEvento) displayInvitadosGeneralesEvento.textContent = numInvProyecto;
-                            if(inputNumeroInvitadosEsteServicio) inputNumeroInvitadosEsteServicio.value = numInvProyecto;
-                            if(chkUsarInvitadosGeneralesEvento) chkUsarInvitadosGeneralesEvento.checked = true; 
-                            if(campoInvitadosEspecificosServicio) campoInvitadosEspecificosServicio.style.display = 'none';
+                        if (configInvitadosServicioContainerEl) {
+                            const numInvProyecto = inputNumeroInvitadosProyectoEl ? (inputNumeroInvitadosProyectoEl.value.trim() || '1') : '1';
+                            if(displayInvitadosGeneralesEventoEl) displayInvitadosGeneralesEventoEl.textContent = numInvProyecto;
                             
-                            configInvitadosServicioContainer.classList.remove('opciones-servicio-container-columnas'); 
-                            configInvitadosServicioContainer.style.display = 'block'; 
-                            console.log("Contenedor de Invitados - display: block, classList:", configInvitadosServicioContainer.classList);
+                            if (isEditingItemMode && editingItemCard) { 
+                                const numInvitadosItemActual = parseInt(editingItemCard.querySelector(`input[name$="[numero_invitados_servicio_item]"]`).value);
+                                if(inputNumeroInvitadosEsteServicioEl) inputNumeroInvitadosEsteServicioEl.value = numInvitadosItemActual;
+                                if(chkUsarInvitadosGeneralesEventoEl) chkUsarInvitadosGeneralesEventoEl.checked = (numInvitadosItemActual == parseInt(numInvProyecto));
+                            } else { 
+                                if(inputNumeroInvitadosEsteServicioEl) inputNumeroInvitadosEsteServicioEl.value = numInvProyecto;
+                                if(chkUsarInvitadosGeneralesEventoEl) chkUsarInvitadosGeneralesEventoEl.checked = true;
+                            }
+                            if(chkUsarInvitadosGeneralesEventoEl && campoInvitadosEspecificosServicioEl) {
+                                campoInvitadosEspecificosServicioEl.style.display = chkUsarInvitadosGeneralesEventoEl.checked ? 'none' : 'block';
+                            }
+                            configInvitadosServicioContainerEl.style.display = 'block';
                         }
-                        
-                        cargarEstructuraVariante(varianteData.id_variante_config); 
-                    } else { 
+                        await cargarEstructuraVarianteIntegral(varianteData.id_variante_config, isEditingItemMode ? componentesParaEditar : []);
+                    } else {
                         if(infoVarianteDiv) {
-                            infoVarianteDiv.innerHTML = `<p style="color:red;">No se encontró una variante activa para esta combinación (datos vacíos o sin ID).</p>`;
+                            infoVarianteDiv.innerHTML = '<p style="color:red;">No se encontró una variante de servicio para esta combinación.</p>';
                             infoVarianteDiv.style.display = 'block';
                         }
-                         console.warn("No se encontró variante o ID de variante en los datos:", varianteData);
                     }
-                } catch (error) { 
-                    console.error("Excepción buscando variante:", error);
-                     if(infoVarianteDiv) {
+                } catch (error) {
+                    console.error("Error buscando variante:", error);
+                    if(infoVarianteDiv) {
                         infoVarianteDiv.innerHTML = `<p style="color:red;">Error al buscar variante: ${error.message}</p>`;
                         infoVarianteDiv.style.display = 'block';
                     }
@@ -570,92 +618,77 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    if (chkUsarInvitadosGeneralesEvento && campoInvitadosEspecificosServicio && inputNumeroInvitadosEsteServicio && inputInvitadosProyecto && displayInvitadosGeneralesEvento) {
-        chkUsarInvitadosGeneralesEvento.addEventListener('change', function() {
+    if (chkUsarInvitadosGeneralesEventoEl && campoInvitadosEspecificosServicioEl && inputNumeroInvitadosEsteServicioEl && inputNumeroInvitadosProyectoEl) {
+        chkUsarInvitadosGeneralesEventoEl.addEventListener('change', function() {
+            const numInvProyecto = inputNumeroInvitadosProyectoEl.value.trim() || '1';
             if (this.checked) {
-                campoInvitadosEspecificosServicio.style.display = 'none';
-                inputNumeroInvitadosEsteServicio.value = inputInvitadosProyecto.value || '1';
+                campoInvitadosEspecificosServicioEl.style.display = 'none';
+                inputNumeroInvitadosEsteServicioEl.value = numInvProyecto;
             } else {
-                campoInvitadosEspecificosServicio.style.display = 'block';
-                inputNumeroInvitadosEsteServicio.focus();
+                campoInvitadosEspecificosServicioEl.style.display = 'block';
+                inputNumeroInvitadosEsteServicioEl.focus();
             }
         });
-    }
-    if (inputInvitadosProyecto && displayInvitadosGeneralesEvento && chkUsarInvitadosGeneralesEvento && inputNumeroInvitadosEsteServicio) {
-        inputInvitadosProyecto.addEventListener('input', function() {
-            const numInv = this.value || '1';
-            displayInvitadosGeneralesEvento.textContent = numInv;
-            if (chkUsarInvitadosGeneralesEvento.checked) {
-                inputNumeroInvitadosEsteServicio.value = numInv;
+        inputNumeroInvitadosProyectoEl.addEventListener('input', function() {
+            const numInvProy = this.value.trim() || '1';
+            if(displayInvitadosGeneralesEventoEl) displayInvitadosGeneralesEventoEl.textContent = numInvProy;
+            if (chkUsarInvitadosGeneralesEventoEl.checked && inputNumeroInvitadosEsteServicioEl) {
+                inputNumeroInvitadosEsteServicioEl.value = numInvProy;
             }
         });
-        const numInvInicial = inputInvitadosProyecto.value || '1';
-        displayInvitadosGeneralesEvento.textContent = numInvInicial;
-        inputNumeroInvitadosEsteServicio.value = numInvInicial;
+        const numInvProyectoInicial = inputNumeroInvitadosProyectoEl.value.trim() || '1';
+        if(displayInvitadosGeneralesEventoEl) displayInvitadosGeneralesEventoEl.textContent = numInvProyectoInicial;
+        if(inputNumeroInvitadosEsteServicioEl) inputNumeroInvitadosEsteServicioEl.value = numInvProyectoInicial;
     }
 
-    async function cargarEstructuraVariante(idVariante) {
-        console.log("Cargando estructura para variante ID:", idVariante);
-        if(!contenedorGruposColumnas || !accionesServicioConfigurableDiv) {
-            console.error("Error: contenedores de grupos o acciones no encontrados en cargarEstructuraVariante.");
-            return;
-        }
-        
-        contenedorGruposColumnas.innerHTML = '';
-        contenedorGruposColumnas.style.display = 'none'; 
-        contenedorGruposColumnas.classList.add('opciones-servicio-container-columnas');
-
+    async function cargarEstructuraVarianteIntegral(idVariante, componentesASeleccionar = []) {
         try {
             const response = await fetch(`{{ url_for('admin_servicios_bp.api_get_estructura_variante') }}?id_variante_config=${idVariante}`);
-            if (!response.ok) {
-                console.error("Error API get_estructura_variante:", response.status, await response.text());
-                throw new Error('Error al cargar estructura de la variante desde API');
-            }
+            if (!response.ok) throw new Error('Error al cargar estructura de la variante');
             currentConfiguredVariantEstructura = await response.json();
-            console.log("Estructura de variante recibida:", currentConfiguredVariantEstructura);
-            
-            renderizarGruposEnColumnas(currentConfiguredVariantEstructura.grupos); 
-            
-            if(contenedorGruposColumnas) {
-                console.log("Intentando mostrar contenedorGruposColumnas. Clase actual:", contenedorGruposColumnas.className);
-                contenedorGruposColumnas.style.display = 'flex'; 
-                console.log("Visibilidad de contenedorGruposColumnas establecida a flex.");
-            }
-            
-            if(accionesServicioConfigurableDiv) accionesServicioConfigurableDiv.style.display = 'block';
-            console.log("Contenedor de grupos y acciones DEBERÍAN estar visibles si hay contenido.");
 
-        } catch (error) {
-            console.error("Excepción cargando estructura variante:", error);
-            if(contenedorGruposColumnas) {
-                contenedorGruposColumnas.innerHTML = `<p style="color:red;">Error al cargar opciones de componentes: ${error.message}</p>`;
-                contenedorGruposColumnas.style.display = 'block'; 
+            renderizarGruposEnColumnasIntegral(currentConfiguredVariantEstructura.grupos);
+            
+            if (componentesASeleccionar.length > 0) {
+                componentesASeleccionar.forEach(idOpcionComp => {
+                    const checkbox = contenedorGruposColumnas.querySelector(`input[type="checkbox"][value="${idOpcionComp}"]`);
+                    if (checkbox) {
+                        checkbox.checked = true;
+                    }
+                });
             }
-            if(accionesServicioConfigurableDiv) accionesServicioConfigurableDiv.style.display = 'none'; 
+            aplicarLogicaCheckboxesDinamicosIntegral(); 
+
+            if(accionesServicioConfigurableDiv) accionesServicioConfigurableDiv.style.display = 'block';
+            if(contenedorGruposColumnas) contenedorGruposColumnas.style.display = 'flex';
+        } catch (error) {
+            console.error("Error cargando estructura variante:", error);
+            if(contenedorGruposColumnas) {
+                contenedorGruposColumnas.innerHTML = `<p style="color:red;">Error al cargar opciones: ${error.message}</p>`;
+                contenedorGruposColumnas.style.display = 'block';
+            }
+             if(accionesServicioConfigurableDiv) accionesServicioConfigurableDiv.style.display = 'none';
         }
     }
 
-    function renderizarGruposEnColumnas(grupos) {
-        console.log("Renderizando grupos en columnas. Grupos:", grupos);
-        if(!contenedorGruposColumnas) {
-            console.error("ERROR FATAL: contenedor_grupos_columnas_integral no existe en renderizarGruposEnColumnas.");
-            return;
-        }
-        contenedorGruposColumnas.innerHTML = ''; 
+    function renderizarGruposEnColumnasIntegral(grupos) {
+        if(!contenedorGruposColumnas) return;
+        contenedorGruposColumnas.innerHTML = '';
         if (!grupos || grupos.length === 0) {
             contenedorGruposColumnas.innerHTML = '<p>Esta variante no tiene grupos de componentes configurados.</p>';
-            console.log("No hay grupos para renderizar. Contenedor de grupos se mostrará con este mensaje.");
-            contenedorGruposColumnas.style.display = 'block'; 
             return;
         }
+
         grupos.forEach(grupo => {
             const divColumnaGrupo = document.createElement('div');
             divColumnaGrupo.classList.add('grupo-columna');
             divColumnaGrupo.dataset.idGrupo = grupo.id_grupo_config;
             divColumnaGrupo.dataset.opcionesPermitidas = grupo.opciones_permitidas_seleccionables;
+
             const h6 = document.createElement('h6');
             h6.textContent = `${grupo.nombre_grupo} (Elige ${grupo.opciones_permitidas_seleccionables})`;
             divColumnaGrupo.appendChild(h6);
+
             if (grupo.opciones_disponibles && grupo.opciones_disponibles.length > 0) {
                 grupo.opciones_disponibles.forEach(opcion => {
                     const divOpcion = document.createElement('div');
@@ -663,14 +696,14 @@ document.addEventListener('DOMContentLoaded', function() {
                     const label = document.createElement('label');
                     const checkbox = document.createElement('input');
                     checkbox.type = 'checkbox';
-                    checkbox.name = `config_grupo_opcion_${grupo.id_grupo_config}`; 
+                    checkbox.name = `config_grupo_opcion_${grupo.id_grupo_config}`; // Nombre específico para esta plantilla
                     checkbox.value = opcion.id_opcion_componente;
                     checkbox.dataset.nombreOpcion = opcion.nombre_display_cliente;
                     checkbox.dataset.cantidadConsumoBase = opcion.cantidad_consumo_base;
                     checkbox.dataset.unidadConsumoBase = opcion.unidad_consumo_base;
                     checkbox.dataset.idProductoInterno = opcion.producto_info ? opcion.producto_info.id_producto_interno : '';
                     checkbox.dataset.unidadProductoBase = opcion.producto_info ? opcion.producto_info.unidad_medida_base : opcion.unidad_consumo_base;
-                    checkbox.dataset.productoEsIndivisible = opcion.producto_info ? opcion.producto_info.es_indivisible : (opcion.unidad_consumo_base.toLowerCase() === 'pieza');
+                    checkbox.dataset.productoEsIndivisible = opcion.producto_info ? opcion.producto_info.es_indivisible : (opcion.unidad_consumo_base === 'pieza');
 
                     const span = document.createElement('span');
                     span.textContent = ` ${opcion.nombre_display_cliente} (${opcion.cantidad_consumo_base} ${opcion.unidad_consumo_base})`;
@@ -684,59 +717,111 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             contenedorGruposColumnas.appendChild(divColumnaGrupo);
         });
-        console.log("Grupos renderizados.");
-        aplicarLogicaCheckboxesDinamicosConfigIntegral();
     }
 
-    function aplicarLogicaCheckboxesDinamicosConfigIntegral() {
-        if (!contenedorGruposColumnas) return;
+    function aplicarLogicaCheckboxesDinamicosIntegral() {
         document.querySelectorAll('#contenedor_grupos_columnas_integral .grupo-columna').forEach(grupoDiv => {
             const checkboxesEnGrupo = Array.from(grupoDiv.querySelectorAll('input[type="checkbox"]'));
             const maxSeleccionables = parseInt(grupoDiv.dataset.opcionesPermitidas);
             checkboxesEnGrupo.forEach(checkbox => {
-                checkbox.addEventListener('change', () => {
+                checkbox.addEventListener('change', () => { 
                     const seleccionadosActual = checkboxesEnGrupo.filter(cb => cb.checked).length;
                     if (seleccionadosActual >= maxSeleccionables) {
                         checkboxesEnGrupo.forEach(cb => {
                             if (!cb.checked) {
                                 cb.disabled = true;
-                                const label = cb.closest('label');
-                                if (label) label.classList.add('opacity-60', 'cursor-not-allowed');
+                                cb.closest('label').classList.add('opacity-60', 'cursor-not-allowed');
                             }
                         });
                     } else {
                         checkboxesEnGrupo.forEach(cb => {
                             cb.disabled = false;
-                            const label = cb.closest('label');
-                            if (label) label.classList.remove('opacity-60', 'cursor-not-allowed');
+                            cb.closest('label').classList.remove('opacity-60', 'cursor-not-allowed');
                         });
                     }
                 });
+                checkbox.dispatchEvent(new Event('change')); 
             });
         });
     }
+    
+    async function handleEditItemClickIntegral(itemCardToEdit) {
+        editingItemCard = itemCardToEdit;
+        isEditingItemMode = true;
+        if(configuradorServicioTitulo) configuradorServicioTitulo.textContent = "Editando Componentes/Invitados del Servicio";
+        if(btnAnadirServicioConfigurado) btnAnadirServicioConfigurado.textContent = "Actualizar Componentes/Invitados";
+        if(btnCancelarEdicionServicio) btnCancelarEdicionServicio.style.display = 'inline-block';
+        if(editingItemIdxInput) editingItemIdxInput.value = itemCardToEdit.dataset.itemIdx;
 
-    const btnAnadirServicioConfiguradoEl = document.getElementById('btnAnadirServicioConfiguradoComoItem_integral');
-    if (btnAnadirServicioConfiguradoEl) {
-        btnAnadirServicioConfiguradoEl.addEventListener('click', function() {
-            if (!currentConfiguredVariant || !currentConfiguredVariant.id_variante_config || !currentConfiguredVariantEstructura) {
-                alert("Por favor, selecciona y configura un servicio completamente primero (Tipo, Paquete, Perfil).");
+        const idVarianteActual = editingItemCard.querySelector(`input[name$="[id_variante_servicio_config]"]`).value;
+        if(editingItemIdVarianteOriginalInput) editingItemIdVarianteOriginalInput.value = idVarianteActual;
+
+        const numInvitadosItemActual = parseInt(editingItemCard.querySelector(`input[name$="[numero_invitados_servicio_item]"]`).value);
+        componentesParaEditar = Array.from(editingItemCard.querySelectorAll(`input[name^="items[${itemCardToEdit.dataset.itemIdx}][componentes]"][name$="[id_opcion_componente]"]`)).map(inp => inp.value);
+
+        const varianteObjActual = todasVariantesJS.find(v => v.id_variante_config == idVarianteActual);
+
+        if (varianteObjActual) {
+            selectTipoServicio.value = varianteObjActual.id_tipo_servicio_base;
+            selectTipoServicio.disabled = true;
+            
+            await fetchAndPopulateIntegral(selectNivelPaquete, `{{ url_for('admin_servicios_bp.api_get_niveles_paquete') }}?id_tipo_base=${varianteObjActual.id_tipo_servicio_base}`, '-- Selecciona Paquete --');
+            selectNivelPaquete.value = varianteObjActual.nivel_paquete;
+            selectNivelPaquete.disabled = true;
+
+            await fetchAndPopulateIntegral(selectNivelPerfil, `{{ url_for('admin_servicios_bp.api_get_niveles_perfil') }}?id_tipo_base=${varianteObjActual.id_tipo_servicio_base}&paquete=${encodeURIComponent(varianteObjActual.nivel_paquete)}`, '-- Selecciona Perfil --');
+            selectNivelPerfil.value = varianteObjActual.nivel_perfil;
+            selectNivelPerfil.disabled = true;
+            
+            currentConfiguredVariant = varianteObjActual; 
+            if(nombreVarianteDisplay) nombreVarianteDisplay.textContent = varianteObjActual.nombre_variante;
+            if(idVarianteDisplay) idVarianteDisplay.textContent = varianteObjActual.id_variante_config;
+            if(infoVarianteDiv) infoVarianteDiv.style.display = 'block';
+
+            if (configInvitadosServicioContainerEl) {
+                const numInvProyecto = inputNumeroInvitadosProyectoEl ? (inputNumeroInvitadosProyectoEl.value.trim() || '1') : '1';
+                if(displayInvitadosGeneralesEventoEl) displayInvitadosGeneralesEventoEl.textContent = numInvProyecto;
+                if(inputNumeroInvitadosEsteServicioEl) inputNumeroInvitadosEsteServicioEl.value = numInvitadosItemActual;
+                if(chkUsarInvitadosGeneralesEventoEl) chkUsarInvitadosGeneralesEventoEl.checked = (numInvitadosItemActual == parseInt(numInvProyecto));
+                if(campoInvitadosEspecificosServicioEl) campoInvitadosEspecificosServicioEl.style.display = chkUsarInvitadosGeneralesEventoEl.checked ? 'none' : 'block';
+                configInvitadosServicioContainerEl.style.display = 'block';
+            }
+            await cargarEstructuraVarianteIntegral(idVarianteActual, componentesParaEditar);
+        } else {
+            alert("No se pudo encontrar la configuración de la variante para este ítem. No se pueden bloquear los selectores.");
+            resetServiceConfiguratorIntegral(true); 
+        }
+    }
+
+
+    if (btnAnadirServicioConfigurado) {
+        btnAnadirServicioConfigurado.addEventListener('click', function() {
+            const idVarianteParaUsar = isEditingItemMode ? editingItemIdVarianteOriginalInput.value : (currentConfiguredVariant ? currentConfiguredVariant.id_variante_config : null);
+            const nombreVarianteParaUsar = isEditingItemMode ? (editingItemCard.querySelector('.item-nombre-display input') ? editingItemCard.querySelector('.item-nombre-display input').value : "Servicio Editado") : (currentConfiguredVariant ? currentConfiguredVariant.nombre_variante : "Servicio Desconocido");
+            const precioEstimadoOriginal = isEditingItemMode ? parseFloat(editingItemCard.querySelector('.input-precio-item-integral').value) : (currentConfiguredVariant ? (currentConfiguredVariant.precio_base_sugerido || 0.00) : 0.00);
+
+
+            if (!idVarianteParaUsar || !currentConfiguredVariantEstructura) {
+                 alert("Por favor, selecciona y configura un servicio completamente primero (Tipo, Paquete, Perfil) o asegúrate de que el servicio a editar esté cargado.");
                 return;
             }
 
             let numeroInvitadosParaEsteServicio;
-            if (chkUsarInvitadosGeneralesEvento.checked) {
-                numeroInvitadosParaEsteServicio = parseInt(inputInvitadosProyecto.value) || 1;
+            if (chkUsarInvitadosGeneralesEventoEl && chkUsarInvitadosGeneralesEventoEl.checked) {
+                const numInvProyectoVal = inputNumeroInvitadosProyectoEl ? (inputNumeroInvitadosProyectoEl.value.trim() || '1') : '1';
+                numeroInvitadosParaEsteServicio = parseInt(numInvProyectoVal);
+            } else if (inputNumeroInvitadosEsteServicioEl) {
+                numeroInvitadosParaEsteServicio = parseInt(inputNumeroInvitadosEsteServicioEl.value) || 1;
             } else {
-                numeroInvitadosParaEsteServicio = parseInt(inputNumeroInvitadosEsteServicio.value) || 1;
+                numeroInvitadosParaEsteServicio = parseInt(inputNumeroInvitadosProyectoEl.value) || 1; // Fallback a invitados del proyecto
             }
             if (numeroInvitadosParaEsteServicio < 1) numeroInvitadosParaEsteServicio = 1;
 
             const componentesSeleccionadosParaItem = [];
             let detalleHtmlComponentes = '';
-            
             const totalGruposDisponiblesEnVariante = currentConfiguredVariantEstructura.grupos.length;
             let numeroDeGruposConSeleccionesEnVariante = 0;
+
             currentConfiguredVariantEstructura.grupos.forEach(grupo => {
                 const grupoDiv = contenedorGruposColumnas.querySelector(`.grupo-columna[data-id-grupo="${grupo.id_grupo_config}"]`);
                 if (grupoDiv && grupoDiv.querySelectorAll('input[type="checkbox"]:checked').length > 0) {
@@ -752,40 +837,31 @@ document.addEventListener('DOMContentLoaded', function() {
             currentConfiguredVariantEstructura.grupos.forEach(grupo => {
                 const grupoDiv = contenedorGruposColumnas.querySelector(`.grupo-columna[data-id-grupo="${grupo.id_grupo_config}"]`);
                 if (!grupoDiv) return;
-
                 const opcionesPermitidasEnGrupo = parseInt(grupoDiv.dataset.opcionesPermitidas);
                 const checkboxesSeleccionados = Array.from(grupoDiv.querySelectorAll('input[type="checkbox"]:checked'));
                 const numOpcionesRealmenteElegidasEnGrupo = checkboxesSeleccionados.length;
-                
-                if (numOpcionesRealmenteElegidasEnGrupo === 0) return; 
-                
+                if (numOpcionesRealmenteElegidasEnGrupo === 0) return;
                 const factorAjusteIntraGrupo = opcionesPermitidasEnGrupo / numOpcionesRealmenteElegidasEnGrupo;
 
                 checkboxesSeleccionados.forEach(chk => {
                     const opcionOriginal = grupo.opciones_disponibles.find(o => o.id_opcion_componente == chk.value);
                     if (!opcionOriginal) return;
-
                     let cantidadConsumoBase = parseFloat(opcionOriginal.cantidad_consumo_base);
                     let cantidadAjustadaPorPersonaBruta = cantidadConsumoBase * factorAjusteIntraGrupo * factorAjusteGlobalDeGrupos;
+                    let cantidadAjustadaPersonaFinal;
                     let unidadFinal = opcionOriginal.producto_info ? opcionOriginal.producto_info.unidad_medida_base : opcionOriginal.unidad_consumo_base;
-                    let esIndivisible = opcionOriginal.producto_info ? opcionOriginal.producto_info.es_indivisible : (unidadFinal && unidadFinal.toLowerCase() === 'pieza');
-                    let cantidadAjustadaPersonaFinal; 
+                    let esIndivisible = opcionOriginal.producto_info ? opcionOriginal.producto_info.es_indivisible : (unidadFinal === 'pieza');
+
                     if (esIndivisible) {
                         cantidadAjustadaPersonaFinal = Math.ceil(cantidadAjustadaPorPersonaBruta);
                     } else {
                         cantidadAjustadaPersonaFinal = Math.ceil(cantidadAjustadaPorPersonaBruta / 5) * 5;
+                         if (cantidadAjustadaPersonaFinal < cantidadAjustadaPorPersonaBruta) {
+                             cantidadAjustadaPersonaFinal = Math.ceil(cantidadAjustadaPorPersonaBruta / 5.000001) * 5;
+                        }
                     }
-                    let cantidadTotalEventoFinal = cantidadAjustadaPersonaFinal * numeroInvitadosParaEsteServicio;
-                    let cantFinalDisplay;
-                    if (esIndivisible) {
-                        cantFinalDisplay = cantidadTotalEventoFinal.toFixed(0);
-                    } else {
-                        cantFinalDisplay = (cantidadTotalEventoFinal % 1 === 0) ? cantidadTotalEventoFinal.toFixed(0) : cantidadTotalEventoFinal.toFixed(1);
-                    }
-                    if (isNaN(cantidadTotalEventoFinal) || !isFinite(cantidadTotalEventoFinal)) {
-                        console.warn("Calculated quantity is NaN or Infinite for option:", opcionOriginal, "Factors:", factorAjusteIntraGrupo, factorAjusteGlobalDeGrupos);
-                        cantFinalDisplay = "Error"; 
-                    }
+                    let cantidadTotalEventoFinal = cantidadAjustadaPersonaFinal * numeroInvitadosParaEsteServicio; 
+                    let cantFinalDisplay = esIndivisible ? cantidadTotalEventoFinal.toFixed(0) : (cantidadTotalEventoFinal % 1 === 0 ? cantidadTotalEventoFinal.toFixed(0) : cantidadTotalEventoFinal.toFixed(1));
 
                     detalleHtmlComponentes += `<li class="componentes-display-item">${opcionOriginal.nombre_display_cliente} <span class="componente-cantidad-display">(Cant: ${cantFinalDisplay} ${unidadFinal})</span></li>`;
                     componentesSeleccionadosParaItem.push({
@@ -800,76 +876,98 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
             
-            const precioEstimadoItem = currentConfiguredVariant.precio_base_sugerido || 0.00; 
-            const nuevoItemIdx = itemCotizacionIndex;
-            
-            const itemHtml = `
-                <div class="item-cotizacion-card" data-item-idx="${nuevoItemIdx}">
-                    <input type="hidden" name="items[${nuevoItemIdx}][id_variante_servicio_config]" value="${currentConfiguredVariant.id_variante_config}">
-                    <input type="hidden" name="items[${nuevoItemIdx}][numero_invitados_servicio_item]" value="${numeroInvitadosParaEsteServicio}"> 
-                    <div class="item-cotizacion-header">
-                        <h5 class="item-nombre-display">
-                            <input type="text" name="items[${nuevoItemIdx}][nombre_display_servicio]"
-                                   value="${currentConfiguredVariant.nombre_variante}" class="input-inline-editable" required>
-                        </h5>
-                        <button type="button" class="button button-danger-small remove-item-cotizacion-btn">Eliminar</button>
-                    </div>
-                    <div class="form-grid-2col">
-                        <div class="form-group">
-                            <label for="items_${nuevoItemIdx}_cantidad_servicio">Cantidad del Servicio:</label>
-                            <input type="number" name="items[${nuevoItemIdx}][cantidad_servicio]" id="items_${nuevoItemIdx}_cantidad_servicio" value="1.0" min="0.1" step="any" class="input-cantidad-servicio-integral">
-                        </div>
-                        <div class="form-group">
-                            <label for="items_${nuevoItemIdx}_precio_total_item_calculado">Precio Total Ítem (Estimado):</label>
-                             <input type="number" step="0.01" name="items[${nuevoItemIdx}][precio_total_item_calculado]" id="items_${nuevoItemIdx}_precio_total_item_calculado"
-                                   value="${parseFloat(precioEstimadoItem).toFixed(2)}" class="input-precio-item-integral" readonly style="font-weight:bold; background-color:#e9ecef;">
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <small class="text-muted">Este servicio se calculará para <strong>${numeroInvitadosParaEsteServicio}</strong> invitados.</small>
-                    </div>
-                    <div class="form-group">
-                        <label for="items_${nuevoItemIdx}_descripcion_servicio_cotizado">Descripción (para el cliente):</label>
-                        <textarea name="items[${nuevoItemIdx}][descripcion_servicio_cotizado]" id="items_${nuevoItemIdx}_descripcion_servicio_cotizado" rows="2" class="input-descripcion-servicio-integral">${currentConfiguredVariant.descripcion_publica || ''}</textarea>
-                    </div>
-                    <div class="componentes-seleccionados-display-container">
-                        <strong class="componentes-display-titulo">Componentes Seleccionados (Estimación para ${numeroInvitadosParaEsteServicio} inv.):</strong>
-                        ${detalleHtmlComponentes ? `<ul class="componentes-display-lista">${detalleHtmlComponentes}</ul>` : '<p class="componentes-display-none"><em>Servicio base o sin componentes detallados.</em></p>'}
-                        ${componentesSeleccionadosParaItem.map((comp, compIdx) => `
-                            <input type="hidden" name="items[${nuevoItemIdx}][componentes][${compIdx}][id_opcion_componente]" value="${comp.id_opcion_componente}">
-                            <input type="hidden" name="items[${nuevoItemIdx}][componentes][${compIdx}][cantidad_opcion_solicitada_cliente]" value="${comp.cantidad_opcion_solicitada_cliente}">
-                        `).join('')}
-                    </div>
-                </div>
-            `;
-            if (itemsCotizacionContainer) itemsCotizacionContainer.insertAdjacentHTML('beforeend', itemHtml);
-            if(noItemsMessage) noItemsMessage.style.display = 'none';
-            itemCotizacionIndex++; 
+            if (isEditingItemMode && editingItemCard) {
+                const idx = editingItemCard.dataset.itemIdx;
+                editingItemCard.querySelector(`input[name="items[${idx}][id_variante_servicio_config]"]`).value = idVarianteParaUsar;
+                editingItemCard.querySelector(`input[name="items[${idx}][numero_invitados_servicio_item]"]`).value = numeroInvitadosParaEsteServicio;
+                // No cambiar nombre ni precio base al editar solo componentes/invitados
+                // editingItemCard.querySelector(`input[name="items[${idx}][nombre_display_servicio]"]`).value = nombreVarianteParaUsar;
+                // editingItemCard.querySelector(`input[name="items[${idx}][precio_total_item_calculado]"]`).value = parseFloat(precioEstimadoOriginal).toFixed(2);
+                
+                const guestInfoSmall = editingItemCard.querySelector('.form-group small.text-muted');
+                if(guestInfoSmall) guestInfoSmall.innerHTML = `Este servicio se calculará para <strong>${numeroInvitadosParaEsteServicio}</strong> invitados.`;
 
-            if(selectTipoServicio) {
-                selectTipoServicio.value = '';
-                selectTipoServicio.dispatchEvent(new Event('change')); 
+                const componentesContainer = editingItemCard.querySelector('.componentes-seleccionados-display-container');
+                const componentesLista = componentesContainer.querySelector('.componentes-display-lista');
+                
+                if (detalleHtmlComponentes) {
+                    if(componentesLista) componentesLista.innerHTML = detalleHtmlComponentes;
+                } else {
+                    if(componentesLista) componentesLista.innerHTML = '<p class="componentes-display-none"><em>Servicio base o sin componentes detallados.</em></p>';
+                }
+                
+                editingItemCard.querySelectorAll(`input[name^="items[${idx}][componentes]"]`).forEach(inp => inp.remove());
+                let newHiddenInputsHTML = componentesSeleccionadosParaItem.map((comp, compIdx) => `
+                    <input type="hidden" name="items[${idx}][componentes][${compIdx}][id_opcion_componente]" value="${comp.id_opcion_componente}">
+                    <input type="hidden" name="items[${idx}][componentes][${compIdx}][cantidad_opcion_solicitada_cliente]" value="${comp.cantidad_opcion_solicitada_cliente}">
+                `).join('');
+                componentesContainer.insertAdjacentHTML('beforeend', newHiddenInputsHTML);
+            } else {
+                const nuevoItemIdx = itemCotizacionIndex;
+                const itemHtml = `
+                    <div class="item-cotizacion-card" data-item-idx="${nuevoItemIdx}">
+                        <input type="hidden" name="items[${nuevoItemIdx}][id_variante_servicio_config]" value="${idVarianteParaUsar}">
+                        <input type="hidden" name="items[${nuevoItemIdx}][numero_invitados_servicio_item]" value="${numeroInvitadosParaEsteServicio}">
+                        <div class="item-cotizacion-header">
+                            <h5 class="item-nombre-display">
+                                <input type="text" name="items[${nuevoItemIdx}][nombre_display_servicio]"
+                                       value="${nombreVarianteParaUsar}" class="input-inline-editable" required>
+                            </h5>
+                            <div>
+                                <button type="button" class="button button-edit-black-small edit-item-cotizacion-btn" style="margin-right: 5px;">Editar</button>
+                                <button type="button" class="button button-danger-small remove-item-cotizacion-btn">Eliminar</button>
+                            </div>
+                        </div>
+                        <div class="form-grid-2col">
+                            <div class="form-group">
+                                <label>Cantidad del Servicio:</label>
+                                <input type="number" name="items[${nuevoItemIdx}][cantidad_servicio]" value="1.0" min="0.1" step="any" class="input-cantidad-servicio-integral">
+                            </div>
+                            <div class="form-group">
+                                <label>Precio Total Ítem (Estimado):</label>
+                                 <input type="number" step="0.01" name="items[${nuevoItemIdx}][precio_total_item_calculado]"
+                                       value="${parseFloat(precioEstimadoOriginal).toFixed(2)}" class="input-precio-item-integral" readonly style="font-weight:bold; background-color:#e9ecef;">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <small class="text-muted">Este servicio se calculará para <strong>${numeroInvitadosParaEsteServicio}</strong> invitados.</small>
+                        </div>
+                        <div class="form-group">
+                            <label>Descripción (para el cliente):</label>
+                            <textarea name="items[${nuevoItemIdx}][descripcion_servicio_cotizado]" rows="2" class="input-descripcion-servicio-integral">${currentConfiguredVariant ? (currentConfiguredVariant.descripcion_publica || '') : ''}</textarea>
+                        </div>
+                        <div class="componentes-seleccionados-display-container">
+                            <strong class="componentes-display-titulo">Componentes Seleccionados (Estimación para ${numeroInvitadosParaEsteServicio} inv.):</strong>
+                            ${detalleHtmlComponentes ? `<ul class="componentes-display-lista">${detalleHtmlComponentes}</ul>` : '<p class="componentes-display-none"><em>Servicio base o sin componentes detallados.</em></p>'}
+                            ${componentesSeleccionadosParaItem.map((comp, compIdx) => `
+                                <input type="hidden" name="items[${nuevoItemIdx}][componentes][${compIdx}][id_opcion_componente]" value="${comp.id_opcion_componente}">
+                                <input type="hidden" name="items[${nuevoItemIdx}][componentes][${compIdx}][cantidad_opcion_solicitada_cliente]" value="${comp.cantidad_opcion_solicitada_cliente}">
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+                itemsCotizacionContainer.insertAdjacentHTML('beforeend', itemHtml);
+                itemCotizacionIndex++; 
             }
-            currentConfiguredVariant = null;
-            currentConfiguredVariantEstructura = null;
             
+            resetServiceConfiguratorIntegral(true); 
+            if(noItemsMessage) noItemsMessage.style.display = 'none';
             calcularTotalesGeneralesIntegral();
         });
     }
-    
-    const itemsCotizacionContainerEl = document.getElementById('items-cotizacion-container-integral');
-    if (itemsCotizacionContainerEl) {
-        itemsCotizacionContainerEl.addEventListener('click', function(event) {
+
+    if (itemsCotizacionContainer) {
+        itemsCotizacionContainer.addEventListener('click', function(event) {
             if (event.target.classList.contains('remove-item-cotizacion-btn')) {
                 event.target.closest('.item-cotizacion-card').remove();
                 let currentIdx = 0;
-                itemsCotizacionContainerEl.querySelectorAll('.item-cotizacion-card').forEach(card => {
+                itemsCotizacionContainer.querySelectorAll('.item-cotizacion-card').forEach(card => {
                     card.dataset.itemIdx = currentIdx;
                     card.querySelectorAll('[name^="items["]').forEach(input => {
                         const oldName = input.name;
                         const newName = oldName.replace(/items\[\d+\]/, `items[${currentIdx}]`);
                         input.name = newName;
-                        if(input.id && input.id.match(/items_\d+_/)){
+                         if(input.id && input.id.match(/items_\d+_/)){ // Re-indexar IDs también
                             const oldId = input.id;
                             const newId = oldId.replace(/items_\d+_/, `items_${currentIdx}_`);
                             input.id = newId;
@@ -880,11 +978,14 @@ document.addEventListener('DOMContentLoaded', function() {
                     currentIdx++;
                 });
                 itemCotizacionIndex = currentIdx; 
-                const noItemsMsgEl = document.getElementById('noItemsCotizacionMessage_integral');
-                if (itemsCotizacionContainerEl.children.length === 0 && noItemsMsgEl) {
-                    noItemsMsgEl.style.display = 'block';
+
+                if (itemsCotizacionContainer.children.length === 0 && noItemsMessage) {
+                    noItemsMessage.style.display = 'block';
                 }
                 calcularTotalesGeneralesIntegral();
+            } else if (event.target.classList.contains('edit-item-cotizacion-btn')) {
+                const cardToEdit = event.target.closest('.item-cotizacion-card');
+                handleEditItemClickIntegral(cardToEdit);
             }
         });
     }
@@ -904,7 +1005,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const montoImpuestosInputEl = document.getElementById('monto_impuestos_cotizacion');
 
 
-    function calcularYActualizarCostosLogisticos() {
+    function calcularYActualizarCostosLogisticosIntegral() {
         const transporte = parseFloat(costoTransporteInputEl.value) || 0;
         const viaticos = parseFloat(costoViaticosInputEl.value) || 0;
         const hospedaje = parseFloat(costoHospedajeInputEl.value) || 0;
@@ -928,7 +1029,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         if(displaySubtotalServiciosEl) displaySubtotalServiciosEl.textContent = '$' + subtotalServicios.toFixed(2);
 
-        const costosLogisticos = calcularYActualizarCostosLogisticos();
+        const costosLogisticos = calcularYActualizarCostosLogisticosIntegral();
         const subtotalGeneral = subtotalServicios + costosLogisticos;
         if(displaySubtotalGeneralEl) displaySubtotalGeneralEl.textContent = '$' + subtotalGeneral.toFixed(2);
 
@@ -953,25 +1054,21 @@ document.addEventListener('DOMContentLoaded', function() {
                 target.id === 'monto_descuento_global_cotizacion' ||
                 target.id === 'monto_impuestos_cotizacion' ||
                 target.id === 'numero_invitados_proyecto' || 
-                target.id === 'config_numero_invitados_este_servicio' 
+                target.id === 'config_numero_invitados_este_servicio_integral' 
              ) {
-                if (target.id === 'numero_invitados_proyecto' && displayInvitadosGeneralesEvento) {
+                if (target.id === 'numero_invitados_proyecto' && displayInvitadosGeneralesEventoEl) {
                     const numInvProyectoVal = target.value || '1';
-                    displayInvitadosGeneralesEvento.textContent = numInvProyectoVal;
-                    if (chkUsarInvitadosGeneralesEvento && chkUsarInvitadosGeneralesEvento.checked && inputNumeroInvitadosEsteServicio) {
-                        inputNumeroInvitadosEsteServicio.value = numInvProyectoVal;
+                    displayInvitadosGeneralesEventoEl.textContent = numInvProyectoVal;
+                    if (chkUsarInvitadosGeneralesEventoEl && chkUsarInvitadosGeneralesEventoEl.checked && inputNumeroInvitadosEsteServicioEl) {
+                        inputNumeroInvitadosEsteServicioEl.value = numInvProyectoVal;
                     }
                 }
                 calcularTotalesGeneralesIntegral();
             }
         });
-        // Inicializar cálculos al cargar la página
-        if (inputInvitadosProyecto && displayInvitadosGeneralesEvento && chkUsarInvitadosGeneralesEvento && inputNumeroInvitadosEsteServicio) {
-            const numInvInicial = inputInvitadosProyecto.value || '1';
-            displayInvitadosGeneralesEvento.textContent = numInvInicial;
-            inputNumeroInvitadosEsteServicio.value = numInvInicial;
+        if (itemCotizacionIndex > 0) {
+            calcularTotalesGeneralesIntegral();
         }
-        calcularTotalesGeneralesIntegral(); 
     }
 });
 </script>

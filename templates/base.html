@@ -9,6 +9,34 @@
     <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        /* Estilos para el botón de cierre de los mensajes flash */
+        /* Asegúrate de que estos estilos no entren en conflicto con los de style.css */
+        .alert { 
+            position: relative; /* Necesario para posicionar el botón de cierre absolutamente dentro del alert */
+            padding-right: 35px; /* Espacio para el botón de cierre */
+        }
+        .flash-close-btn {
+            position: absolute;
+            top: 50%;
+            right: 10px;
+            transform: translateY(-50%);
+            font-size: 1.25rem; /* Tamaño del icono 'x' */
+            font-weight: bold;
+            line-height: 1;
+            color: inherit; /* Hereda el color del texto del alert para buen contraste */
+            text-shadow: 0 1px 0 #fff; /* Sombra ligera para destacar sobre fondos claros */
+            opacity: 0.6;
+            background: transparent;
+            border: 0;
+            padding: 0;
+            cursor: pointer;
+            transition: opacity 0.2s ease;
+        }
+        .flash-close-btn:hover {
+            opacity: 1;
+        }
+    </style>
 </head>
 <body>
     <aside class="sidebar" id="sidebar">
@@ -133,9 +161,15 @@
 
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ category | replace('error', 'danger') | replace('success', 'success') or 'info' }}">{{ message }}</div>
-                {% endfor %}
+                {# Contenedor para los mensajes flash, si quieres agruparlos o darles un margen general #}
+                <div class="flash-messages-container" style="margin-bottom: 1rem;"> 
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category | replace('error', 'danger') | replace('success', 'success') or 'info' }}" role="alert">
+                            {{ message }}
+                            <button type="button" class="flash-close-btn" aria-label="Cerrar">&times;</button>
+                        </div>
+                    {% endfor %}
+                </div>
             {% endif %}
         {% endwith %}
 
@@ -187,8 +221,6 @@
                         if (!toggle.classList.contains('open')) {
                             toggle.classList.add('open');
                         }
-                        // Initial height for already open submenus, will be refined by window.load
-                        // Set without transition first
                         const initialTransition = submenu.classList.contains('enable-transition');
                         if(initialTransition) submenu.classList.remove('enable-transition');
                         submenu.style.maxHeight = submenu.scrollHeight + "px";
@@ -197,7 +229,6 @@
                     } else {
                         submenu.style.maxHeight = null; 
                     }
-                    // Enable transitions after initial setup, if not already enabled by init-open logic
                     if (!submenu.classList.contains('enable-transition')) {
                         setTimeout(() => {
                             submenu.classList.add('enable-transition');
@@ -218,8 +249,6 @@
                     
                     adjustSingleSubmenuHeight(currentSubmenu, isOpen);
 
-                    // After a submenu is opened/closed, re-adjust ALL currently open submenus.
-                    // Use requestAnimationFrame to ensure this happens after the current event loop.
                     requestAnimationFrame(() => {
                         document.querySelectorAll('.sidebar-menu .menu-toggle.open').forEach(openToggle => {
                             const openSubmenu = openToggle.nextElementSibling;
@@ -231,7 +260,6 @@
                 });
             });
 
-            // Sidebar open/close for mobile
             if (sidebarToggleBtn) {
                 sidebarToggleBtn.addEventListener('click', function() {
                     sidebar.classList.add('open');
@@ -254,7 +282,6 @@
                 });
             }
 
-            // ResizeObserver to detect when the main menu's scrollbar appears/disappears
             if (sidebarMenu && typeof ResizeObserver !== 'undefined') {
                 const resizeObserver = new ResizeObserver(entries => {
                     requestAnimationFrame(() => { 
@@ -268,7 +295,6 @@
                 });
                 resizeObserver.observe(sidebarMenu);
             } else {
-                // Fallback for older browsers: re-adjust on window resize
                 window.addEventListener('resize', () => {
                     requestAnimationFrame(() => {
                         document.querySelectorAll('.sidebar-menu .menu-toggle.open').forEach(toggle => {
@@ -280,13 +306,38 @@
                     });
                 });
             }
+
+            // --- INICIO: JavaScript para mensajes flash mejorados ---
+            const flashMessages = document.querySelectorAll('.alert'); // Seleccionar por la clase .alert
+            flashMessages.forEach(function(flashMessage) {
+                const closeButton = flashMessage.querySelector('.flash-close-btn');
+                
+                function dismissMessage() {
+                    flashMessage.style.transition = 'opacity 0.5s ease, transform 0.5s ease, margin-top 0.5s ease';
+                    flashMessage.style.opacity = '0';
+                    flashMessage.style.transform = 'translateY(-20px)';
+                    flashMessage.style.marginTop = '-10px'; // Para colapsar el espacio
+                    setTimeout(() => {
+                        flashMessage.style.display = 'none'; // Ocultar en lugar de remover si prefieres
+                        // flashMessage.remove(); // Si quieres removerlo completamente del DOM
+                    }, 500); // Tiempo para que la animación de fade out termine
+                }
+
+                if (closeButton) {
+                    closeButton.addEventListener('click', dismissMessage);
+                }
+
+                // Auto-desaparecer después de 7 segundos
+                setTimeout(dismissMessage, 7000); // 7 segundos
+            });
+            // --- FIN: JavaScript para mensajes flash mejorados ---
+
         });
 
         window.addEventListener('load', function() {
             document.querySelectorAll('.sidebar-menu .menu-toggle.open').forEach(toggle => {
                 const submenu = toggle.nextElementSibling;
                 if (submenu && submenu.tagName === 'UL') {
-                    // Use the main adjustment function for consistency
                     adjustSingleSubmenuHeight(submenu, true);
                 }
             });

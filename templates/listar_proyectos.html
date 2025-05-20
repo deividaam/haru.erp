@@ -18,7 +18,7 @@
                         <th>No. Invitados</th>
                         <th>Tipo Ubicación</th>
                         <th>Estado Última Cot.</th>
-                        <th style="width: 180px;">Acciones</th> {# Ancho ajustado para botones #}
+                        <th style="width: 180px;">Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -36,13 +36,9 @@
                             <td style="text-align: center;">{{ proyecto.numero_invitados or '-' }}</td>
                             <td>{{ proyecto.tipo_ubicacion or 'Local' }}</td>
                             <td>
-                                {# Corrección para acceder al estado de la última cotización #}
                                 {% if proyecto.cotizaciones %}
-                                    {# Ordenar las cotizaciones por versión en orden descendente #}
                                     {% set cotizaciones_ordenadas = proyecto.cotizaciones|sort(attribute='version', reverse=True) %}
-                                    {# Verificar si la lista ordenada no está vacía #}
                                     {% if cotizaciones_ordenadas %}
-                                        {# Acceder al primer elemento (la última versión) de la lista ordenada #}
                                         {% set ultima_cotizacion = cotizaciones_ordenadas[0] %}
                                         <span class="status-badge status-{{ ultima_cotizacion.estado|lower|replace(' ', '-') }}">{{ ultima_cotizacion.estado }}</span>
                                         (v{{ ultima_cotizacion.version }})
@@ -83,47 +79,52 @@
         .data-table th, .data-table td {
             padding: 10px 12px;
             white-space: nowrap;
-            vertical-align: middle; /* Alinear verticalmente al medio */
+            vertical-align: middle; 
         }
         .data-table td {
             font-size: 0.92em;
         }
-        .data-table td a {
+        .data-table td a { /* Estilo para enlaces dentro de la tabla, no los botones */
             color: var(--color-acento-primario);
-            text-decoration: none;
+            text-decoration: none; 
         }
         .data-table td a:hover {
-            text-decoration: underline;
+            text-decoration: underline; 
         }
         .actions {
-            text-align: center; /* Centrar botones en la celda de acciones */
+            text-align: center; 
         }
-        .actions .button { /* Estilo general para botones en acciones si es necesario */
-            margin: 2px; /* Pequeño margen entre botones */
-            display: inline-block; /* Para que el margen funcione bien */
+        .actions .button { 
+            margin: 2px; 
+            display: inline-block; 
         }
-        .button-edit-black { /* Tu clase existente */
+
+        /* Estilo para el botón Editar */
+        /* Hereda de .button (definido en style.css) */
+        .button-edit-black {
             background-color: var(--color-texto-principal);
-            color: white;
-            padding: 6px 12px;
-            text-decoration: none;
-            border-radius: var(--radio-borde-general);
-            font-size: 0.85em;
-            border: 1px solid var(--color-texto-principal);
-            transition: background-color 0.2s ease, opacity 0.2s ease;
+            color: white; 
+            border-color: var(--color-texto-principal); /* Asegurar que el borde coincida */
+            padding: 5px 10px; 
+            font-size: 0.85em; 
             font-weight: 500;
+            height: auto !important; /* Permitir que el padding defina la altura */
+            line-height: 1.4; /* Ajustar si es necesario para centrar verticalmente */
+            /* Las demás propiedades como text-decoration, outline, etc., se heredan de .button */
+            /* text-decoration: none !important; /* Ya debería estar en .button */
         }
         .button-edit-black:hover {
-            background-color: #333; /* Un poco más oscuro al hacer hover */
+            background-color: #333; 
+            border-color: #333; /* Mantener el borde consistente en hover */
             opacity: 0.9;
         }
-        .button-secondary.button-small-padding { /* Clase para el botón "+ Cotización" */
-            font-size: 0.8em !important; /* Un poco más pequeño */
-            padding: 5px 10px !important; /* Más compacto */
+
+        .button-secondary.button-small-padding { 
+            font-size: 0.8em !important; 
+            padding: 5px 10px !important; 
             height: auto !important;
             line-height: 1.4 !important;
         }
-        /* Estilos para badges de estado (copiados de ver_cotizacion_publica.html para consistencia) */
         .status-badge {
             padding: 3px 8px;
             border-radius: var(--radio-borde-general);
@@ -131,13 +132,13 @@
             font-weight: 500;
             color: white;
             text-transform: capitalize;
-            display: inline-block; /* Para que el padding funcione bien */
+            display: inline-block; 
             white-space: nowrap;
         }
-        .status-borrador { background-color: #6c757d; } /* Gris */
-        .status-presentada { background-color: var(--color-info); } /* Azul */
-        .status-aceptada { background-color: var(--color-acento-secundario); } /* Verde */
-        .status-rechazada { background-color: var(--color-peligro); } /* Rojo */
-        .status-cancelada { background-color: var(--color-advertencia); color: #333; } /* Amarillo */
+        .status-borrador { background-color: #6c757d; } 
+        .status-presentada { background-color: var(--color-info); } 
+        .status-aceptada { background-color: var(--color-acento-secundario); } 
+        .status-rechazada { background-color: var(--color-peligro); } 
+        .status-cancelada { background-color: var(--color-advertencia); color: #333; } 
     </style>
 {% endblock %}
