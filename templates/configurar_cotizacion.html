@@ -231,11 +231,28 @@
             <legend><h4>Costos Logísticos y Totales de la Cotización</h4></legend>
             <div class="form-grid-3col">
                 <div class="form-group">
-                    <label for="monto_costos_logisticos">Costos Logísticos Adicionales ($):</label>
-                    <input type="number" step="0.01" name="monto_costos_logisticos" id="monto_costos_logisticos"
-                           value="{{ request.form.get('monto_costos_logisticos', '{:.2f}'.format(cotizacion.monto_costos_logisticos|float if cotizacion and cotizacion.monto_costos_logisticos is not none else (proyecto.costo_transporte_estimado or 0)|float + (proyecto.costo_viaticos_estimado or 0)|float + (proyecto.costo_hospedaje_estimado or 0)|float)) }}"
+                    <label for="costo_transporte_cotizacion">Costo Transporte ($):</label>
+                    <input type="number" step="0.01" name="costo_transporte_cotizacion" id="costo_transporte_cotizacion"
+                           value="{{ request.form.get('costo_transporte_cotizacion', ('{:.2f}'.format(proyecto.costo_transporte_estimado|float) if es_nueva_cotizacion and proyecto and proyecto.costo_transporte_estimado is not none else ('0.00'))) }}"
                            min="0">
                 </div>
+                <div class="form-group">
+                    <label for="costo_viaticos_cotizacion">Costo Viáticos ($):</label>
+                    <input type="number" step="0.01" name="costo_viaticos_cotizacion" id="costo_viaticos_cotizacion"
+                           value="{{ request.form.get('costo_viaticos_cotizacion', ('{:.2f}'.format(proyecto.costo_viaticos_estimado|float) if es_nueva_cotizacion and proyecto and proyecto.costo_viaticos_estimado is not none else ('0.00'))) }}"
+                           min="0">
+                </div>
+                <div class="form-group">
+                    <label for="costo_hospedaje_cotizacion">Costo Hospedaje ($):</label>
+                    <input type="number" step="0.01" name="costo_hospedaje_cotizacion" id="costo_hospedaje_cotizacion"
+                           value="{{ request.form.get('costo_hospedaje_cotizacion', ('{:.2f}'.format(proyecto.costo_hospedaje_estimado|float) if es_nueva_cotizacion and proyecto and proyecto.costo_hospedaje_estimado is not none else ('0.00'))) }}"
+                           min="0">
+                </div>
+            </div>
+            <input type="hidden" name="monto_costos_logisticos_cotizacion" id="monto_costos_logisticos_cotizacion_hidden"
+                   value="{{ request.form.get('monto_costos_logisticos_cotizacion', ('{:.2f}'.format(cotizacion.monto_costos_logisticos|float) if not es_nueva_cotizacion and cotizacion and cotizacion.monto_costos_logisticos is not none else ('{:.2f}'.format( (proyecto.costo_transporte_estimado or 0)|float + (proyecto.costo_viaticos_estimado or 0)|float + (proyecto.costo_hospedaje_estimado or 0)|float ) if es_nueva_cotizacion and proyecto else '0.00' ) )) }}">
+
+            <div class="form-grid-2col" style="margin-top:15px;">
                 <div class="form-group">
                     <label for="porcentaje_descuento_global">Descuento Global (%):</label>
                     <input type="number" step="0.01" name="porcentaje_descuento_global" id="porcentaje_descuento_global"
@@ -254,6 +271,7 @@
             <hr style="margin: 20px 0;">
             <div class="resumen-totales" style="text-align: right; font-size: 1.1em;">
                 <p>Subtotal Servicios/Productos: <strong id="displaySubtotalServicios">$0.00</strong></p>
+                <p>Costos Logísticos: <strong id="displayCostosLogisticos">$0.00</strong></p>
                 <p>Subtotal General (con Logística): <strong id="displaySubtotalGeneral">$0.00</strong></p>
                 <p style="color: var(--color-peligro);">Menos Descuento Global: <strong id="displayDescuentoGlobal">-$0.00</strong></p>
                 <p>Más Impuestos: <strong id="displayImpuestos">+$0.00</strong></p>
@@ -499,6 +517,13 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    // Campos de costos logísticos individuales
+    const costoTransporteInput = document.getElementById('costo_transporte_cotizacion');
+    const costoViaticosInput = document.getElementById('costo_viaticos_cotizacion');
+    const costoHospedajeInput = document.getElementById('costo_hospedaje_cotizacion');
+    const montoCostosLogisticosHiddenInput = document.getElementById('monto_costos_logisticos_cotizacion_hidden');
+
+
     const inputPorcentajeDescuento = document.getElementById('porcentaje_descuento_global');
     const inputMontoDescuentoCalculado = document.getElementById('monto_descuento_global_calculado');
     const inputPorcentajeImpuestos = document.getElementById('porcentaje_impuestos');
@@ -524,10 +549,10 @@ document.addEventListener('DOMContentLoaded', function() {
             if(selectNivelPaquete) { populateSelect(selectNivelPaquete, [], '-- Selecciona Paquete --'); selectNivelPaquete.disabled = true;}
             if(selectNivelPerfil) { populateSelect(selectNivelPerfil, [], '-- Selecciona Perfil --'); selectNivelPerfil.disabled = true;}
         }
-        // Siempre habilitar los selects al resetear, a menos que se entre en modo edición inmediatamente después
+        // Siempre habilitar los selectores principales al resetear, a menos que se entre en modo edición inmediatamente después
         if(selectTipoServicio) selectTipoServicio.disabled = false;
-        if(selectNivelPaquete) selectNivelPaquete.disabled = true; // Paquete se habilita al seleccionar tipo
-        if(selectNivelPerfil) selectNivelPerfil.disabled = true;   // Perfil se habilita al seleccionar paquete
+        if(selectNivelPaquete) selectNivelPaquete.disabled = true; 
+        if(selectNivelPerfil) selectNivelPerfil.disabled = true;  
 
 
         if(infoVarianteDiv) infoVarianteDiv.style.display = 'none';
@@ -1080,7 +1105,16 @@ document.addEventListener('DOMContentLoaded', function() {
 
         document.getElementById('displaySubtotalServicios').textContent = '$' + subtotalServicios.toFixed(2);
 
-        const costosLogisticos = parseFloat(document.getElementById('monto_costos_logisticos').value) || 0;
+        // Leer los tres campos individuales de costos logísticos
+        const transporte = parseFloat(costoTransporteInput.value) || 0;
+        const viaticos = parseFloat(costoViaticosInput.value) || 0;
+        const hospedaje = parseFloat(costoHospedajeInput.value) || 0;
+        const costosLogisticos = transporte + viaticos + hospedaje;
+        
+        if(montoCostosLogisticosHiddenInput) montoCostosLogisticosHiddenInput.value = costosLogisticos.toFixed(2);
+        document.getElementById('displayCostosLogisticos').textContent = '+$' + costosLogisticos.toFixed(2);
+
+
         const subtotalGeneral = subtotalServicios + costosLogisticos;
         document.getElementById('displaySubtotalGeneral').textContent = '$' + subtotalGeneral.toFixed(2);
 
@@ -1106,9 +1140,11 @@ document.addEventListener('DOMContentLoaded', function() {
             const target = event.target;
             if (target.classList.contains('input-precio-item') ||
                 target.classList.contains('input-cantidad-servicio') || 
-                target.id === 'monto_costos_logisticos' ||
-                target.id === 'porcentaje_descuento_global' || // Cambiado a porcentaje
-                target.id === 'porcentaje_impuestos' ||      // Cambiado a porcentaje
+                target.id === 'costo_transporte_cotizacion' ||      // Nuevo
+                target.id === 'costo_viaticos_cotizacion' ||        // Nuevo
+                target.id === 'costo_hospedaje_cotizacion' ||       // Nuevo
+                target.id === 'porcentaje_descuento_global' || 
+                target.id === 'porcentaje_impuestos' ||      
                 target.id === 'numero_invitados_cotizacion' || 
                 target.id === 'config_numero_invitados_este_servicio' 
                 ) {
@@ -1122,7 +1158,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 calcularTotalesGenerales();
             }
         });
-        if (itemCotizacionIndex > 0) { // Calcular al cargar si ya hay ítems
+         // Calcular totales al cargar la página si hay ítems o una cotización existente
+        const esNuevaCot = {{ es_nueva_cotizacion|tojson }};
+        if (itemCotizacionIndex > 0 || !esNuevaCot) {
             calcularTotalesGenerales();
         }
     }
